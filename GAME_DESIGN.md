@@ -1,7 +1,7 @@
 # COMMAND TERMINAL — Game Design Document
 
 > Living document. Update it whenever a system is designed, changed, or cut.
-> Last major revision: Expansion 1.1 (the living world: foreign powers & lend-lease, city management, local news, the Vosk Hotline), 2026-09-24. Before that, Phase 8 (the home front: epidemics and natural disasters with CRITICAL EMERGENCY choices; chain of command & insubordination, electronic warfare, scorched earth & combat engineers, victory by capitulation, save/load), 2026-09-24.
+> Last major revision: Expansion 1.2 (the Royal Court & Extended Family: dynasty, cabinet, audiences, treason, royal marriages, family generals, succession), 2026-09-24. Before that, Expansion 1.1 (the living world: foreign powers & lend-lease, city management, local news, the Vosk Hotline), 2026-09-24. Before that, Phase 8 (the home front: epidemics and natural disasters with CRITICAL EMERGENCY choices; chain of command & insubordination, electronic warfare, scorched earth & combat engineers, victory by capitulation, save/load), 2026-09-24.
 
 ---
 
@@ -583,7 +583,7 @@ status bar shows it (`WX`), and a **METEOROLOGICAL BULLETIN** arrives each new s
 - The campaign opens on 2 January 1984, in the dead of winter.
 
 ### 4.21 The Event Deck: Classified Dilemmas `[P7]`
-Module `src/engine/dilemmas.py`, data `data/events_deck.json` (92 cards since the deck expansion, see 4.21a). Last in each tick, from week 3,
+Module `src/engine/dilemmas.py`, data `data/events_deck.json` (96 cards since the deck expansion, see 4.21a). Last in each tick, from week 3,
 if no card has come up in the last 3 weeks, a card is drawn with a **16%** chance. Eligible cards are
 weighted and filtered by conditions: season (the frozen convoy in winter, General Mud in the Rasputitsa,
 the bumper harvest in summer and autumn), minimum week, a running research project, a battle in progress,
@@ -605,8 +605,8 @@ and story flags. Cards are not repeated unless `repeatable`.
 ### 4.21a The Expanded Deck & Event Chains `[Content]`
 `tools/generate_massive_deck.py` builds the deck: it keeps every existing card, adds (or replaces, by id) its own
 hard-coded cards, normalises categories to **DOMESTIC · MILITARY · DIPLOMACY · ESPIONAGE · CRISIS** (plus the older
-ECONOMY/RESEARCH), validates everything and writes the JSON atomically. Re-running it is safe. **92 cards**, 30 of them
-the second acts of **25 event-chain links**.
+ECONOMY/RESEARCH), validates everything and writes the JSON atomically. Re-running it is safe. **96 cards**, 32 of them
+the second (or third) acts of **27 event-chain links**.
 
 - **Event chains**: a choice may carry `follow_ups`, the same schema as email follow-ups with `card` for `email`:
   ```json
@@ -628,12 +628,16 @@ the second acts of **25 event-chain links**.
   cholera outbreak, a dam burst or a mine collapse.
 - **Writer packs** (`tools/writer_packs/*.json`): the Head Writer (Gemini) writes cards in their own schema
   (`description`, `follow_up.event_id`, `is_chain_only`, `civil_morale`, `change_tax_policy`, `grant_technology` by
-  name, `start_outbreak` / `trigger_disaster` by name). The generator translates them, resolves names to ids, infers
-  the city or region from the card text (or the card that leads to it), merges them last and removes the
-  placeholders they supersede (`RETIRED`: the placeholder defector chain). Unknown keys, techs or diseases stop the
-  build. A chain-only card may have a single "acknowledge" choice.
+  name, `start_outbreak` / `trigger_disaster` by name, and the Royal Court keys `execute_character`,
+  `imprison_character`, `assign_command`, `kill_character`, `character_loyalty`, `dynasty_stability`, condition
+  `requires_character_alive`). The generator translates them, resolves names to ids, infers the city or region from
+  the card text (or the card that leads to it; with none named the engine picks one), merges them last and removes
+  the placeholders they supersede (`RETIRED`). Unknown keys, techs, diseases or characters stop the build.
+  `WIRING` in the generator attaches hooks the text implies but the pack does not yet spell out (the Duke's
+  execution, Julian's command and death). A chain-only card may have a single "acknowledge" choice.
 - First pack, *Blood & Bureaucracy*: Bread and Bullets (→ the Aldmark munitions blast), The Vosk Scientist (→ winter
-  gear, or dead in custody), The Ghost Ship (→ cholera in Brenmouth).
+  gear, or dead in custody), Project Chimera, The Duke's Cut (→ the loyalists strike), The Heir's Ambition (→ the
+  heir surrounded → a nation mourns).
 - **Writing credit:** the other cards in the generator are the programmer's placeholder drafts; writer packs
   replace them over time.
 
@@ -878,6 +882,90 @@ identical.
 
 ---
 
+## Expansion 1.2 — The Royal Court & Extended Family `[X1.2]`
+
+**Goal:** a Crusader Kings layer on top of the war. The Lord Protector is a person with a family, a cabinet and
+enemies at court; the state's competence depends on who holds office, and the war can end at home — in a coup, or
+with nobody of the blood left to rule. Module `src/engine/court.py`, models `src/models/character.py`
+(`Character`, `Dynasty`, stored on `Nation.dynasty`), screen `[0] ROYAL COURT` (`src/ui/views/court.py`).
+**The cast is the Head Writer's** (`data/dynasty.json`); the systems numbers are `data/court.json`.
+
+### C1. The House of Valerius
+| Character | Relation | ADM / MIL / INT | Traits | Loyalty | Starts as |
+|-----------|----------|-----------------|--------|---------|-----------|
+| **Lord Protector Valerius** (54) | Ruler | 6 / 5 / 5 | Pragmatic, War-Weary | — | the player |
+| **Lady Elara** | Spouse | 8 / 1 / 5 | Beloved, Pacifist | 90 | at court |
+| **Julian** | Heir | 3 / 4 / 2 | Glory-Hound, Inexperienced | 100 | at court |
+| **Duke Vargus** | Uncle | 9 / 4 / 8 | Corrupt, Financial Genius | 35 | Minister of Finance |
+| **General Silas** | Cousin | 4 / 8 / 6 | Paranoid, Ruthless | 60 | Minister of War |
+
+Around them the court generates (seeded, placeholder names) 1–2 siblings and 0–2 cousins — **5–8 living relatives**
+in all — and **2–3 powerful nobles**, one of whom starts as Head of Intelligence. Each character has Administration,
+Military and Intrigue (0–10, 5 = ordinary), traits, **loyalty** (0–100) and **influence** (0–100).
+
+**Traits** (mechanics in `court.json`): Ambitious (loyalty −15, may lead a coup) · Loyal (+20) · Corrupt (−10;
+skims 4% of the tax revenue as Minister of Finance) · Genius (+3 to every stat) · Financial Genius (counts 3 better
+at Finance; −10 loyalty: he knows his worth) · Beloved (civil morale +0.1/wk, stability +0.2/wk at court) · Pacifist
+(her audiences plead for peace talks) · Glory-Hound (a Glory-Hound field commander) · Inexperienced (twice as likely
+to die at the front) · Paranoid (+20% plot detection as spymaster; false arrests cost courtiers loyalty) · Ruthless
+(in office: military +0.05/wk, civil −0.05/wk; an Aggressive field commander) · Pragmatic (as ruler: court loyalty
++5) · War-Weary (as ruler: civil +0.1/wk, military −0.1/wk).
+
+### C2. The Cabinet (Royal Court: `F` / `W` / `I` appoint, `D` dismiss)
+| Office | Stat | Passive effect (per point above/below 5) |
+|--------|------|------------------------------------------|
+| Minister of Finance | Administration | tax revenue ±3% (a ledger line; a Corrupt minister adds "Unaccounted expenditure") |
+| Minister of War | Military | military morale ±0.05 a week |
+| Head of Intelligence | Intrigue | recon accuracy ±1.5%; plot detection 20% + 8%/point |
+
+A vacant office counts as stat 2. Appointment: loyalty +10; dismissal: −15. **The dilemma is built in:** Duke
+Vargus makes the Treasury +21% (+12,000 CR a week at the start) but skims 4% and sits at loyalty 35; Julian would
+serve with devotion and cost 6%.
+
+### C3. Loyalty, stability and Holding Court
+- Loyalty drifts 5% a week toward: base by relation (Spouse 70, Heir 65, Sibling 55, Cousin/Uncle 50, Noble 45) +
+  traits + 10 in office + (stability − 50) × 0.2 + the ruler's court loyalty.
+- **Dynastic stability** (0–100, starts 60) recovers toward 60; falls with civil morale below 30, royal deaths at
+  the front (−20), successions (−20), executions of the blood (−8), failed coups (−10). Below 25 it costs civil morale.
+- **Audiences:** from week 3, every 3–5 weeks a courtier (weighted toward the disgruntled) demands an audience — a
+  modal (**AUDIENCE CHAMBER**) with a petition from `court.json` matched to their traits: estates, gambling debts, a
+  laboratory, a Guards regiment, land-tax relief, a spy purge, a hospital in the family name, a banquet, a front
+  command, peace talks. **Grant** (the petition's cost, loyalty +10…+20), **Deny** (−8…−15) or **Keep them waiting**
+  (half that). The Lord Protector may also **hold court** at will (`A`, once every 2 weeks).
+
+### C4. Treason
+Below loyalty **20** a courtier plots (20% a week): **embezzlement** (10–30k, doubled from office; three times as
+likely for the Corrupt), **leaks to the Vosk** (army morale −3, recon −15% for 4 weeks), an **assassination attempt**
+(Ambitious or loyalty < 10; 35% − 3%/INT point of the spymaster; success kills the ruler), or a **coup** (Ambitious
+member of the blood with influence ≥ 60; 25% + influence, − stability and military morale). Before a plot strikes,
+the Head of Intelligence may **uncover** it (never their own): a red INTERNAL SECURITY modal — **execute** (the
+court learns fear: −3 loyalty all round), **imprison** in the citadel, or **pardon** (+30 loyalty).
+
+### C5. Political marriages (Royal Court: `M`)
+An unmarried member of the blood aged 16–45 can be married into Oakhaven, Tor or Vael (one match each; alignment
+≥ 0; dowry 50,000). The power swings **+20** toward Kestria, **never falls below +20** while the marriage holds, and
+sells lend-lease **25% cheaper** (the Diplomacy catalogue shows "ROYAL MATCH"). The spouse lives abroad.
+
+### C6. Family generals (Military: `K`)
+`K` gives the highlighted division to the most martial royal at court (or recalls the royal). **Royals never
+disobey** (no refusals, whatever their traits), and their traits come with them (Julian leads as a Glory-Hound,
+Silas as Aggressive). While their division is engaged a royal has a 3% chance a week (6% if Inexperienced) of being
+**killed in action**, certain if the division is destroyed: **stability −20, civil morale −4**.
+
+### C7. Succession and PROTOCOL ZERO
+Everyone ages a year every 52 weeks; the old die (0.15%/week at 60, doubling every 6 years); an epidemic in
+Aldmark reaches the palace (4%/week, then 8%/week of death for 4 weeks); assassins strike. When the ruler dies the
+line of succession — **Heir, Siblings (eldest first), Cousins (most influential), Uncles/Aunts** — produces the new
+Lord Protector, who **inherits their own traits and the whole mess** (stability −20, civil −3); the spouse becomes
+Dowager and the next in line becomes Heir. With **nobody of the blood left**, or after a **successful coup**, the
+game ends: **PROTOCOL ZERO: DYNASTIC COLLAPSE** (a fourth fail state).
+
+### C8. Save / load
+The Dynasty and every Character (loyalty, offices, commands, marriages, prison, illness, the chronicle) are part of
+the saved Nation; the round-trip test compares the reloaded House field by field.
+
+---
+
 ## 5. Architecture
 
 ### 5.1 Principles
@@ -918,6 +1006,8 @@ command-terminal/
 │   ├── diplomacy.json       # off-map powers: alignment, trade, lend-lease (X1.1)
 │   ├── cities.json          # city populations, buildings, local morale, news headlines (X1.1)
 │   ├── hotline.json         # Chancellor V. Krov's cables (X1.1)
+│   ├── dynasty.json         # the ruling family — the Head Writer's cast (X1.2)
+│   ├── court.json           # court mechanics: traits, cabinet, audiences, treason, marriage, succession (X1.2)
 │   └── ui/boot_sequence.json
 ├── src/
 │   ├── models/              # nation.py, inbox.py, game_state.py, military.py (Unit, MoveOrder, Contact), battle.py,
@@ -945,6 +1035,7 @@ command-terminal/
 │   │   ├── diplomacy.py     # foreign powers, envoys, trade agreements, lend-lease convoys, Vosk foreign ministry
 │   │   ├── cities.py        # city management: local morale, construction, bunkers, the local news wire
 │   │   ├── hotline.py       # the Vosk Hotline: ceasefire, surrender terms, ultimatum, armistice
+│   │   ├── court.py         # the Royal Court: dynasty, cabinet, audiences, treason, marriages, succession
 │   │   ├── recon.py         # detection radius, contacts, ghosts (active fog of war)
 │   │   ├── ai_director.py   # Vosk DEFEND / PROBE / ASSAULT state machine
 │   │   ├── sigint.py        # intercepts of major AI orders
@@ -958,7 +1049,7 @@ command-terminal/
 │       ├── app.py           # owns GameState + TickEngine, `revision` reactive
 │       ├── screens/         # boot, terminal, confirm (reply), coordinates, game_over (purge lock), dilemma (event card)
 │       ├── widgets/         # status_bar.py (reactive), sidebar.py (nav + ADVANCE WEEK), map_canvas.py (War Room)
-│       └── views/           # inbox, economy, military, map (War Room), research, air, diplomacy, cities
+│       └── views/           # inbox, economy, military, map (War Room), research, air, diplomacy, cities, court
 ├── tools/generate_world_map.py  # optional: regenerate world.json (overwrites it)
 └── tests/                   # conftest (calm-world fixture), test_engine, test_ui, test_war_room, test_phase4–8
 ```
@@ -985,8 +1076,9 @@ command-terminal/
 13. **Economy**: ledger for every nation (taxes, trade, overseas trade minus blockaded ports, factories, research), timed modifiers expire
 14. **Events**: expire overdue dispatches (apply `on_expire`), deliver due emails (apply `on_arrival`)
 14a. **Electronic warfare**: jamming zones tick down (SIGNAL RESTORED), natural interference, last reports logged
+14b. **Court**: aging, illness, royals at the front, succession; loyalty and stability drift; the cabinet's weekly effects; treason; audiences
 15. **Status report**: Weekly Status & Financial Report (now with weather and blockaded ports)
-16. **Fail states & victory**: revolution / coup / collapse → SYSTEM PURGE + Protocol Zero lock; enemy capitulation → VICTORY modal
+16. **Fail states & victory**: revolution / coup / collapse / dynastic collapse → SYSTEM PURGE + Protocol Zero lock; enemy capitulation → VICTORY modal
 17. **Dilemmas**: maybe draw a CLASSIFIED DILEMMA card (pauses the game until answered)
 
 ### 5.4 Controls
@@ -1014,6 +1106,10 @@ command-terminal/
 | `ctrl+s` / `F5` | Save the campaign (`python main.py --load` resumes it) |
 | Diplomacy: `g` / `t` / `b` | Send an envoy / sign or cancel a trade agreement / buy the highlighted lend-lease package |
 | Cities: `h` / `b` / `i` / `x` | Build a Hospital / Bunker Complex / Local Industry in the highlighted city / cancel the last project |
+| `0` Royal Court: `a` | Hold court: a courtier is granted an audience (once every 2 weeks) |
+| Royal Court: `f` / `w` / `i` / `d` | Appoint the highlighted courtier Minister of Finance / of War / Head of Intelligence; dismiss |
+| Royal Court: `m` | Propose a political marriage abroad for the highlighted member of the House |
+| Military: `k` | Give the highlighted division to a royal general (or recall the royal) |
 | Emergency: `1`–`3` or click | Answer a CRITICAL EMERGENCY (outbreak or disaster); the game waits for you |
 | Game over: `r` / `q` | Restart the campaign / exit |
 | `n` or **▶ ADVANCE WEEK** | Advance one week |
@@ -1050,7 +1146,8 @@ SVG screenshots from the UI tests.
 | **7** | **Continental war**: 240×80 map at 10 miles per cell with oceans, 50 settlements and ports; miles-per-day marching; navies (destroyers, battleships, submarines) with PATROL / BLOCKADE / BOMBARD, naval battles and blockades of trade and supply; artillery fire support; abstract air wings and air superiority; weather and seasons (Rasputitsa, frostbite, Cold-Weather Kits, storms); the CLASSIFIED DILEMMA event deck; 5.56mm re-arming. ✅ |
 | **8** | **The home front, human friction and the endgame**: epidemics (Trench Typhus, Industrial Influenza, Cholera) with spread, quarantine, cordons and Field Medicine; natural disasters wrecking infrastructure with CRITICAL EMERGENCY choices (fund relief, deploy the military, ignore); commanders with hidden traits and insubordination, relieving command; electronic warfare and loss of signal; scorched earth and combat engineers; victory by capitulation (occupy Karzan, or bankrupt and demoralise the Hegemony); save/load. ✅ |
 | **X1.1** | **The living world**: three off-map powers (Oakhaven, Tor, Vael) with one alignment axis, envoys, trade agreements, lend-lease convoys through open ports and past wolfpacks, the Vosk foreign ministry; 26 living cities with population, local morale, hospitals, bunkers and new industry; the local news wire; the Vosk Hotline (ceasefire, surrender terms, ultimatum, armistice); six new event cards; medical supplies. ✅ |
-| **Deck** | **Expanded event deck**: 92 cards in five categories, 25 event-chain links, writer packs (`follow_ups`, `chain_only`), tax/tech/outbreak/disaster effects, generated by `tools/generate_massive_deck.py`. ✅ |
+| **Deck** | **Expanded event deck**: 96 cards in five categories, 27 event-chain links, writer packs (`follow_ups`, `chain_only`), tax/tech/outbreak/disaster effects, generated by `tools/generate_massive_deck.py`. ✅ |
+| **X1.2** | **The Royal Court & Extended Family**: the House of Valerius (the Head Writer's cast) plus generated relatives and nobles; the cabinet (Finance / War / Intelligence) with stat-driven buffs; loyalty, dynastic stability and audiences; treason (embezzlement, leaks, assassination, coups) and the spymaster; political marriages; royal generals who never disobey; aging, illness, succession and PROTOCOL ZERO: DYNASTIC COLLAPSE; writer packs for the event deck. ✅ |
 | 9 | Strategic bombing of factories (air wings over industrial centres), amphibious landings, multiple research slots. |
 | 10 | Domestic Politics & the Draft (§7.4): war weariness, rationing, conscription laws, factions. |
 | 11 | Diplomacy, balance pass. |
@@ -1115,7 +1212,7 @@ a formation, and the home front pays for all of it.
 ## 8. Open Questions
 - Real-time-with-pause, or strictly turn-based? (Currently strictly turn-based.)
 - Should a SYSTEM PURGE offer "start new campaign" in-app, or only by relaunching?
-- Balance: the deck now holds 62 drawable cards (about 16% a week from week 3), enough for a year or more of play.
+- Balance: the deck now holds 64 drawable cards (about 16% a week from week 3), enough for a year or more of play.
   Should the most common cards become `repeatable` for very long campaigns?
 - Casualty and consumption rates are first-pass numbers (see the balance note in §4.10). Tune after real play.
 - Overproduction piles up in depots (rifle and ammunition stockpiles grow fast). Should stockpiles cost upkeep, or spoil?
@@ -1134,6 +1231,10 @@ a formation, and the home front pays for all of it.
   the home front suffers them.
 - Should the player be able to make peace with Tor or Oakhaven formally (alliances that bring in volunteers or fleets)?
 - Cities under enemy occupation: should Vosk-held Kestrian cities keep their data (and rise up behind the lines)?
+- Court: should the Vosk Hegemony get a court of its own (a Chancellor's Politburo to intrigue against)?
+- Court: should children be born during the war (the House grows back), and heirs under 16 need a regent?
+- Court: Gemini's trait mechanics (Beloved, Pacifist, Paranoid, Pragmatic, War-Weary…) are the programmer's first
+  reading of the cast sheet — the Game Director should confirm or retune them in `data/court.json`.
 - Crises are harsh when ignored: two in ten random-choice campaigns ended in revolution. Is that the right pressure?
 - Should the player see a supply-flow projection (who will be OVEREXTENDED if a move order completes) before
   confirming an order?

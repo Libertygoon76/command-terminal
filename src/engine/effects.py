@@ -26,6 +26,9 @@ Supported keys (all deltas):
     tax_policy                            "<policy id>"  the tax policy changes (low | normal | high | oppressive)
     outbreak                              {disease, city}  an epidemic breaks out (raises its emergency)
     disaster                              {kind, region}  a natural disaster strikes (raises its emergency)
+    court                                 {loyalty {id: d}, all_loyalty, stability, execute, imprison, pardon,
+                                           kill {character, cause}, command <id>, marry {character, power}}
+                                          (Expansion 1.2, src/engine/court.py)
 """
 
 from __future__ import annotations
@@ -45,7 +48,7 @@ NATION_EFFECTS: dict[str, tuple[str, str, str]] = {
 }
 SPECIAL_EFFECTS = {"stockpiles", "flags", "ai_tension", "equipment", "army_morale", "modifier", "research_weeks",
                    "quarantine", "relief_unit", "relations", "rival_relations", "build", "city_morale", "ceasefire",
-                   "armistice", "withdraw_frontier", "tech", "tax_policy", "outbreak", "disaster"}
+                   "armistice", "withdraw_frontier", "tech", "tax_policy", "outbreak", "disaster", "court"}
 MODIFIER_LABELS = {"factory_efficiency": ("FACTORY OUTPUT", "pct")}
 VALID_EFFECT_KEYS = set(NATION_EFFECTS) | SPECIAL_EFFECTS
 
@@ -75,7 +78,7 @@ def validate_effects(effects: dict[str, Any], where: str, resource_ids: set[str]
         elif key in ("tech", "tax_policy"):
             if not isinstance(value, str):
                 raise ValueError(f"{where}: {key} effect needs an id string, got {value!r}")
-        elif key in ("outbreak", "disaster"):
+        elif key in ("outbreak", "disaster", "court"):
             if not isinstance(value, dict):
                 raise ValueError(f"{where}: {key} effect needs an object, got {value!r}")
         elif key != "flags" and not isinstance(value, (int, float)):
@@ -212,13 +215,19 @@ def apply_effects(state: GameState, effects: dict[str, Any]) -> list[str]:
         elif key == "outbreak":
             from src.engine.crisis_engine import disease, start_outbreak
 
-            if start_outbreak(state, value["disease"], f"city:{value['city']}"):
-                changes.append(f"{disease(state, value['disease'])['name'].upper()} BREAKS OUT IN {value['city'].upper()}")
+            site = f"city:{value['city']}" if value.get("city") else None
+            if start_outbreak(state, value["disease"], site):
+                where = value["city"].upper() if value.get("city") else "THE COMMONWEALTH"
+                changes.append(f"{disease(state, value['disease'])['name'].upper()} BREAKS OUT IN {where}")
         elif key == "disaster":
             from src.engine.crisis_engine import start_disaster
 
             if start_disaster(state, value["kind"], value.get("region")):
                 changes.append(f"{value['kind'].replace('_', ' ').upper()} STRIKES")
+        elif key == "court":
+            from src.engine.court import apply_court_effect
+
+            changes += apply_court_effect(state, value)
     return changes
 
 
@@ -274,6 +283,10 @@ def preview_effects(state: GameState, effects: dict[str, Any]) -> list[str]:
             lines.append(f"TECHNOLOGY: {techs(state).get(value, {}).get('name', value).upper()}")
         elif key == "tax_policy":
             lines.append(f"TAX POLICY → {value.upper()}")
+        elif key == "court":
+            from src.engine.court import preview_court_effect
+
+            lines += preview_court_effect(state, value)
     return lines
 
 

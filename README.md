@@ -20,7 +20,7 @@ Use Windows Terminal (not the legacy console) for correct colors and box-drawing
 
 ## Controls
 
-`1`–`8` switch views · arrows / Enter navigate · `Tab` moves focus · `a`–`d` reply to the open dispatch · `h` hides archived mail · `n` advances the week · `q` logs out.
+`1`–`8` and `0` switch views · arrows / Enter navigate · `Tab` moves focus · `a`–`d` reply to the open dispatch · `h` hides archived mail · `n` advances the week · `q` logs out.
 
 War Room (`4`): select a friendly unit (cursor or Order of Battle) → `m` → move the cursor → `Enter`
 to issue a move order (`Esc` aborts) · `g` type a grid reference · `x` cancel an order · `s` supply overlay · `t` cycle combat stance (DEFEND / ASSAULT / WITHDRAW), or a warship's mission (PATROL / BLOCKADE / BOMBARD). One map row = 10 miles.
@@ -47,6 +47,11 @@ highlight a lend-lease package → `b` buy it (it sails to your first open port;
 
 Cities (`8`): highlight a city to see its dashboard and local news → `h` hospital · `b` bunker complex · `i` local
 industry · `x` cancel the last project.
+
+Royal Court (`0`): the House of Valerius, the cabinet and the chronicle → `a` hold court (grant an audience) ·
+highlight a courtier → `f` / `w` / `i` appoint Minister of Finance / War / Head of Intelligence · `d` dismiss · `m`
+marry them abroad. Military (`3`) → `k` gives the highlighted division to a royal general (royals never disobey,
+but a royal killed in action shakes the House). Watch loyalty: below 20, courtiers plot.
 
 **Save / load:** `ctrl+s` (or `F5`) saves the campaign to `savegame.json`; `python main.py --load` resumes it.
 

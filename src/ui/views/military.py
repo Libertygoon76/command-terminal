@@ -29,6 +29,7 @@ class MilitaryView(VerticalScroll):
         Binding("r", "raise_unit", "Raise Formation"),
         Binding("x", "cancel_training", "Cancel Training"),
         Binding("f", "relieve", "Relieve Commander"),
+        Binding("k", "royal_command", "Royal General"),
     ]
 
     def compose(self) -> ComposeResult:
@@ -103,6 +104,34 @@ class MilitaryView(VerticalScroll):
         cost = game.catalog.get("commanders", {}).get("relieve", {}).get("military_morale", -6)
         self.notify(f"{old} relieved. {new} takes command. Military morale {cost:+g}.", title="CHANGE OF COMMAND",
                     severity="warning")
+
+    def action_royal_command(self) -> None:
+        """K: give the highlighted division to the most martial member of the House, or recall the royal."""
+        from src.engine import court
+
+        game = self.app.game
+        unit_id = self._key(self.query_one("#mil-formations", DataTable))
+        unit = game.unit(unit_id) if unit_id else None
+        if unit is None:
+            self.notify("Highlight a formation in the field first.", severity="warning")
+            return
+        try:
+            royal = court.royal_of(game, unit)
+            if royal is not None:
+                court.recall_commander(game, unit.id)
+                message = f"{royal.name} recalled to court. {unit.commander} takes command."
+            else:
+                candidates = court.eligible_generals(game)
+                if not candidates:
+                    raise court.CourtError("No member of the House is at court and free to command.")
+                court.appoint_commander(game, candidates[0].id, unit.id)
+                message = (f"{candidates[0].name} (MIL {candidates[0].military}) takes command of the {unit.name}. "
+                           "Royals never disobey — but if killed in action, the House loses 20 stability.")
+        except (court.CourtError, court.GameOverError) as error:
+            self.notify(str(error), title="ROYAL GENERAL", severity="warning")
+            return
+        self.app.state_changed()
+        self.notify(message, title="ROYAL GENERAL")
 
     def action_cancel_training(self) -> None:
         game = self.app.game

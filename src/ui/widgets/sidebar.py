@@ -17,6 +17,7 @@ NAV_ENTRIES = (
     ("air", "AIR ASSETS", "6"),
     ("diplomacy", "DIPLOMACY", "7"),
     ("cities", "CITIES", "8"),
+    ("court", "ROYAL COURT", "0"),
 )
 
 

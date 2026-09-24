@@ -24,6 +24,10 @@ engine schema and merged last, so writer cards replace placeholders with the sam
              is taken from the first Kestrian city named in the card's text (or in the text of the card that leads to
              it; with no place named, the engine picks one). Everything else uses the engine keys
              (src/engine/effects.py). Unknown keys stop the build.
+    Royal Court (data/dynasty.json ids): execute_character / imprison_character / assign_command "<id>",
+             kill_character "<id>" or {id, cause}, character_loyalty {id: delta}, dynasty_stability delta;
+             condition requires_character_alive "<id>" or [ids].
+WIRING adds such hooks to writer cards whose text implies them (see below).
 RETIRED lists placeholder cards that a writer card has superseded; they are removed from the deck.
 
 The CARDS below are the programmer's placeholder drafts: the Head Writer's packs replace them over time.
@@ -575,6 +579,17 @@ WRITER_CARD_KEYS = {"id", "title", "category", "weight", "description", "text", 
                     "is_chain_only", "chain_only", "choices", "repeatable"}
 WRITER_CHOICE_KEYS = {"id", "label", "hint", "effects", "follow_up", "follow_ups"}
 
+# PROGRAMMER WIRING: mechanical hooks the writer's text describes but the pack does not spell out yet. Keyed by card
+# id; "conditions" are merged into the card, "effects" into a choice (by 1-based index). Uses the writer schema, so
+# the Head Writer can move these into the pack itself (then delete the entry here).
+WIRING = {
+    "gemini_uncle_embezzlement": {"conditions": {"requires_character_alive": "char_03"},
+                                  "effects": {1: {"execute_character": "char_03"}}},
+    "gemini_vargus_revenge": {},
+    "gemini_julian_glory": {"conditions": {"requires_character_alive": "char_02"},
+                            "effects": {1: {"assign_command": "char_02"}}},
+    "gemini_julian_dead": {"effects": {1: {"kill_character": {"id": "char_02", "cause": "killed in action"}}}},
+}
 WARNINGS: list[str] = []
 
 
@@ -609,7 +624,15 @@ def translate_card(raw: dict, ctx: dict, parent_text: str = "") -> dict:
     out = {"id": raw["id"], "title": raw["title"],
            "category": raw.get("category") or ctx["parent_category"].get(raw["id"], "CLASSIFIED"),
            "weight": raw.get("weight", 5), "text": text, "choices": []}
-    conditions = dict(raw.get("conditions") or raw.get("condition") or {})
+    wiring = WIRING.get(raw["id"], {})
+    conditions = dict(raw.get("conditions") or raw.get("condition") or {}) | wiring.get("conditions", {})
+    if "requires_character_alive" in conditions:
+        required = conditions.pop("requires_character_alive")
+        required = [required] if isinstance(required, str) else required
+        unknown = [c for c in required if c not in ctx["characters"]]
+        if unknown:
+            raise WriterPackError(f"{where}: unknown characters {unknown} (dynasty.json ids: {sorted(ctx['characters'])})")
+        conditions["requires_character"] = required
     if "tax_policy_condition" in conditions:
         policies = conditions.pop("tax_policy_condition")
         policies = [policies] if isinstance(policies, str) else policies
@@ -626,8 +649,30 @@ def translate_card(raw: dict, ctx: dict, parent_text: str = "") -> dict:
         if unknown:
             raise WriterPackError(f"{cwhere}: unknown choice keys {sorted(unknown)}")
         effects: dict = {}
-        for key, value in (ch.get("effects") or {}).items():
-            if key == "civil_morale":
+        raw_effects = dict(ch.get("effects") or {}) | wiring.get("effects", {}).get(index + 1, {})
+        court: dict = {}
+
+        def who(char_id: str) -> str:
+            if char_id not in ctx["characters"]:
+                raise WriterPackError(f"{cwhere}: unknown character {char_id!r} (dynasty.json ids: "
+                                      f"{sorted(ctx['characters'])})")
+            return char_id
+
+        for key, value in raw_effects.items():
+            if key == "execute_character":
+                court["execute"] = who(value)
+            elif key == "imprison_character":
+                court["imprison"] = who(value)
+            elif key == "assign_command":
+                court["command"] = who(value)
+            elif key == "kill_character":
+                spec = value if isinstance(value, dict) else {"id": value}
+                court["kill"] = {"character": who(spec["id"]), "cause": spec.get("cause", "died")}
+            elif key == "character_loyalty":
+                court["loyalty"] = {who(c): d for c, d in value.items()}
+            elif key == "dynasty_stability":
+                court["stability"] = value
+            elif key == "civil_morale":
                 effects["morale"] = effects.get("morale", 0) + value
             elif key == "change_tax_policy":
                 effects["tax_policy"] = _lookup(value, ctx["tax"], "tax policy", cwhere)
@@ -654,6 +699,8 @@ def translate_card(raw: dict, ctx: dict, parent_text: str = "") -> dict:
                     WARNINGS.append(f"{cwhere}: no place named — the disaster strikes wherever the terrain suits it")
             else:
                 effects[key] = value  # engine keys pass through (validated with the deck)
+        if court:
+            effects["court"] = court
         follow = ch.get("follow_ups") or ch.get("follow_up") or []
         follow = [follow] if isinstance(follow, dict) else follow
         follow_ups = [{"card": f["event_id"], "delay_weeks": f.get("delay_weeks", 1)} if "event_id" in f else f
@@ -681,6 +728,7 @@ def load_writer_packs() -> list[dict]:
         "cities": sorted(state.cities, key=len, reverse=True),
         "city_region": {f.name: world.region_at(f.x, f.y).id for f in world.features
                         if f.name in state.cities and world.region_at(f.x, f.y)},
+        "characters": set(state.player.dynasty.characters) if state.player.dynasty else set(),
     }
     raws = []
     for path in sorted(PACKS.glob("*.json")):

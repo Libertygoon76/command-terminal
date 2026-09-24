@@ -111,13 +111,14 @@ def test_writer_packs_translate_into_the_engine_schema():
     state = new_game(seed=8)
     revolt = card(state, "gemini_tax_revolt")
     assert revolt["conditions"] == {"tax_policies": ["oppressive"]}
-    assert revolt["choices"][0]["effects"] == {"tax_policy": "high", "morale": 10}
+    assert revolt["choices"][0]["effects"] == {"tax_policy": "high", "morale": 10, "treasury": -20000}
     blast = card(state, "gemini_tax_revolt_aftermath")
-    assert blast["chain_only"] and blast["choices"][0]["effects"]["disaster"] == {"kind": "earthquake",
+    assert blast["chain_only"] and blast["choices"][0]["effects"]["disaster"] == {"kind": "mine_collapse",
                                                                                    "region": "aldmark"}
-    spread = card(state, "gemini_plague_ship_spread")
-    assert spread["category"] == "CRISIS"  # inherited from the card that leads to it
-    assert spread["choices"][0]["effects"]["outbreak"] == {"disease": "cholera", "city": "Brenmouth"}
+    duke = card(state, "gemini_uncle_embezzlement")
+    assert duke["conditions"] == {"requires_character": ["char_03"]}
+    assert duke["choices"][0]["effects"]["court"] == {"execute": "char_03"}
+    assert card(state, "gemini_julian_dead")["category"] == "MILITARY"  # inherited down the chain
     for retired in ("vosk_engineer", "defector_designs", "defector_died"):
         assert retired not in dilemmas.cards(state)
 
@@ -126,5 +127,10 @@ def test_the_generator_rejects_unknown_writer_keys():
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
     import generate_massive_deck as gen
 
+    ctx = {"tax": {}, "techs": {}, "diseases": {}, "disasters": {}, "regions": {}, "cities": [], "city_region": {},
+           "characters": {"char_01"}, "parent_category": {}}
     with pytest.raises(gen.WriterPackError, match="unknown card keys"):
-        gen.translate_card({"id": "x", "title": "X", "choices": [], "mood": "grim"}, {"parent_category": {}})
+        gen.translate_card({"id": "x", "title": "X", "choices": [], "mood": "grim"}, ctx)
+    with pytest.raises(gen.WriterPackError, match="unknown character"):
+        gen.translate_card({"id": "x", "title": "X", "category": "DOMESTIC",
+                            "choices": [{"label": "a", "effects": {"kill_character": "char_99"}}]}, ctx)

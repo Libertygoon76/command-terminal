@@ -125,6 +125,8 @@ def refusal_chance(state: GameState, unit: Unit, order: str) -> tuple[float, str
     """(chance, reason) that the commander refuses the order he has just received."""
     data = _data(state)
     nation = state.nations[unit.nation_id]
+    if "royal" in unit.traits:  # a member of the ruling House obeys the Lord Protector to the letter
+        return 0.0, ""
     if order == ASSAULT:
         if fire_support(state, unit):
             return 0.0, ""
@@ -205,6 +207,11 @@ def relieve_commander(state: GameState, unit_id: str, *, nation_id: str | None =
     except OrderError as error:
         raise CommandError(str(error)) from None
     cost = _data(state).get("relieve", {})
+    from src.engine.court import royal_of
+
+    royal = royal_of(state, unit)
+    if royal is not None:  # a relieved royal goes home to court
+        royal.unit_id = None
     old = unit.commander
     unit.commander = next_commander(state, unit.nation_id)
     unit.traits = roll_traits(state)

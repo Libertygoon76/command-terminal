@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+from src.models.character import Dynasty
 from src.models.military import Unit
 
 MORALE_MIN = 0.0
@@ -64,6 +65,7 @@ class Nation:
     research_progress: dict[str, float] = field(default_factory=dict)  # tech id -> weeks done (kept on switch)
     modifiers: dict[str, float] = field(default_factory=dict)  # permanent (researched techs), e.g. factory_efficiency
     timed_modifiers: list[dict[str, Any]] = field(default_factory=list)  # {key, value, weeks_left, source} from events
+    dynasty: Dynasty | None = None  # the ruling house and its court (Expansion 1.2; the player's nation)
 
     def __post_init__(self) -> None:
         self.morale = _clamp(float(self.morale), MORALE_MIN, MORALE_MAX)

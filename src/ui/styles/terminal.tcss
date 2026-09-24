@@ -538,6 +538,37 @@ DiplomacyView, CitiesView {
     max-height: 30;
 }
 
+#court-table {
+    height: auto;
+    max-height: 18;
+}
+
+#court-cabinet {
+    height: auto;
+    padding: 0 1;
+    border: round $ct-phosphor-dim;
+    border-title-color: $ct-amber;
+}
+
+#court-panels {
+    height: auto;
+    min-height: 20;
+    margin-top: 1;
+}
+
+#court-detail {
+    width: 1fr;
+    padding: 0 1;
+}
+
+#court-history-scroll {
+    width: 1fr;
+    height: 20;
+    padding: 0 1;
+    border: round $ct-phosphor-dim;
+    border-title-color: $ct-amber;
+}
+
 #city-panels {
     height: auto;
     min-height: 24;

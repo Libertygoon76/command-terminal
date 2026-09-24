@@ -151,7 +151,10 @@ class ResearchSystem(SimulationSystem):
                 if state.is_friendly(nation_id):
                     report.log.append("Research halted: laboratories unpaid.")
                 continue
-            nation.research_progress[tech_id] = nation.research_progress.get(tech_id, 0.0) + 1.0
+            from src.engine.court import research_bonus
+
+            nation.research_progress[tech_id] = nation.research_progress.get(tech_id, 0.0) + 1.0 + \
+                research_bonus(state, nation)
             if weeks_remaining(state, nation, tech_id) <= 0:
                 tech = complete(state, nation, tech_id)
                 if state.is_friendly(nation_id):

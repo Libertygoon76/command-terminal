@@ -24,6 +24,8 @@ def check_fail_state(state: GameState) -> str | None:
     """Return the cause of the government's fall, or None. Checked in order of severity."""
     cfg = state.config.get("fail_states", {})
     nation = state.player
+    if state.flags.get("dynastic_collapse"):  # PROTOCOL ZERO: no heir of the blood, or a coup from within
+        return "dynastic_collapse"
     if nation.morale <= float(cfg.get("revolution_morale", 0)):
         return "revolution"
     if nation.military_morale <= float(cfg.get("coup_military_morale", 10)):

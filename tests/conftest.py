@@ -9,7 +9,7 @@ campaigns and the Phase 7 tests) run with the world exactly as the player gets i
 
 import pytest
 
-from src.engine import crisis_engine, dilemmas, weather_engine
+from src.engine import court, crisis_engine, dilemmas, weather_engine
 
 
 def pytest_configure(config):
@@ -30,6 +30,8 @@ def calm_world(request, monkeypatch):
     # No random epidemics or disasters either (relief duty still counts down).
     monkeypatch.setattr(crisis_engine.CrisisSystem, "on_tick",
                         lambda self, state, report: crisis_engine.run_relief(state, report))
+    # ... and no court intrigue (Expansion 1.2): no audiences, deaths, plots or loyalty drift.
+    monkeypatch.setattr(court.CourtSystem, "on_tick", lambda self, state, report: None)
 
 
 def settle_dilemma(state, rng=None):

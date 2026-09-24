@@ -11,7 +11,7 @@ from src.models import MISSIONS, AIState, AirWing, Email, GameClock, GameState, 
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
-ALERT_CAUSES = ("revolution", "coup", "collapse")
+ALERT_CAUSES = ("revolution", "coup", "collapse", "dynastic_collapse")
 
 
 def load_json(relative_path: str, data_dir: Path = DATA_DIR) -> Any:
@@ -153,6 +153,8 @@ def new_game(data_dir: Path = DATA_DIR, seed: int | None = None) -> GameState:
     catalog["diplomacy"] = load_json("diplomacy.json", data_dir)
     catalog["cities"] = load_json("cities.json", data_dir)
     catalog["hotline"] = load_json("hotline.json", data_dir)
+    catalog["court"] = load_json("court.json", data_dir)
+    catalog["dynasty"] = load_json("dynasty.json", data_dir)
     equipment_ids = {e["id"] for e in catalog["equipment"]}
     for nation in nations.values():
         if not nation.known_techs:
@@ -218,6 +220,9 @@ def new_game(data_dir: Path = DATA_DIR, seed: int | None = None) -> GameState:
 
     init_foreign(state)
     init_cities(state)
+    from src.engine.court import init_court
+
+    init_court(state)  # the ruling House and its court (Expansion 1.2)
     from src.engine.weather_engine import bulletin_email, roll_weather
 
     state.weather = roll_weather(state)  # the campaign opens in the dead of winter

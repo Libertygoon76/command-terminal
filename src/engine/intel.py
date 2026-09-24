@@ -103,7 +103,10 @@ def recon_accuracy(state: GameState, unit: Unit) -> float:
     for flag, bonus in cfg.get("flag_bonuses", {}).items():
         if state.flags.get(flag):
             accuracy += float(bonus)
-    return min(float(cfg.get("max_accuracy", 0.9)), accuracy)
+    from src.engine.court import recon_bonus
+
+    accuracy += recon_bonus(state)  # the Head of Intelligence (and leaks from a traitor at court)
+    return max(0.05, min(float(cfg.get("max_accuracy", 0.9)), accuracy))
 
 
 def unit_report(state: GameState, unit: Unit) -> UnitIntel:

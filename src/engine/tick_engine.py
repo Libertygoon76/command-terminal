@@ -65,6 +65,7 @@ def build_default_engine(state: GameState) -> TickEngine:
     from src.engine.air_engine import AirSystem
     from src.engine.combat_engine import CombatSystem
     from src.engine.command import CommandSystem
+    from src.engine.court import CourtSystem
     from src.engine.cities import CitySystem
     from src.engine.crisis_engine import CrisisSystem
     from src.engine.diplomacy import DiplomacySystem
@@ -109,6 +110,7 @@ def build_default_engine(state: GameState) -> TickEngine:
             EconomyEngine(),  # taxes, trade (minus blockaded ports), expenses
             EventManager(),  # dispatches, deadlines
             EWSystem(),  # jamming ticks down; last reports of formations still in contact
+            CourtSystem(),  # the Royal Court: aging, succession, loyalty, the cabinet, treason, audiences
             StatusReportSystem(),
             FailStateSystem(),  # revolution / coup / collapse — or VICTORY: enemy capitulation
             DilemmaSystem(),  # maybe draw a CLASSIFIED DILEMMA card (pauses the game until answered)

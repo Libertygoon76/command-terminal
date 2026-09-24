@@ -21,7 +21,8 @@
                          "assessment": "an organiser: his formation eats less and is always first at the depot"},
     "glory_hound": {"name": "Glory-Hound", "attack_bonus": 0.15, "casualties_taken": 1.15, "refuse_withdraw": 0.6,
                     "assessment": "a medal-hunter who spends his men freely and will not retreat"},
-    "steady": {"name": "Steady", "assessment": "a dependable professional without notable vices or virtues"}
+    "steady": {"name": "Steady", "assessment": "a dependable professional without notable vices or virtues"},
+    "royal": {"name": "Royal Blood", "assessment": "a member of the ruling House: obeys the Lord Protector to the letter"}
   },
   "trait_weights": {"cautious": 25, "aggressive": 20, "logistics_master": 15, "glory_hound": 15, "steady": 25},
   "base_refusal": 0.05,

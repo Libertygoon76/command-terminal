@@ -78,7 +78,11 @@ def rival_of(state: GameState, belligerent: str) -> str:
 
 def bounds(state: GameState, nation_id: str) -> tuple[float, float]:
     data = nations(state)[nation_id]
-    return float(data.get("alignment_floor", -100)), float(data.get("alignment_ceiling", 100))
+    low, high = float(data.get("alignment_floor", -100)), float(data.get("alignment_ceiling", 100))
+    from src.engine.court import marriage_floor
+
+    floor = marriage_floor(state, nation_id)  # a royal marriage binds the power to Kestria
+    return (low if floor is None else max(low, floor)), high
 
 
 def adjust_relation(state: GameState, nation_id: str, belligerent: str, delta: float) -> float:
@@ -202,9 +206,12 @@ def buy_lend_lease(state: GameState, nation_id: str, package_id: str, belligeren
         raise DiplomacyError(f"{name} will not sell the {offer['name']} until it leans {offer['min_alignment']:+.0f} "
                              f"{'toward us' if state.is_friendly(belligerent) else 'toward them'}.")
     buyer = state.nations[belligerent]
-    if buyer.treasury < offer["cost"]:
-        raise DiplomacyError(f"The {offer['name']} costs {offer['cost']:,} {state.currency}.")
-    buyer.adjust_treasury(-offer["cost"])
+    from src.engine.court import lend_lease_price
+
+    cost = lend_lease_price(state, nation_id, offer["cost"], belligerent)  # royal in-laws sell cheaper
+    if buyer.treasury < cost:
+        raise DiplomacyError(f"The {offer['name']} costs {cost:,} {state.currency}.")
+    buyer.adjust_treasury(-cost)
     shipment = {"id": f"LL-{state.clock.turn:03d}-{len(state.shipments) + 1:02d}", "from": nation_id,
                 "to": belligerent, "package": package_id, "name": offer["name"], "items": dict(offer["items"]),
                 "weeks_left": offer["weeks"], "ordered": state.clock.turn, "status": "AT SEA", "losses": 0}

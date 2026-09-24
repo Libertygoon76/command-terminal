@@ -1,0 +1,82 @@
+{
+  "_comment": [
+    "The ruling family (Expansion 1.2). Authored by the Head Writer / Game Director (Gemini) — canon.",
+    "Read by src/engine/court.py. Systems numbers (ages, influence, starting cabinet, generated extra",
+    "relatives and nobles, trait mechanics) live in data/court.json."
+  ],
+  "ruler": {
+    "name": "Lord Protector Valerius",
+    "title": "Head of the Kestrian Commonwealth",
+    "age": 54,
+    "traits": [
+      "Pragmatic",
+      "War-Weary"
+    ]
+  },
+  "family": [
+    {
+      "id": "char_01",
+      "name": "Lady Elara",
+      "relation": "Spouse",
+      "stats": {
+        "admin": 8,
+        "military": 1,
+        "intrigue": 5
+      },
+      "traits": [
+        "Beloved",
+        "Pacifist"
+      ],
+      "loyalty": 90,
+      "description": "Her presence stabilizes the home front, but she constantly advocates for peace talks."
+    },
+    {
+      "id": "char_02",
+      "name": "Julian",
+      "relation": "Heir (Son)",
+      "stats": {
+        "admin": 3,
+        "military": 4,
+        "intrigue": 2
+      },
+      "traits": [
+        "Glory-Hound",
+        "Inexperienced"
+      ],
+      "loyalty": 100,
+      "description": "He will blindly follow any military order to prove himself. If he dies in combat, succession is in jeopardy."
+    },
+    {
+      "id": "char_03",
+      "name": "Duke Vargus",
+      "relation": "Uncle",
+      "stats": {
+        "admin": 9,
+        "military": 4,
+        "intrigue": 8
+      },
+      "traits": [
+        "Corrupt",
+        "Financial Genius"
+      ],
+      "loyalty": 35,
+      "description": "A brilliant administrator who keeps the Treasury full, but constantly embezzles funds. Dangerous to cross."
+    },
+    {
+      "id": "char_04",
+      "name": "General Silas",
+      "relation": "Cousin",
+      "stats": {
+        "admin": 4,
+        "military": 8,
+        "intrigue": 6
+      },
+      "traits": [
+        "Paranoid",
+        "Ruthless"
+      ],
+      "loyalty": 60,
+      "description": "Excellent at leading men, but his paranoia leads to false arrests among your staff."
+    }
+  ]
+}

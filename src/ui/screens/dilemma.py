@@ -22,6 +22,7 @@ class DilemmaScreen(ModalScreen[str]):
         Binding("1", "choose(0)", "Option 1", show=False),
         Binding("2", "choose(1)", "Option 2", show=False),
         Binding("3", "choose(2)", "Option 3", show=False),
+        Binding("4", "choose(3)", "Option 4", show=False),
     ]
 
     def __init__(self, card_id: str) -> None:
@@ -37,6 +38,8 @@ class DilemmaScreen(ModalScreen[str]):
             self.add_class("-emergency")
         header = Text()
         chip = f"bold {palette.PHOSPHOR_BRIGHT} on #8b0000" if entry.get("emergency") else f"bold #000000 on {palette.AMBER}"
+        if entry.get("category") == "ROYAL COURT":
+            self.add_class("-court")
         header.append(f" {entry.get('category', 'CLASSIFIED')} ", style=chip)
         header.append(f"  WEEK {game.clock.turn:03d} · {game.clock.date_str}", style=palette.PHOSPHOR_DIM)
         with Vertical(id="dilemma-dialog"):
@@ -59,7 +62,8 @@ class DilemmaScreen(ModalScreen[str]):
 
     def on_mount(self) -> None:
         self.query_one("#dilemma-dialog").border_title = (
-            "⚠ CRITICAL EMERGENCY — THE HOME FRONT" if self.emergency else "▲ CLASSIFIED DILEMMA — EYES ONLY")
+            "⚠ CRITICAL EMERGENCY — THE HOME FRONT" if self.emergency else
+            "♛ AUDIENCE CHAMBER — THE ROYAL COURT" if self.has_class("-court") else "▲ CLASSIFIED DILEMMA — EYES ONLY")
         self.query(Button).first().focus()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:

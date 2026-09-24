@@ -190,11 +190,15 @@ class DiplomacyView(VerticalScroll):
         for pack in packages(game, self.nation_id):
             contents = ", ".join(f"{q:,} {items.get(i, {}).get('name', i)}" for i, q in pack["items"].items())
             ok = rel >= pack["min_alignment"]
-            affordable = game.player.treasury >= pack["cost"]
+            from src.engine.court import lend_lease_price
+
+            price = lend_lease_price(game, self.nation_id, pack["cost"])
+            affordable = game.player.treasury >= price
             status = Text("AVAILABLE" if ok and affordable else ("TOO EXPENSIVE" if ok else "RELATIONS TOO LOW"),
                           style=palette.PHOSPHOR_BRIGHT if ok and affordable else palette.RED)
             catalog.add_row(Text(pack["name"].upper(), style=palette.PHOSPHOR_BRIGHT), Text(contents[:60]),
-                            f"{pack['cost']:,} {game.currency}", f"{pack['min_alignment']:+.0f}", f"{pack['weeks']} WK",
+                            f"{price:,} {game.currency}" + (" (ROYAL MATCH)" if price != pack["cost"] else ""),
+                            f"{pack['min_alignment']:+.0f}", f"{pack['weeks']} WK",
                             status, key=pack["id"])
         if catalog.row_count:
             catalog.move_cursor(row=min(cursor, catalog.row_count - 1))

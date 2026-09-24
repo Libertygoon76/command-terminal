@@ -70,6 +70,13 @@ def eligible(state: GameState, entry: dict) -> bool:
         return False
     if "tax_policies" in cond and state.player.tax_policy not in cond["tax_policies"]:
         return False
+    required = cond.get("requires_character")
+    if required:
+        house = state.player.dynasty
+        for char_id in [required] if isinstance(required, str) else required:
+            char = house.characters.get(char_id) if house else None
+            if char is None or not char.alive or char.imprisoned:
+                return False
     missing = cond.get("requires_city_without")
     if missing and (missing["city"] not in state.cities or state.cities[missing["city"]].count(missing["building"])):
         return False

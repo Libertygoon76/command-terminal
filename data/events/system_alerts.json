@@ -1,5 +1,5 @@
 {
-  "_comment": "Pushed as a pinned, undeletable TOP SECRET dispatch when a fail state triggers. Keys: revolution | coup | collapse.",
+  "_comment": "Pushed as a pinned, undeletable TOP SECRET dispatch when a fail state triggers. Keys: revolution | coup | collapse | dynastic_collapse.",
   "alerts": {
     "revolution": {
       "sender": "AEGIS CORE // AUTOMATED FAILSAFE",
@@ -18,6 +18,12 @@
       "subject": "CRITICAL ALERT: SYSTEM PURGE — STATE INSOLVENCY",
       "headline": "GOVERNMENT FALLEN: STATE COLLAPSE.",
       "body": "CRITICAL ALERT. THIS MESSAGE IS GENERATED AUTOMATICALLY.\n\nAs of {date}, the Treasury of the {nation} has defaulted on all obligations.\n\nCivil servants have not been paid. Soldiers have not been paid. Foreign creditors have seized our gold reserves and our shipping. Ministries have stopped answering. Provincial governors in the east have begun negotiating with the Vosk Hegemony directly.\n\nThe state no longer functions. Under Protocol ZERO this terminal is being purged. All command authority is revoked.\n\nThere is no further action available.\n\n>> SESSION TERMINATED <<"
+    },
+    "dynastic_collapse": {
+      "sender": "AEGIS CORE // AUTOMATED FAILSAFE",
+      "subject": "CRITICAL ALERT: PROTOCOL ZERO — DYNASTIC COLLAPSE",
+      "headline": "GOVERNMENT FALLEN: DYNASTIC COLLAPSE.",
+      "body": "CRITICAL ALERT. THIS MESSAGE IS GENERATED AUTOMATICALLY.\n\nAs of {date}, the ruling House of the {nation} has ceased to hold power.\n\nThere is no member of the blood left to take the oath of the {leader_title}, or the office has been seized by force from within the family. The Guards regiments have sealed the palace in {capital}; the ministries take their orders from the usurpers' council; the provinces are no longer answering the Chancellery.\n\nUnder Protocol ZERO this terminal is being purged. All command authority is revoked. Cryptographic keys are being destroyed.\n\nThere is no further action available.\n\n>> SESSION TERMINATED <<"
     }
   }
 }

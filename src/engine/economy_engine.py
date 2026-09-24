@@ -79,6 +79,13 @@ def compute_ledger(state: GameState, nation: Nation | None = None) -> Ledger:
     prod = productivity(nation.morale)
     tax = nation.population * nation.tax_rate * float(cfg.get("tax_revenue_per_capita_weekly", 0.042)) * prod
     ledger.income[f"Tax revenue ({nation.tax_rate:.0%} rate, {prod:.0%} productivity)"] = round(tax)
+    from src.engine.court import tax_adjustments
+
+    for label, amount in tax_adjustments(state, nation, tax):  # the Minister of Finance, a corrupt hand
+        if amount > 0:
+            ledger.income[label] = amount
+        elif amount < 0:
+            ledger.expenses[label] = -amount
     if nation.trade_income:
         ledger.income["Trade & industry"] = round(nation.trade_income * prod)
     from src.engine.naval_engine import lost_trade, port_trade

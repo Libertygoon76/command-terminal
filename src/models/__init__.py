@@ -4,6 +4,7 @@ from src.models.game_state import GameClock, GameOver, GameState, Ledger, Schedu
 from src.models.ai import AIState
 from src.models.battle import Battle
 from src.models.city import City
+from src.models.character import Character, Dynasty
 from src.models.military import (
     ASSAULT,
     BLOCKADE,
@@ -37,7 +38,9 @@ __all__ = [
     "SeaZone",
     "AIState",
     "Battle",
+    "Character",
     "City",
+    "Dynasty",
     "DEFEND",
     "ROUTING",
     "STANCES",
