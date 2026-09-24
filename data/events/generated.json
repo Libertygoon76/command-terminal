@@ -5,7 +5,8 @@
     "  {net} {freq} {unit_desc} {role_desc} {sector} {x} {y} {eta} {station} {confidence}",
     "CLASH: {friendly} {friendly_designation} {hostile_desc} {x} {y} {sector} {date}",
     "ISOLATED: {unit} {designation} {x} {y} {sector} {supply}",
-    "SITREP / AAR bodies are composed by the combat engine; only sender/subject are templated here."
+    "SITREP / AAR bodies are composed by the combat engine; only sender/subject are templated here.",
+    "NAVAL_CONTACT: as CLASH. BLOCKADE / WEATHER / DILEMMA bodies are composed by their engines."
   ],
   "sigint": {
     "sender": "Signals Intelligence Directorate — Station {station}",
@@ -73,5 +74,25 @@
     "sender": "Adjutant-General's Office",
     "classification": "CONFIDENTIAL",
     "subject": "New Formation Ready: {unit}"
+  },
+  "naval_contact": {
+    "sender": "Admiralty Operations Room — Duty Captain",
+    "classification": "TOP SECRET",
+    "subject": "CRITICAL: NAVAL CONTACT at Grid {x}-{y}",
+    "body": "FLASH PRECEDENCE.\n\n{friendly} ({friendly_designation}) has made contact with {hostile_desc} at grid X:{x}, Y:{y} ({sector}).\n\nBoth squadrons are ENGAGED. Gunfire and torpedo tracks reported. Each week of action will expend naval shells and torpedoes; ships will be lost.\n\nTo break off, order the squadron away from the enemy. Destroyers are our best weapon against submarines.\n\nNo reply required."
+  },
+  "blockade": {
+    "sender": "Admiralty Operations Room",
+    "classification": "SECRET"
+  },
+  "weather": {
+    "sender": "Central Meteorological Office",
+    "classification": "CONFIDENTIAL",
+    "subject": "METEOROLOGICAL BULLETIN: {season} — {condition}"
+  },
+  "dilemma": {
+    "sender": "Private Office of the {leader_title}",
+    "classification": "TOP SECRET",
+    "subject": "DECISION RECORDED: {title}"
   }
 }

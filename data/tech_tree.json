@@ -1,8 +1,8 @@
 {
   "_comment": [
-    "R&D tree (research itself is a future phase). `known_at_start` techs gate what factories can produce today.",
-    "Each tech: branch, research cost in weeks at one research slot, treasury cost per week, prerequisites,",
-    "equipment it unlocks (ids in equipment.json), and other effects. `known_at_start` techs are already researched."
+    "R&D tree. Each tech: branch, research time in weeks, treasury cost per week, prerequisites, equipment it unlocks",
+    "(ids in equipment.json), and other effects. `known_at_start` techs are already researched (a nation may",
+    "override with its own known_techs list in nations.json)."
   ],
   "branches": [
     "small_arms",
@@ -11,12 +11,18 @@
     "protection",
     "electronics",
     "industry",
-    "doctrine"
+    "doctrine",
+    "naval",
+    "air"
   ],
   "known_at_start": [
     "standard_rifle_762",
     "towed_artillery_152",
-    "light_tank_chassis"
+    "light_tank_chassis",
+    "destroyer_design",
+    "capital_ships",
+    "diesel_submarines",
+    "strike_aviation"
   ],
   "techs": [
     {
@@ -44,7 +50,7 @@
         "rifle_556",
         "ammo_556"
       ],
-      "notes": "Lighter rounds: +30% ammunition carried per soldier, slightly lower lethality at range."
+      "notes": "Lighter 5.56mm rounds. Infantry divisions re-arm with assault rifles (+33% rifle firepower) and carry 30% more rounds per man; old 7.62mm rifles are turned in as the new ones arrive."
     },
     {
       "id": "light_tank_chassis",
@@ -145,6 +151,68 @@
           "defend": 0.1
         }
       }
+    },
+    {
+      "id": "destroyer_design",
+      "name": "Destroyer Design",
+      "branch": "naval",
+      "weeks": 0,
+      "weekly_cost": 0,
+      "requires": [],
+      "unlocks": [
+        "destroyer",
+        "naval_shells"
+      ]
+    },
+    {
+      "id": "capital_ships",
+      "name": "Capital Ships",
+      "branch": "naval",
+      "weeks": 0,
+      "weekly_cost": 0,
+      "requires": [
+        "destroyer_design"
+      ],
+      "unlocks": [
+        "battleship"
+      ]
+    },
+    {
+      "id": "diesel_submarines",
+      "name": "Diesel-Electric Submarines",
+      "branch": "naval",
+      "weeks": 0,
+      "weekly_cost": 0,
+      "requires": [],
+      "unlocks": [
+        "submarine",
+        "torpedoes"
+      ]
+    },
+    {
+      "id": "strike_aviation",
+      "name": "Strike Aviation",
+      "branch": "air",
+      "weeks": 0,
+      "weekly_cost": 0,
+      "requires": [],
+      "unlocks": [
+        "strike_aircraft",
+        "aviation_fuel",
+        "bombs"
+      ]
+    },
+    {
+      "id": "winter_warfare",
+      "name": "Cold-Weather Equipment",
+      "branch": "protection",
+      "weeks": 10,
+      "weekly_cost": 5000,
+      "requires": [],
+      "unlocks": [
+        "winter_gear"
+      ],
+      "notes": "Insulated boots, parkas, stove kits and ski troops. Formations with a kit for every man do not freeze in winter."
     }
   ]
 }

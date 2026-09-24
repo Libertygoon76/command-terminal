@@ -14,6 +14,7 @@ class TickReport:
     log: list[str] = field(default_factory=list)
     new_messages: list[Email] = field(default_factory=list)
     game_over: GameOver | None = None
+    dilemma: str | None = None  # event card drawn this week (the UI shows the CLASSIFIED DILEMMA pop-up)
 
 
 class SimulationSystem:

@@ -8,7 +8,7 @@ from typing import Any
 from src.models.inbox import Email, Inbox
 from src.models.ai import AIState
 from src.models.battle import Battle
-from src.models.military import Contact, TrainingOrder, Unit
+from src.models.military import AirWing, Contact, TrainingOrder, Unit
 from src.models.nation import Nation
 from src.models.world_map import WorldMap
 
@@ -98,6 +98,29 @@ class GameState:
     last_production: dict[str, dict[str, Any]] = field(default_factory=dict)  # nation -> last week's factory report
     training: list[TrainingOrder] = field(default_factory=list)  # formations being raised (all nations)
     unit_serial: int = 0  # for unique ids of newly raised formations
+    # --- Phase 7 ---
+    weather: dict[str, Any] = field(default_factory=dict)  # this week's weather (see weather_engine)
+    blockades: dict[str, str] = field(default_factory=dict)  # port name -> nation id holding it under blockade
+    air_wings: list[AirWing] = field(default_factory=list)  # abstract air wings of every nation
+    air_picture: dict[str, dict[str, Any]] = field(default_factory=dict)  # region id -> last week's air situation
+    pending_dilemma: str | None = None  # event card id awaiting the player's decision (blocks the turn)
+    used_cards: set[str] = field(default_factory=set)  # event cards already drawn
+    last_card_turn: int = 0
+    forced_card: str | None = None  # debug (main.py --event): draw this card at the next week
+
+    def template(self, unit_type: str) -> dict[str, Any]:
+        """Unit template (units.json) by id."""
+        cache = self.cost_cache.get("templates")
+        if cache is None:
+            cache = self.cost_cache["templates"] = {t["id"]: t for t in self.catalog["units"]["units"]}
+        return cache[unit_type]
+
+    def domain(self, unit: Unit) -> str:
+        """'land' or 'sea' (warships)."""
+        return self.template(unit.unit_type).get("domain", "land")
+
+    def role(self, unit: Unit) -> str:
+        return self.template(unit.unit_type).get("role", "infantry")
 
     def all_units(self) -> list[Unit]:
         return [unit for nation in self.nations.values() for unit in nation.units]

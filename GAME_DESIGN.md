@@ -1,7 +1,7 @@
 # COMMAND TERMINAL — Game Design Document
 
 > Living document. Update it whenever a system is designed, changed, or cut.
-> Last major revision: Phase 6 (taxation & bankruptcy, recruitment & training, research & development, purge lock), 2026-09-24.
+> Last major revision: Phase 7 (continental map at 10 miles per cell, navies and blockades, artillery and air support, weather, the CLASSIFIED DILEMMA event deck, 5.56mm re-arming), 2026-09-24.
 
 ---
 
@@ -92,7 +92,12 @@ Status legend: `[P1]`/`[P2]` built in that phase · `[STUB]` placeholder · `[PL
   order, collecting a `TickReport` (log lines, new messages, game over).
 - Seeded RNG lives in `GameState.rng`. Set `random_seed` in config, or run `python main.py --seed N`,
   for a reproducible campaign.
-- After a fall, `advance()` raises `GameOverError`.
+- After a fall, `advance()` raises `GameOverError`; while a CLASSIFIED DILEMMA is unanswered it raises
+  `DilemmaPendingError` (§4.21).
+- **Scale** `[P7]` (`tick_engine.MILES_PER_CELL`, config `map.miles_per_cell`): **one grid step (a row) =
+  10 miles**. Terminal characters are twice as tall as they are wide, so a column is half a step (5 miles,
+  `map.column_scale` 0.5), which keeps the map in proportion. Every speed is authored in **miles per day**
+  and converted by `tick_engine.cells_per_turn()`.
 
 ### 4.2 Nation Management `[P2 · P6]`
 - **Treasury**: can go negative. Debt pays 1% interest per week.
@@ -119,7 +124,9 @@ Status legend: `[P1]`/`[P2]` built in that phase · `[STUB]` placeholder · `[PL
 ### 4.3 Economy & the Military Industrial Complex `[P2 ledger · P5 war production]`
 - **Weekly ledger** (`economy_engine.compute_ledger`, run for **every** nation, so the AI pays its own way):
   - income: `tax = population × tax_rate × 0.042 × productivity(morale)`, plus **trade & industry**
-    (`nations.json → trade_income` × productivity; Kestria 24,000/week) `[P6]`;
+    (`nations.json → trade_income` × productivity; Kestria 11,000/week) `[P6]`, plus **overseas trade**
+    through every OPEN port (`world.json` port `trade`; Kestria 13,000/week across five ports) `[P7]`.
+    A port under naval **blockade** earns nothing (§4.18);
   - expenses: civil administration, armed forces pay, military production (1,100 CR per assigned
     factory), the **active research project** `[P6]`, and debt interest.
   - At Normal taxes with the default 13 factories, Kestria nets about +10,900 CR/week. Every extra
@@ -144,14 +151,28 @@ Module: `src/engine/movement.py`.
   a `status` (HOLDING / MOVING / ENGAGED), and `move_points` carried over between weeks.
   `issue_move_order()` validates ownership, bounds, sea and reachability. The player and the AI use
   the same function.
-- **Speed.** `move_speed` in `units.json` is movement points per week on open ground: infantry 4,
-  armor 8, artillery 3, militia 3, HQ 5. Low supply (<25%) halves it.
-- **Pathfinding.** A* over 4-neighbour cells, re-planned every week. Step cost:
+- **Speed** `[P7]`: `speed_mpd` in `units.json` is the sustained pace in **miles per day** over open
+  plains; `truck_mpd` is added in proportion to the formation's trucks, if it has fuel. Movement points
+  per week = miles per week ÷ 10.
+
+| Formation | Pace | Rows (×10 mi) per week, open plains |
+|-----------|------|------|
+| Infantry division | 4 mi/day on foot, +3 with all its trucks | 2.8 on foot · 4.9 motorised |
+| Armored brigade | 12 mi/day | 8.4 |
+| Artillery regiment | 3.5 + 3 by truck | 2.45 – 4.55 |
+| Militia battalion | 3.5 | 2.45 |
+| HQ / Logistics | 4 + 4 by truck | 2.8 – 5.6 |
+| Destroyers / battleships / submarines | 90 / 70 / 50 mi/day | 63 / 49 / 35 (at sea) |
+
+  A road multiplies the distance covered by ~1.8, rail by ~2.9. Low supply (<25%) halves speed; the
+  weather multiplies it (§4.20).
+- **Pathfinding.** A* over 4-neighbour cells (land, or open water for warships), cached per
+  (domain, start, target): costs never change, so a marching column never needs a fresh search. Step cost:
   - along **rail / road / destroyed rail** (`world.json → transport`), a flat
     `map.transport_cost` (0.35 / 0.55 / 0.8) that ignores terrain;
   - otherwise `1 / terrain movement` (mountains ×2.5, marsh/mud ×2, urban ×1.4, river ×1.25);
   - **trench lines** cost an extra ×1.8 (`map.obstacle_cost`);
-  - a column is half a row (`map.column_scale` 0.5): 1 row ≈ 10 km, 1 column ≈ 5 km.
+  - a column is half a row (`map.column_scale` 0.5): 1 row = 10 miles, 1 column = 5 miles.
 - **Simultaneous resolution.** Every moving unit steps one cell per round, in lockstep, until
   nobody can afford their next step. Unspent points carry over.
 
@@ -167,14 +188,18 @@ Module: `src/engine/movement.py`.
 
 ### 4.6 Logistics — the arteries of war `[P4]`
 Module: `src/engine/logistics_engine.py`, config `config.json → logistics`.
-- **Sources:** friendly cities, capitals and ports in regions the nation owns, plus its **home map edge**
-  (Kestria: the western coast; Vosk: the eastern hinterland).
+- **Sources** `[P7]`: every friendly settlement in a region the nation owns, each reaching its own
+  distance (`source_range_by_type`): capital 18, city / industrial centre / port 16, market town 7. A
+  **blockaded port supplies nothing**. The Vosk also draw on their **home map edge** (the hinterland
+  beyond the eastern edge of the sheet); Kestria's west is now open ocean.
+- **Warships** are supplied by sea: SUPPLIED within `naval.supply_range` (45 rows of sailing) of a
+  friendly, unblockaded harbour, otherwise OVEREXTENDED.
 - **Tracing:** a multi-source Dijkstra over the same costs as movement, so **roads and rail carry
   supply far** and mountains and marsh strangle it. An in-supply **HQ / Logistics** formation is a
   forward depot, extending the net by `hq_range`.
 - **Enemy territory:** supply cannot use an enemy's roads or rail, and pays terrain cost ×
   `hostile_territory_factor` (1.5). Armies can race down enemy roads, but their supply cannot follow.
-- **Zones of control:** every cell within `zoc_radius` of an enemy formation. A supply path may end
+- **Zones of control:** every cell within `zoc_radius` of an enemy **land** formation (warships never cut land supply). A supply path may end
   in a ZOC cell but can never pass *through* one. Enemy-occupied cells are fully blocked.
 - **States** (recomputed weekly, `Unit.supply_state`):
 
@@ -206,10 +231,15 @@ to Kestrian fog of war).
 | **DEFEND** | Holds the line. Reserves reinforce the sector of any Kestrian incursion; units forward of the trenches pull back; a reserve is occasionally reshuffled. | → PROBE at tension ≥ 40 (random) |
 | **PROBE** | Masses reserves on its trench line around a **Schwerpunkt** row (re-chosen every 4 weeks), sidesteps line units toward it, and probes no-man's-land. The chance of a probe grows with tension, and half of probes go straight at a Kestrian position. | → ASSAULT at tension ≥ 65 after 3+ weeks (random); → DEFEND below 25 |
 | **ASSAULT** | Picks the **weaker Kestrian flank** (north or south). Sends an armor-led group of up to 3 formations round it through configured waypoints toward a rear objective: the Kestrian HQ in that region, else a town. Pins the center with probes. | → PROBE when tension < 48 or after 8 weeks |
-| any | — | → DEFEND when Kestrian strength past x=72 reaches 35% of Vosk front strength |
+| any | — | → DEFEND when Kestrian strength past x=124 reaches 35% of Vosk front strength |
 
 - **Logistics-aware:** each posture first pulls starving, out-of-supply formations back to the
   nearest cell of its own supply network.
+- **Combined arms** `[P7]`: artillery is kept 3 columns *behind* its trench line (in support range, out
+  of contact). The **Vosk admiralty** patrols home waters in DEFEND; in PROBE / ASSAULT it sends destroyers
+  and submarines to **blockade** the richest Kestrian port they can reach and battle squadrons to
+  **bombard** coastal battles, and any squadron hunts enemy ships within 20 rows. The **Vosk air staff**
+  puts its wings over the sectors where its army is fighting, else over the Frontier.
 - **Unpredictable:** target jitter, a shuffled choice of unit within each priority class, random
   Schwerpunkt and flank tie-breaks, and probabilistic transitions. Everything comes from the campaign
   RNG, so a seeded campaign is fully reproducible.
@@ -370,16 +400,21 @@ A digitized staff situation map in the style of WWII Eastern Front and Desert St
 maps: terrain, national territory washes, trench lines, rail, and NATO-style unit symbols.
 
 **Map data: an exact character grid** (`data/map/world.json`, model `src/models/world_map.py`)
-- `width` × `height` (currently 128 × 42) terminal cells. Coordinates are **x = column, y = row**, with 0,0 at top-left.
+- `width` × `height` (**240 × 80** since Phase 7: 1,200 × 800 miles) terminal cells. Coordinates are
+  **x = column, y = row**, with 0,0 at top-left.
 - `base`: the rendered background, `height` rows of exactly `width` characters. It holds borders
   (`│─┼…`), terrain glyphs (`^` mountains, `≈` river/marsh, `#` urban, `.` plains), rail `═║`,
   trenches `┆`, settlements `★` capital, `◉` city, `⊕` port, plus labels, compass and scale bar.
-- `regions[]`: `{id, name, owner, terrain, label:[x,y], rects:[[x0,y0,x1,y1], …]}`, with inclusive rects
-  and later regions winning on overlap. Cells outside every region are sea. `WorldMap.region_at(x, y)`,
-  `owner_at`, and `is_national_border` are exact per-cell lookups.
+- `regions[]`: `{id, name, owner, terrain, key, label:[x,y], rects:[...]}`. Since Phase 7 the exact
+  per-cell region map is `region_rows` (one letter per cell, `~` = sea); `rects` are the coarse blueprint
+  outline. `WorldMap.region_at(x, y)`, `in_region`, `owner_at`, `is_sea`, `is_coastal`, `sea_zone_at`
+  and `is_national_border` are exact per-cell lookups.
+- `sea_zones[]`: named waters (Northern Sea, Western Ocean, Iren Straits, Gulf of Sevrask) for readouts
+  and battle names.
 - `terrain_types{}`: glyph, `movement` and `defense` multipliers, and a description. Shown in the readout
   now, and used by logistics and combat later.
-- `features[]`: settlements with exact X/Y.
+- `features[]`: settlements with exact X/Y: `capital` ★, `city` ◉, `industrial` ▣, `port` ⊕ (with
+  `trade` and a `harbour` sea cell), `town` ○.
 - Every row must be exactly `width` **single-cell** characters. Emoji and wide glyphs are forbidden
   (checked in tests). `tools/generate_world_map.py` can regenerate the whole map, but it **overwrites** the file.
 
@@ -396,6 +431,9 @@ maps: terrain, national territory washes, trench lines, rail, and NATO-style uni
 | `[•]` | Artillery |
 | `[H]` | HQ / Logistics |
 | `[m]` | Militia |
+| `[D]` | Destroyer Flotilla (8 destroyers) |
+| `[B]` | Battleship Squadron (2 battleships + 4 destroyer escorts) |
+| `[U]` | Submarine Wolfpack (6 boats) |
 | `[*]` | **Stack**: 2+ formations in the same cell, or whose symbols would overlap |
 
 - A symbol is 3 cells wide and centred on the unit's `location` (x−1 … x+1).
@@ -451,6 +489,128 @@ maps: terrain, national territory washes, trench lines, rail, and NATO-style uni
 - Standing orders show as `◇` destination markers on the map. The selected unit's route is drawn,
   and the readout shows `ORDER: MOVE → 072-015 · ETA 2 WK`.
 
+### 4.17 The Continental Map `[P7]`
+`tools/generate_world_map.py` builds the 240 × 80 map (**2,400 miles** of coastline-hemmed continent) from
+a coarse blueprint of 48 × 20 blocks, then roughens the coastlines with value noise (never across the
+Frontier, whose trench geometry stays exact), removes stray islets and lakes, snaps settlements onto their
+regions (ports onto the coast, each with a `harbour` sea cell), and routes railways and roads with A*.
+
+- **Oceans on three sides:** the Northern Sea, the Western Ocean off Kestria's Atlantic coast, and the
+  Iren Straits / Gulf of Sevrask to the south. The only way between the northern and southern seas is
+  round Kestria's west coast.
+- **Kestria** (west): Cassel Coast, Harrowfen, Aldmark (capital), Westmarch, Greywater, Stonereach,
+  Ironvale (industrial hills) and the Eastmarch behind the front. **Vosk** (east): Vosk Marches, Karzan
+  Oblast (capital), Zarnov Coast, Dornsk Basin, Sevrask Coast, Tal Varos and the Eastern Steppe.
+- **50 settlements:** 2 capitals, 4 cities, 4 industrial centres (Ironvale, Kessel Works, Dornsk,
+  Novo-Vosk), 10 ports (5 Kestrian, 4 Vosk, neutral Iren) and **30 towns**.
+- **The Frontier** is a 40-row (400-mile) belt from the Northern Sea to the Iren Straits. Both of its
+  ends are coastal, so the flanks of the trench line lie under naval guns. Kestrian trenches at x=123,
+  Vosk at x=128, one rail crossing (the destroyed line at row 36) and three road crossings.
+- New terrain: **hills** (movement ×0.7, defense ×1.25). Fighting within 1 row of any settlement counts
+  as urban (fortification ×1.3).
+
+### 4.18 Naval Warfare `[P7]`
+Module `src/engine/naval_engine.py`, config `config.json → naval`. Fleets are real units on the map
+(`domain: "sea"`): they sail only on open water, are supplied from harbours, and muster at the busiest
+open harbour when raised (Military screen). Starting fleets: Kestria **KN-1** 1st Destroyer Flotilla
+(Brenmouth), **KN-2** Home Fleet Battle Squadron (Port Cassel), **KN-3** 2nd Submarine Wolfpack
+(Greyhaven); Vosk **VN-1** (Kolvaan), **VN-2** (Sevrask), **VN-3** (Kalinsk).
+
+**Missions** (War Room: `t` cycles the selected squadron's mission):
+
+| Mission | Effect |
+|---------|--------|
+| PATROL | Hold station; fight enemy fleets that come into contact. |
+| BLOCKADE | An enemy port within **3 rows (30 mi)** is **closed** unless a ship of the port's owner is within the same range (a contested blockade fails). A closed port gives **no overseas trade** (off the weekly ledger) and **no supply** to its owner's armies or fleets. Dispatches: *NAVAL BLOCKADE: <PORT> CLOSED* / *BLOCKADE LIFTED* / *BLOCKADE ESTABLISHED*. Blockaded harbours glow red on the map. |
+| BOMBARD | **Offshore bombardment:** a ship not itself in contact adds its guns' `soft_attack` × `bombard_multiplier` (a battleship: 120 per ship per week) to the nearest friendly land battle within **2.5 rows**. It consumes `naval_shells`. |
+
+**Naval battles** (fleets in contact at sea; armies and fleets never engage each other):
+- Each warship fires only while it has ammunition (**naval_shells** for guns, **torpedoes** for
+  submarines, drawn from the ship's inventory, which is refilled from the national stockpile in port).
+- A side's `hard_attack` × `damage_per_attack` (0.35) damages the enemy's **hull points** (`hull` per ship:
+  destroyer 10, battleship 80, submarine 6), split between surface ships and submarines. Only **ASW**
+  weapons (destroyer guns and depth charges) hit submarines properly; other fire does 10% of its damage
+  to them. Each unit loses the same fraction of crew as of hull (÷ `hull_defense`: battleships 1.6). Ships
+  sink whole, with the fractional ship rolled.
+- A fleet below morale 20 **retires** 4 cells toward its harbour; a fleet with no ships left is **sunk**.
+  SITREPs and After Action Reports as for land battles ("Battle of the Northern Sea").
+- Rough match-ups: destroyers beat submarines, battleships beat destroyers, and submarines grind
+  battleships down unless they have destroyer escort.
+- **Submarines** are seen at half range by anything except destroyers.
+
+### 4.19 Combined Arms: Artillery and Air Power `[P7]`
+**Artillery** (templates with `support`: the Artillery Regiment). An artillery formation that is **not
+itself in contact**, within `artillery_support_range` (**2.5 rows** = 1–2 cells behind the line) of a
+friendly formation in battle, fires for that battle: its howitzers' firepower × **1.5** is added to the
+side, consuming **thousands of 152mm shells a week** (54 guns × 60 rounds × stance). It takes **no
+casualties** unless the enemy reaches it. Each battery supports one battle a week. SITREPs list it under
+FIRE SUPPORT.
+
+**Air power** is abstract (`src/engine/air_engine.py`, config `air`, data `data/air.json`, UI **Air Assets**
+tab `6`). Air Wings (Kestria: 1st and 2nd Tactical Air Wings, 3rd Air Defence Wing; Vosk: three) are
+assigned to a **sector** (a map region) or held at base:
+- Effective air power = aircraft × fuel ratio × weather air factor. A patrol burns 1.5 drums of
+  **aviation fuel** per aircraft a week; over a sector with a friendly battle the wing also flies ground
+  support (2.5 more drums and **5 bombs** per aircraft).
+- **SUPERIORITY** at ≥ 1.5 × the enemy's air power, **DENIED** at the reverse, otherwise **CONTESTED**.
+  Where both sides fly, each loses aircraft = 4% of the enemy's air power (± noise).
+- A land battle in a sector where a side holds superiority gives that side **+30% firepower** (+10%
+  if its bombs ran out).
+- Wings refill up to 6 aircraft a week from the stockpile's **strike_aircraft** (a new production line).
+  Enemy air strength is shown only as an estimate.
+
+### 4.20 Weather & Seasons `[P7]`
+Module `src/engine/weather_engine.py`, data `data/weather.json`. Every week one continental condition is
+rolled from the calendar month's weights (50% chance the previous week's weather simply continues).
+The season follows the GameClock: Winter Dec–Feb, Spring Mar–May, Summer Jun–Aug, Autumn Sep–Nov. The
+status bar shows it (`WX`), and a **METEOROLOGICAL BULLETIN** arrives each new season.
+
+| Condition | Movement | Other effects |
+|-----------|----------|---------------|
+| Clear / Heat | ×1.0 / ×0.95 | — |
+| Rain | ×0.85 | air ×0.6 |
+| **Mud: the Rasputitsa** (mostly Mar–Apr, Oct–Nov) | **×0.45** | **armor burns 2× fuel while moving**, supply delivery ×0.8, air ×0.7 |
+| **Snow & Hard Frost** | ×0.7 | freezing: frost 1.2%/wk, −3 morale, unkitted firepower ×0.75; air ×0.5 |
+| **Blizzard** | ×0.5 | freezing: frost 2.5%/wk, −5 morale, unkitted firepower ×0.6; **all aircraft grounded** |
+
+- **Winter Gear:** a formation with a **Cold-Weather Kit** for ≥ 90% of its men suffers no frostbite
+  and fights at ×0.95. Kits need the new research **Cold-Weather Equipment** (10 weeks, 5,000 CR/week),
+  then a production line. The Vosk start the war already kitted; Kestria does not.
+- **Winter quarters:** formations holding position inside their own supply net take only 35% of the
+  frost losses. Campaigning in winter without kit is ruinous.
+- **Storms at sea** (chance by season: winter 45%, autumn 30%, spring 15%, summer 5%): warships not in
+  port lose 3% of their strength (ships founder) and 3 morale, and sail at ×0.6.
+- The campaign opens on 2 January 1984, in the dead of winter.
+
+### 4.21 The Event Deck: Classified Dilemmas `[P7]`
+Module `src/engine/dilemmas.py`, data `data/events_deck.json` (16 cards). Last in each tick, from week 3,
+if no card has come up in the last 3 weeks, a card is drawn with a **16%** chance. Eligible cards are
+weighted and filtered by conditions: season (the frozen convoy in winter, General Mud in the Rasputitsa,
+the bumper harvest in summer and autumn), minimum week, a running research project, a battle in progress,
+and story flags. Cards are not repeated unless `repeatable`.
+
+- The card becomes `state.pending_dilemma` and pops up as a modal **CLASSIFIED DILEMMA** (Textual
+  `ModalScreen`) with flavour text and 2–3 choices. Each choice shows its hint and its **visible**
+  consequences (hidden effects such as Vosk tension are not shown).
+- **The game loop is paused:** the TickEngine refuses to advance until the Lord Protector chooses (keys
+  `1`–`3` or click). The decision is filed in the inbox ("DECISION RECORDED").
+- Choices use the ordinary effect keys, plus new ones (usable by emails too): `equipment` (national
+  stockpile), `army_morale` (every formation), `modifier` (a timed nation modifier, e.g.
+  *factory_efficiency +15% for 4 weeks*) and `research_weeks`.
+- Example: **Strike at the Ironvale Steelworks.** [1] Crush it: civil morale −6, military morale +1,
+  factory output +15% for 4 weeks. [2] Concede: −60,000 CR, civil morale +5. [3] Arbitrate: −20,000 CR,
+  morale +1, factory output −10% for 3 weeks.
+- Debug: `python main.py --event worker_strike` forces a card at the next week; `--list-events` lists them.
+
+### 4.22 5.56mm Re-arming `[P7]`
+Templates may `modernize` kit when a tech is known. **Intermediate Cartridge** (20 weeks) re-arms
+**infantry divisions**: 7.62mm battle rifles → **5.56mm assault rifles** (soft attack 0.04 vs 0.03, about
++17% divisional firepower), and the ammunition establishment becomes 5.56mm × 1.3 (lighter rounds, more
+carried per man). The swap happens through the supply pipeline: 5.56mm rifles are issued from the stockpile
+at the heavy-equipment rate and **old rifles are turned in to the depots one-for-one**, so a division is
+never unarmed. While part of a division still carries 7.62mm, its ammunition establishment is split in
+proportion, so both calibres flow down the same supply line. Militia and other formations keep 7.62mm.
+
 ---
 
 ## 5. Architecture
@@ -470,7 +630,7 @@ maps: terrain, national territory washes, trench lines, rail, and NATO-style uni
 
 ```
 command-terminal/
-├── main.py                  # python main.py [--skip-boot] [--seed N] [--reveal]
+├── main.py                  # python main.py [--skip-boot] [--seed N] [--reveal] [--event CARD] [--list-events]
 ├── requirements.txt / requirements-dev.txt (pytest)
 ├── GAME_DESIGN.md
 ├── data/
@@ -484,7 +644,10 @@ command-terminal/
 │   ├── events/emails.json   # email templates + event chains
 │   ├── events/system_alerts.json  # SYSTEM PURGE texts per loss cause
 │   ├── events/generated.json      # SIGINT, BORDER CLASH, ISOLATED dispatch templates
-│   ├── map/world.json       # War Room grid: base art, regions, terrain, features, transport layer
+│   ├── map/world.json       # War Room grid (240×80): base art, region_rows, sea zones, features, harbours, transport
+│   ├── weather.json         # seasons, conditions, monthly weights, storms
+│   ├── air.json             # air wings
+│   ├── events_deck.json     # CLASSIFIED DILEMMA cards
 │   └── ui/boot_sequence.json
 ├── src/
 │   ├── models/              # nation.py, inbox.py, game_state.py, military.py (Unit, MoveOrder, Contact), battle.py,
@@ -499,7 +662,11 @@ command-terminal/
 │   │   ├── production.py    # military factories, production lines, national stockpile, AI allocation
 │   │   ├── recruitment.py   # raising and training new formations, mustering, AI replacements
 │   │   ├── research.py      # R&D projects, breakthroughs, unlocks, tech effects
-│   │   ├── combat_engine.py # battles, firepower from inventory, stances, routs, SITREP / AAR
+│   │   ├── combat_engine.py # battles, firepower from inventory, stances, routs, artillery support, SITREP / AAR
+│   │   ├── naval_engine.py  # missions, blockades, naval battles, bombardment, storms, Vosk admiralty
+│   │   ├── air_engine.py    # air wings, sectors, superiority, fuel and bombs
+│   │   ├── weather_engine.py# seasons, weekly weather, mud, frostbite
+│   │   ├── dilemmas.py      # the event deck: draw, pause, resolve
 │   │   ├── recon.py         # detection radius, contacts, ghosts (active fog of war)
 │   │   ├── ai_director.py   # Vosk DEFEND / PROBE / ASSAULT state machine
 │   │   ├── sigint.py        # intercepts of major AI orders
@@ -511,32 +678,37 @@ command-terminal/
 │   │   └── (combat_engine.py is listed above)
 │   └── ui/
 │       ├── app.py           # owns GameState + TickEngine, `revision` reactive
-│       ├── screens/         # boot, terminal, confirm (reply), coordinates (grid prompt), game_over (purge lock)
+│       ├── screens/         # boot, terminal, confirm (reply), coordinates, game_over (purge lock), dilemma (event card)
 │       ├── widgets/         # status_bar.py (reactive), sidebar.py (nav + ADVANCE WEEK), map_canvas.py (War Room)
-│       └── views/           # inbox, economy (taxes + factories), military (recruitment), map (War Room), research
+│       └── views/           # inbox, economy, military (recruitment), map (War Room), research, air (Air Assets)
 ├── tools/generate_world_map.py  # optional: regenerate world.json (overwrites it)
-└── tests/                   # test_engine, test_ui, test_war_room, test_phase4, test_phase5, test_phase6
+└── tests/                   # conftest (calm-world fixture), test_engine, test_ui, test_war_room, test_phase4–7
 ```
 
 ### 5.3 Tick order
-1. Clock advance
-2. **AI Director**: posture, tension, orders and attack stances (+ SIGINT intercepts), *before* the week resolves
-3. **Movement**: both sides march simultaneously; border clashes detected → ENGAGED + dispatch
-4. **Combat**: routed units tick toward rallying; every engaged group fights a round; routs, withdrawals, destruction; SITREP / AAR
-5. **Recon**: detection, contacts acquired/lost, ghosts
-6. **Research**: labs progress (unless bankrupt); breakthroughs unlock lines and upgrade establishments
-7. **Recruitment**: training advances; completed formations muster at the capital (AI queues replacements)
-8. **Production**: domestic resource output; factories produce into the national stockpile (AI rebalances first)
-9. **Logistics**: trace supply nets, fuel burn, consume/deliver supply, attrition, resupply from the stockpile, replacements
-10. **Economy**: ledger for every nation (taxes, trade, factories, research), tax-policy morale drift, bankruptcy
-11. **Events**: expire overdue dispatches (apply `on_expire`), deliver due emails (apply `on_arrival`)
-12. **Status report**: this week's Weekly Status & Financial Report (front, supply, battles, war industry)
-13. **Fail states**: revolution / coup / collapse → SYSTEM PURGE + Protocol Zero lock (restart or exit)
+0. Refused while a CLASSIFIED DILEMMA is pending (`DilemmaPendingError`); then the clock advances
+1. **Weather**: this week's condition and storms; a bulletin at the change of season
+2. **AI Director**: posture, tension, land orders and attack stances (+ SIGINT), fleet orders and missions
+3. **Movement**: armies march and fleets sail simultaneously; border clashes / naval contacts → ENGAGED + dispatch
+4. **Air**: wings contest their sectors (AI tasks its wings first); superiority, losses, fuel and bombs
+5. **Combat**: routed units rally; land battles (with artillery, naval gunfire, air support, winter penalty) and naval battles; SITREP / AAR
+6. **Naval**: storms at sea; blockades imposed and lifted (+ dispatches)
+7. **Recon**: detection (submarines at half range), contacts acquired/lost, ghosts
+8. **Research**: labs progress (unless bankrupt); breakthroughs unlock lines and upgrade establishments
+9. **Recruitment**: training advances; formations muster at the capital, warships at a harbour
+10. **Production**: domestic resource output; factories produce into the national stockpile (AI rebalances first)
+11. **Logistics**: land and sea supply nets, fuel burn (mud ×2 for armor), supply, attrition, resupply, re-arming turn-in, replacements
+12. **Frost**: frostbite for formations without winter kit
+13. **Economy**: ledger for every nation (taxes, trade, overseas trade minus blockaded ports, factories, research), timed modifiers expire
+14. **Events**: expire overdue dispatches (apply `on_expire`), deliver due emails (apply `on_arrival`)
+15. **Status report**: Weekly Status & Financial Report (now with weather and blockaded ports)
+16. **Fail states**: revolution / coup / collapse → SYSTEM PURGE + Protocol Zero lock (restart or exit)
+17. **Dilemmas**: maybe draw a CLASSIFIED DILEMMA card (pauses the game until answered)
 
 ### 5.4 Controls
 | Key | Action |
 |-----|--------|
-| `1`–`5` | Inbox / Economy / Military / Map / Research |
+| `1`–`6` | Inbox / Economy / Military / Map / Research / Air Assets |
 | `↑ ↓ Enter`, `Tab` | Navigate lists / move focus |
 | `a`–`d` | Reply to the open dispatch with option A–D (asks to confirm: `y` / `n`) |
 | `h` | Hide / show archived dispatches |
@@ -547,24 +719,31 @@ command-terminal/
 | Map: `g` | Type an exact grid reference for the order |
 | Map: `x` | Cancel the selected formation's standing order |
 | Map: `s` | Toggle the supply overlay |
-| Map: `t` | Cycle the selected formation's stance: DEFEND → ASSAULT → WITHDRAW |
+| Map: `t` | Cycle the selected formation's stance: DEFEND → ASSAULT → WITHDRAW; for a warship, its mission: PATROL → BLOCKADE → BOMBARD |
 | Economy: `+` / `-` / `0` | Assign / remove a factory on the highlighted production line / close the line |
 | Economy: `[` / `]` | Lower / raise the tax policy (Low · Normal · High · Oppressive) |
 | Military: `r` / `x` | Raise the highlighted formation type / cancel the highlighted formation in training |
 | Research: `Enter` or `r` / `x` | Start (or switch to) the highlighted project / stop research |
+| Air Assets: `[` / `]` / `0` | Move the highlighted wing to the previous / next sector / recall it to base |
+| Dilemma: `1`–`3` or click | Choose (the week cannot advance until you do) |
 | Game over: `r` / `q` | Restart the campaign / exit |
 | `n` or **▶ ADVANCE WEEK** | Advance one week |
 | `q` | Log out |
 
 ### 5.5 Testing
-`python -m pytest` (about 143 tests, 2–3 min) runs engine tests, fuzzed campaigns (random replies and random
+`python -m pytest` (167 tests, 3–5 min) runs engine tests, fuzzed campaigns (random replies and random
 move orders, with invariants checked every week) and headless Textual tests that drive the real UI:
 replies, advance week, the War Room overlay at several terminal sizes, issuing and cancelling orders,
 a live seeded campaign until SIGINT and a border clash arrive, factory assignment on the Economy
 screen, the stance key, combat draining ammunition, empty armor unable to fight, routs, destruction,
 withdrawals, weekly SITREPs and AARs, plus a fuzzed full war (random orders and stances) whose
 invariants (no negative stocks, no dangling engagements, routing units out of contact) are checked
-every week. Set `CT_SCREENSHOTS=<dir>` to save
+every week. `tests/conftest.py` holds the weather clear and the event deck shut for tests written before
+Phase 7, unless a test is marked `live` (the fuzzed campaigns and Phase 7 tests run the full world, answering
+any dilemma that comes up). Phase 7 tests cover the map and scale, march speeds, sea-only movement, blockades
+cutting trade and supply, naval battles sinking ships with shells and torpedoes, bombardment and artillery
+support against controls, air superiority, mud, frostbite and storms, the dilemma pause (engine and modal),
+5.56mm re-arming, and naval recruitment. Set `CT_SCREENSHOTS=<dir>` to save
 SVG screenshots from the UI tests.
 
 ---
@@ -579,8 +758,8 @@ SVG screenshots from the UI tests.
 | **4** | **Living front**: move orders and A* over a road/rail/trench layer, simultaneous movement, skirmish detection, supply-line logistics (ZOC, isolation, attrition), the Vosk AI Director (DEFEND/PROBE/ASSAULT), active fog of war, SIGINT intercepts. ✅ |
 | **5** | **Meatgrinder**: military factories and production lines, national stockpile, physical resupply pipeline, combat driven by inventory (ammo and fuel), stances, trench fortification, routs and destruction, SITREP / After Action Reports. ✅ |
 | **6** | **The backbone of the state**: tax policies and trade income, bankruptcy spiral, recruitment and training (muster under-equipped), R&D with breakthroughs, unlocks, establishment upgrades and tech effects, Protocol Zero lock with restart. ✅ |
-| 7 | Commanders with traits, weather and seasons, more research (multiple slots, more techs), 5.56mm re-arming and mixed-caliber logistics. |
-| 8 | Strategic bombing of factories, naval blockade of Port Cassel, larger event deck (triggered events). |
+| **7** | **Continental war**: 240×80 map at 10 miles per cell with oceans, 50 settlements and ports; miles-per-day marching; navies (destroyers, battleships, submarines) with PATROL / BLOCKADE / BOMBARD, naval battles and blockades of trade and supply; artillery fire support; abstract air wings and air superiority; weather and seasons (Rasputitsa, frostbite, Cold-Weather Kits, storms); the CLASSIFIED DILEMMA event deck; 5.56mm re-arming. ✅ |
+| 8 | Commanders with traits, strategic bombing of factories (air wings over industrial centres), amphibious landings, multiple research slots. |
 | 9 | Domestic Politics & the Draft (§7.4): war weariness, rationing, conscription laws, factions. |
 | 10 | Diplomacy, save/load, balance pass. |
 
@@ -650,6 +829,11 @@ a formation, and the home front pays for all of it.
 - Overproduction piles up in depots (rifle and ammunition stockpiles grow fast). Should stockpiles cost upkeep, or spoil?
 - Civil morale drifts down over a campaign even at Normal taxes (about 62 → 39 in 40 weeks, from expired dispatches
   and bankruptcy-free wear). Is that the right baseline pressure, or should peace and victories restore it faster?
-- The 5.56mm rifle can be researched and built, but no template re-arms with it yet (mixed-caliber logistics).
+- Civil morale drift is now gentler in a typical campaign (median 54 after 40 weeks in a 12-seed survey), because
+  several dilemma choices restore it. Keep the deck's morale gifts, or make dilemmas net-negative?
+- Frostbite in the first winter costs Kestria 450–3,800 men in the survey (most formations sit in winter quarters).
+  Harsher? Should formations in trenches count as winter quarters?
+- Should air wings bomb factories and rail (strategic bombing) in Phase 8, or stay purely tactical?
+- Warships cross the map in 2–3 weeks (70–90 mi/day operational). Slow them for gameplay, or keep it realistic?
 - Should the player see a supply-flow projection (who will be OVEREXTENDED if a move order completes) before
   confirming an order?

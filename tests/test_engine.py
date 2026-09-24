@@ -10,6 +10,7 @@ from src.engine.fail_states import check_fail_state
 from src.engine.intel import estimate
 from src.engine.tick_engine import build_default_engine
 from src.models import Email, EmailOption, FollowUp
+from tests.conftest import settle_dilemma
 
 
 @pytest.fixture
@@ -24,7 +25,8 @@ def first(state, template_id):
 
 def test_new_game_delivers_turn_one_emails(game):
     state, _ = game
-    assert {m.template_id for m in state.inbox.messages} == {"brief_001", "treasury_001", "intel_001"}
+    assert {m.template_id for m in state.inbox.messages} == {"brief_001", "treasury_001", "intel_001",
+                                                              "weather_bulletin"}
     assert all(s.turn > 1 for s in state.schedule)
 
 
@@ -122,6 +124,7 @@ def test_intel_estimates_are_ranges_and_sometimes_lie():
     assert honest_hits > 0.5 * (500 - len(lies))
 
 
+@pytest.mark.live
 @pytest.mark.parametrize("seed", range(40))
 def test_random_playthroughs_never_crash(seed):
     state = new_game(seed=seed)
@@ -131,6 +134,7 @@ def test_random_playthroughs_never_crash(seed):
         for email in state.inbox.awaiting_response():
             if rng.random() < 0.7:
                 respond(state, email.id, rng.choice(email.options).id)
+        settle_dilemma(state, rng)
         engine.advance()
         if state.game_over:
             break

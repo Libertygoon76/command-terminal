@@ -119,7 +119,8 @@ def unit_report(state: GameState, unit: Unit) -> UnitIntel:
 
     # A formation we can name, we can also type. Only unidentified contacts get misclassified.
     identified = rng.random() < accuracy
-    templates = [u["id"] for u in state.catalog["units"]["units"]]
+    domain = state.domain(unit)  # a warship is never mistaken for a tank, nor the reverse
+    templates = [u["id"] for u in state.catalog["units"]["units"] if u.get("domain", "land") == domain]
     misidentify = not identified and rng.random() < (1 - accuracy) * float(
         cfg.get("unit_recon", {}).get("misidentify_factor", 0.35)
     )

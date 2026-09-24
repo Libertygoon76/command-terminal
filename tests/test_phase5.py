@@ -22,6 +22,7 @@ from src.engine.production import ProductionError, ai_rebalance, assign_factorie
 from src.engine.systems import TickReport
 from src.engine.tick_engine import build_default_engine
 from src.models import ASSAULT, DEFEND, ENGAGED, ROUTING, WITHDRAW
+from tests.conftest import settle_dilemma
 
 
 @pytest.fixture
@@ -126,7 +127,7 @@ def test_cut_off_units_get_no_equipment(quiet):
     state, _ = quiet
     state.config["logistics"]["zoc_radius"] = 3
     unit = state.unit("kes_7_arm")
-    state.unit("vosk_4_rifle").location = (62, 21)
+    state.unit("vosk_4_rifle").location = (112, 38)
     unit.equipment_inventory["shell_76"] = 0
     update_supply(state)
     assert unit.supply_state == "isolated" and unit.equipment_inventory["shell_76"] == 0
@@ -147,7 +148,7 @@ def test_replacements_come_from_the_manpower_pool(quiet):
 
 def test_combat_drains_ammunition_and_kills(quiet):
     state, _ = quiet
-    state.unit("kes_1_inf").location = (76, 7)
+    state.unit("kes_1_inf").location = (128, 18)
     ours, theirs = engage(state, "kes_1_inf", "vosk_4_rifle")
     ammo = (ours.equipment_inventory["ammo_762"], ours.equipment_inventory["shell_152_he"])
     enemy_ammo = theirs.equipment_inventory["ammo_762"]
@@ -186,16 +187,16 @@ def test_no_fuel_grounds_tanks_even_with_shells(quiet):
 
 def test_terrain_trenches_and_stance_raise_defense(quiet):
     state, _ = quiet
-    unit = state.unit("kes_2_inf")  # (69, 21): plains, next to the trench line at x=71? no: 2 columns away
+    unit = state.unit("kes_2_inf")
     unit.stance = DEFEND
-    unit.location = (70, 21)  # beside the Kestrian trench line
+    unit.location = (122, 22)  # beside the Kestrian trench line
     entrenched = defense(state, unit)
-    unit.location = (40, 26)  # open river valley, no trench
+    unit.location = (61, 46)  # open river valley, no trench
     open_ground = defense(state, unit)
-    unit.location = (60, 10)  # Stonereach mountains
+    unit.location = (70, 14)  # Stonereach mountains
     mountain = defense(state, unit)
     assert entrenched > open_ground and mountain > open_ground
-    unit.location = (40, 26)
+    unit.location = (61, 46)
     unit.stance = ASSAULT
     assert defense(state, unit) < open_ground
 
@@ -211,7 +212,7 @@ def test_assault_hits_harder_but_burns_more_ammo(quiet):
 
 def test_rout_retreats_and_victor_takes_the_cell(quiet):
     state, _ = quiet
-    state.unit("kes_1_inf").location = (76, 7)
+    state.unit("kes_1_inf").location = (128, 18)
     ours, theirs = engage(state, "kes_1_inf", "vosk_4_rifle")
     theirs.morale = 15.5  # one more week of fire will break them
     origin = theirs.location
@@ -225,12 +226,12 @@ def test_rout_retreats_and_victor_takes_the_cell(quiet):
     aar = [m for m in report.new_messages if m.template_id == "after_action_report"]
     assert aar and "VICTORY" in aar[0].subject and "CASUALTIES" in aar[0].body
     with pytest.raises(OrderError):
-        issue_move_order(state, theirs.id, (90, 7), nation_id="vosk")  # routing units ignore orders
+        issue_move_order(state, theirs.id, (140, 20), nation_id="vosk")  # routing units ignore orders
 
 
 def test_destroyed_units_leave_the_order_of_battle(quiet):
     state, _ = quiet
-    state.unit("kes_1_inf").location = (76, 7)
+    state.unit("kes_1_inf").location = (128, 18)
     ours, theirs = engage(state, "kes_1_inf", "vosk_4_rifle")
     theirs.strength = 3
     CombatSystem().on_tick(state, TickReport(2, ""))
@@ -241,7 +242,7 @@ def test_destroyed_units_leave_the_order_of_battle(quiet):
 
 def test_withdraw_breaks_contact_and_ends_battle(quiet):
     state, engine = quiet
-    state.unit("kes_1_inf").location = (76, 7)
+    state.unit("kes_1_inf").location = (128, 18)
     ours, theirs = engage(state, "kes_1_inf", "vosk_4_rifle")
     set_stance(state, ours.id, WITHDRAW)
     for _ in range(4):
@@ -255,7 +256,7 @@ def test_withdraw_breaks_contact_and_ends_battle(quiet):
 
 def test_multi_week_battle_sends_weekly_sitreps(quiet):
     state, engine = quiet
-    state.unit("kes_1_inf").location = (76, 7)
+    state.unit("kes_1_inf").location = (128, 18)
     engage(state, "kes_1_inf", "vosk_4_rifle")
     for _ in range(3):
         engine.advance()
@@ -276,6 +277,7 @@ def test_stance_rules():
     assert _choose_ai_stance(state, unit, 10000, 10000) == DEFEND
 
 
+@pytest.mark.live
 @pytest.mark.parametrize("seed", range(8))
 def test_fuzzed_war_keeps_invariants(seed):
     state = new_game(seed=seed)
@@ -290,11 +292,12 @@ def test_fuzzed_war_keeps_invariants(seed):
                 continue
             if rng.random() < 0.3:
                 try:
-                    issue_move_order(state, unit.id, (rng.randint(60, 90), rng.randint(5, 30)))
+                    issue_move_order(state, unit.id, (rng.randint(105, 140), rng.randint(14, 58)))
                 except OrderError:
                     pass
             if rng.random() < 0.2:
                 set_stance(state, unit.id, rng.choice([DEFEND, ASSAULT, WITHDRAW]))
+        settle_dilemma(state, rng)
         engine.advance()
         if state.game_over:
             break
@@ -363,7 +366,7 @@ def test_war_room_stance_key_cycles():
             await pilot.press("4")
             await pilot.pause()
             canvas = app.screen.query_one(MapCanvas)
-            canvas.jump_to(69, 8)
+            canvas.jump_to(121, 20)
             await pilot.pause()
             unit = app.game.unit("kes_1_inf")
             assert unit.stance == DEFEND

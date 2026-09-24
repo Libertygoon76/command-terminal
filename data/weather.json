@@ -1,0 +1,53 @@
+{
+  "_comment": [
+    "Weather engine. Every week one continental weather condition is rolled from the month's weights (months: 1-12);",
+    "with `persistence` chance last week's condition simply continues if it can occur this month.",
+    "Condition effects (all multipliers default 1.0):",
+    "  movement     land movement points per week (rail travel included: sidings flood and points freeze too)",
+    "  armor_fuel   fuel burned by ARMOR formations while moving (the Rasputitsa: tracks churn in bottomless mud)",
+    "  supply       weekly supply delivery to formations in the field",
+    "  air          air power (sorties that can fly); 0 grounds every wing",
+    "  freezing     true = frostbite: formations without a Cold-Weather Kit for (nearly) every man lose",
+    "               frost_attrition of their strength and frost_morale morale each week (x winter_quarters when they",
+    "               hold position inside their supply net), and fight at combat x firepower. Kitted formations fight at",
+    "               kitted_combat.",
+    "Storms: each week, with storm_chance[season], a storm sweeps the seas: warships not in port lose",
+    "storm.attrition of their strength (ships founder) and storm.morale morale, and move at storm.sea_movement."
+  ],
+  "seasons": {
+    "1": "Winter", "2": "Winter", "3": "Spring", "4": "Spring", "5": "Spring", "6": "Summer",
+    "7": "Summer", "8": "Summer", "9": "Autumn", "10": "Autumn", "11": "Autumn", "12": "Winter"
+  },
+  "persistence": 0.5,
+  "winter_quarters": 0.35,
+  "kitted_combat": 0.95,
+  "conditions": {
+    "clear": {"name": "Clear", "glyph": "☼", "description": "Clear skies and firm ground."},
+    "heat": {"name": "Summer Heat", "glyph": "☼", "movement": 0.95, "description": "Dust, heat exhaustion and overheated engines."},
+    "rain": {"name": "Rain", "glyph": "≡", "movement": 0.85, "air": 0.6, "description": "Low cloud and sodden roads."},
+    "mud": {"name": "Rasputitsa — Mud Season", "glyph": "≈", "movement": 0.45, "armor_fuel": 2.0, "supply": 0.8, "air": 0.7,
+            "description": "Roads dissolve into bottomless mud. Infantry wade, trucks sink, tanks churn through twice their fuel."},
+    "snow": {"name": "Snow & Hard Frost", "glyph": "*", "movement": 0.7, "air": 0.5, "freezing": true,
+             "frost_attrition": 0.012, "frost_morale": 3, "combat": 0.75,
+             "description": "Deep snow and killing frost. Men without winter kit freeze at their posts."},
+    "blizzard": {"name": "Blizzard", "glyph": "*", "movement": 0.5, "air": 0.0, "freezing": true,
+                 "frost_attrition": 0.025, "frost_morale": 5, "combat": 0.6,
+                 "description": "White-out. Aircraft grounded, columns lost in the drifts, frostbite everywhere."}
+  },
+  "months": {
+    "1": {"snow": 50, "blizzard": 35, "clear": 15},
+    "2": {"snow": 55, "blizzard": 25, "clear": 20},
+    "3": {"mud": 45, "snow": 25, "rain": 20, "clear": 10},
+    "4": {"mud": 65, "rain": 25, "clear": 10},
+    "5": {"clear": 55, "rain": 35, "mud": 10},
+    "6": {"clear": 70, "rain": 20, "heat": 10},
+    "7": {"clear": 60, "heat": 30, "rain": 10},
+    "8": {"clear": 60, "heat": 25, "rain": 15},
+    "9": {"clear": 50, "rain": 45, "mud": 5},
+    "10": {"mud": 50, "rain": 40, "clear": 10},
+    "11": {"mud": 55, "snow": 25, "rain": 20},
+    "12": {"snow": 55, "blizzard": 25, "mud": 10, "clear": 10}
+  },
+  "storm_chance": {"Winter": 0.45, "Autumn": 0.3, "Spring": 0.15, "Summer": 0.05},
+  "storm": {"attrition": 0.03, "morale": 3, "sea_movement": 0.6}
+}

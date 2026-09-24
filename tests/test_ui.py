@@ -153,6 +153,6 @@ def test_hide_archived_toggle():
             assert "treasury_001" not in shown and "brief_001" in shown  # the open one stays
             await pilot.press("h")
             await pilot.pause()
-            assert len(mail_list.query(MailItem)) == 3
+            assert len(mail_list.query(MailItem)) == 4  # brief, treasury, intel, weather bulletin
 
     asyncio.run(run())

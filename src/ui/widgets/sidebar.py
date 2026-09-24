@@ -14,6 +14,7 @@ NAV_ENTRIES = (
     ("military", "MILITARY", "3"),
     ("map", "STRATEGIC MAP", "4"),
     ("research", "RESEARCH", "5"),
+    ("air", "AIR ASSETS", "6"),
 )
 
 

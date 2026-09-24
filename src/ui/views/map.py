@@ -3,7 +3,8 @@
 Orders: select a friendly formation (cursor or Order of Battle list), press M to enter
 targeting mode, move the cursor to the destination (the route and ETA preview live), and press
 ENTER to issue. G types an exact grid reference instead. X cancels a standing order.
-T cycles the selected formation's combat stance (DEFEND -> ASSAULT -> WITHDRAW).
+T cycles the selected formation's combat stance (DEFEND -> ASSAULT -> WITHDRAW), or a warship's
+mission (PATROL -> BLOCKADE -> BOMBARD).
 """
 
 from __future__ import annotations
@@ -27,7 +28,9 @@ from src.engine.map_overlay import (
     marker_for_unit,
     units_in_region,
 )
-from src.engine.movement import OrderError, cancel_order, issue_move_order, plan_route
+from src.engine.movement import SEA, OrderError, cancel_order, issue_move_order, plan_route
+from src.engine.naval_engine import MissionError, blockading, in_port, next_mission, set_mission, ships_left
+from src.engine.tick_engine import miles
 from src.engine.recon import ghost_contacts
 from src.models import Contact, GameState, Unit
 from src.models.nation import morale_band
@@ -40,6 +43,12 @@ STATUS_STYLE = {"holding": palette.PHOSPHOR, "moving": "#4fd8ff", "engaged": f"b
                 "routing": f"bold {palette.AMBER}"}
 STANCE_STYLE = {"defend": palette.PHOSPHOR_BRIGHT, "assault": f"bold {palette.RED}", "withdraw": palette.AMBER}
 STANCE_CYCLE = ("defend", "assault", "withdraw")
+MISSION_STYLE = {"patrol": palette.PHOSPHOR_BRIGHT, "blockade": f"bold {palette.AMBER}", "bombard": f"bold {palette.RED}"}
+MISSION_TEXT = {
+    "patrol": "PATROL — hold station, engage enemy fleets",
+    "blockade": "BLOCKADE — close enemy ports within 3 rows (30 mi)",
+    "bombard": "BOMBARD — shell the coast for land battles within 2.5 rows",
+}
 SUPPLY_STATE_STYLE = {"supplied": palette.PHOSPHOR_BRIGHT, "overextended": palette.AMBER, "isolated": f"bold {palette.RED}"}
 
 
@@ -70,21 +79,33 @@ def _order_text(game: GameState, unit: Unit) -> str:
     if order is None:
         return "NONE — HOLDING POSITION"
     route = plan_route(game, unit, order.target)
-    eta = f" · ETA {route.eta_weeks} WK" if route else " · NO ROUTE"
+    eta = f" · {miles(game, route.cost):,.0f} MI · ETA {route.eta_weeks} WK" if route else " · NO ROUTE"
     return f"MOVE → {grid_ref(order.x, order.y)}{eta}"
 
 
 def friendly_block(game: GameState, unit: Unit) -> Text:
     friendly, _ = _colors(game)
     template = _templates(game)[unit.unit_type]
-    region = game.world_map.region_at(unit.x, unit.y)
+    naval = template.get("domain") == SEA
     full = template["manpower"]
     text = Text()
-    text.append(f"■ FRIENDLY FORMATION  {unit.designation}\n", style=f"bold {friendly}")
+    text.append(f"■ FRIENDLY {'SQUADRON' if naval else 'FORMATION'}  {unit.designation}\n", style=f"bold {friendly}")
     text.append(f"{unit.name.upper()}\n", style=f"bold {palette.PHOSPHOR_BRIGHT}")
     status = unit.status.upper() + (f" ({unit.routing_weeks} WK TO RALLY)" if unit.routing else "")
+    if naval and in_port(game, unit) and unit.status == "holding":
+        status += " · IN PORT"
     _row(text, "STATUS", status, STATUS_STYLE.get(unit.status, palette.PHOSPHOR))
-    _row(text, "STANCE", unit.stance.upper() + "  [T]", STANCE_STYLE.get(unit.stance, palette.PHOSPHOR))
+    if naval:
+        _row(text, "MISSION", MISSION_TEXT.get(unit.mission, unit.mission.upper()) + "  [T]",
+             MISSION_STYLE.get(unit.mission, palette.PHOSPHOR))
+        closing = blockading(game, unit)
+        if unit.mission == "blockade":
+            _row(text, "BLOCKADE", f"CLOSING {', '.join(p.upper() for p in closing)}" if closing
+                 else "NO ENEMY PORT CLOSED (sail within 3 rows of one, uncontested)",
+                 f"bold {palette.AMBER}" if closing else palette.PHOSPHOR_DIM)
+        _row(text, "SHIPS", f"{ships_left(game, unit)} AFLOAT")
+    else:
+        _row(text, "STANCE", unit.stance.upper() + "  [T]", STANCE_STYLE.get(unit.stance, palette.PHOSPHOR))
     battle = next((b for b in game.battles.values() if b.active and unit.id in b.participants), None)
     if battle is not None:
         _row(text, "IN BATTLE", f"{battle.name.upper()} · WEEK {battle.weeks}", f"bold {palette.RED}")
@@ -99,9 +120,11 @@ def friendly_block(game: GameState, unit: Unit) -> Text:
     ammo = fill_ratio(game, unit)
     ammo_style = palette.PHOSPHOR_BRIGHT if ammo >= 0.5 else (palette.AMBER if ammo >= 0.25 else f"bold {palette.RED}")
     _row(text, "AMMUNITION", _bar(ammo * 100), ammo_style)
-    _row(text, "SPEED / RECON", f"{template.get('move_speed', 4)} ROWS/WK · {template.get('detection_radius', 5)} ROWS")
+    from src.engine.movement import pace_mpd
+
+    _row(text, "SPEED / RECON", f"{pace_mpd(game, unit):.0f} MI/DAY · SEES {miles(game, template.get('detection_radius', 5)):.0f} MI")
     _row(text, "COMMANDER", unit.commander or "—")
-    _row(text, "POSITION", f"GRID {grid_ref(unit.x, unit.y)} · {region.name.upper() if region else 'AT SEA'}")
+    _row(text, "POSITION", f"GRID {grid_ref(unit.x, unit.y)} · {game.world_map.place_name(unit.x, unit.y).upper()}")
     text.append("LOADOUT  carried / establishment\n", style=palette.PHOSPHOR_DIM)
     items = {e["id"]: e for e in game.catalog["equipment"]}
     for item_id, wanted in establishment(game, unit).items():
@@ -116,7 +139,6 @@ def hostile_block(game: GameState, unit: Unit) -> Text:
     _, hostile = _colors(game)
     report = unit_report(game, unit)
     template = _templates(game).get(report.reported_type, {})
-    region = game.world_map.region_at(unit.x, unit.y)
     text = Text()
     title = f"{unit.designation} {unit.name.upper()} (PROBABLE)" if report.identified else "UNIDENTIFIED FORMATION"
     text.append(f"◆ HOSTILE {contact_code(game, unit)}\n", style=f"bold {hostile}")
@@ -131,7 +153,7 @@ def hostile_block(game: GameState, unit: Unit) -> Text:
     _row(text, "MORALE", "UNKNOWN", palette.PHOSPHOR_DIM)
     _row(text, "SUPPLY", "UNKNOWN", palette.PHOSPHOR_DIM)
     _row(text, "INTENTIONS", "UNKNOWN", palette.PHOSPHOR_DIM)
-    _row(text, "POSITION", f"GRID {grid_ref(unit.x, unit.y)} · {region.name.upper() if region else 'AT SEA'}")
+    _row(text, "POSITION", f"GRID {grid_ref(unit.x, unit.y)} · {game.world_map.place_name(unit.x, unit.y).upper()}")
     _row(text, "ASSESSED", f"WK {report.turn:03d} · REVISED WEEKLY", palette.PHOSPHOR_DIM)
     return text
 
@@ -162,8 +184,15 @@ def sector_block(game: GameState, x: int, y: int) -> Text:
     feature = next((f for f in world.features if f.x == x and f.y == y), None)
     if feature:
         _row(text, "SETTLEMENT", f"{feature.name.upper()} ({feature.type.upper()})")
+        if feature.type == "port":
+            _row(text, "OVERSEAS TRADE", f"{feature.trade:,} {game.currency}/WK")
+            holder = game.blockades.get(feature.name)
+            _row(text, "HARBOUR", f"BLOCKADED BY {game.nations[holder].adjective.upper()} WARSHIPS" if holder else "OPEN",
+                 f"bold {palette.RED}" if holder else palette.PHOSPHOR_BRIGHT)
     if region is None:
-        _row(text, "SECTOR", "OPEN WATER", palette.CYAN)
+        _row(text, "SECTOR", f"OPEN WATER · {world.sea_zone_at(x, y).upper()}", palette.CYAN)
+        text.append("Only warships sail here. Select a squadron, M to sail, T to set its mission.\n",
+                    style=palette.PHOSPHOR_DIM)
         return text
     owner = region.owner
     owner_name = game.nations[owner].name.upper() if owner in game.nations else owner.upper()
@@ -179,6 +208,11 @@ def sector_block(game: GameState, x: int, y: int) -> Text:
     units = units_in_region(game, region.id)
     friendly = sum(1 for u in units if game.is_friendly(u.nation_id))
     _row(text, "FORCES", f"{friendly} FRIENDLY · {len(units) - friendly} HOSTILE OBSERVED")
+    from src.engine.air_engine import sector_status
+
+    air = sector_status(game, region.id, game.player.id)
+    _row(text, "AIR SITUATION", air, {"SUPERIORITY": palette.PHOSPHOR_BRIGHT, "DENIED": f"bold {palette.RED}",
+                                      "CONTESTED": palette.AMBER}.get(air, palette.PHOSPHOR_DIM))
     return text
 
 
@@ -255,21 +289,23 @@ class MapView(Horizontal):
         game = self.app.game
         friendly, hostile = _colors(game)
         text = Text()
-        for symbol, label in (("X", "INF"), ("O", "ARMOR"), ("•", "ARTY"), ("H", "HQ/LOG"), ("m", "MILITIA"),
-                              ("*", "STACK"), ("?", "LOST")):
+        for symbol, label in (("X", "INF"), ("O", "ARMOR"), ("•", "ARTY"), ("H", "HQ"), ("m", "MILITIA"),
+                              ("D", "DESTROYERS"), ("B", "BATTLESHIPS"), ("U", "SUBS"), ("*", "STACK"), ("?", "LOST")):
             text.append(f"[{symbol}]", style=f"bold {palette.PHOSPHOR_BRIGHT}")
             text.append(f" {label}  ", style=palette.PHOSPHOR_DIM)
         text.append("■", style=f"bold {friendly}")
         text.append(" FRIENDLY  ", style=palette.PHOSPHOR_DIM)
         text.append("■", style=f"bold {hostile}")
         text.append(" HOSTILE\n", style=palette.PHOSPHOR_DIM)
-        for glyph, label, style in (("★", "CAPITAL", "#ffd24a"), ("◉", "CITY", "#e8e8e8"), ("⊕", "PORT", "#e8e8e8"),
-                                    ("═", "RAIL", "#9a7a3a"), ("┈", "ROAD", "#7a6a48"), ("┆", "TRENCH", "#6a5a2a"),
-                                    ("≈", "MARSH", "#2aa0a0"), ("^", "MOUNT", "#8a8f86"), ("◇", "ORDER", friendly)):
+        for glyph, label, style in (("★", "CAPITAL", "#ffd24a"), ("◉", "CITY", "#e8e8e8"), ("▣", "INDUSTRY", "#d0b070"),
+                                    ("⊕", "PORT", "#e8e8e8"), ("○", "TOWN", "#b8b8b8"), ("═", "RAIL", "#9a7a3a"),
+                                    ("┈", "ROAD", "#7a6a48"), ("┆", "TRENCH", "#6a5a2a"), ("≈", "MARSH/RIVER", "#2aa0a0"),
+                                    ("∩", "HILLS", "#8a7a5a"), ("^", "MOUNT", "#8a8f86"), ("~", "SEA", "#1f5670"),
+                                    ("◇", "ORDER", friendly)):
             text.append(glyph, style=f"bold {style}")
             text.append(f" {label}  ", style=palette.PHOSPHOR_DIM)
-        text.append("\nARROWS · SHIFT ×5 · [ ] cycle · C center · CLICK · M/O move · G grid · X cancel · S supply",
-                    style=palette.PHOSPHOR_DIM)
+        text.append("\nARROWS · SHIFT ×5 · [ ] cycle · C center · CLICK · M/O move · G grid · X cancel · S supply · "
+                    "T stance/mission · 1 ROW = 10 MI", style=palette.PHOSPHOR_DIM)
         return text
 
     # --- selection -----------------------------------------------------------
@@ -289,11 +325,12 @@ class MapView(Horizontal):
             bar.append(" TARGETING ", style=f"bold #000000 on #4fd8ff")
             bar.append(f" {unit.designation} → GRID {grid_ref(x, y)}  ", style=f"bold {palette.PHOSPHOR_BRIGHT}")
             if route is None:
-                bar.append("NO LAND ROUTE", style=f"bold {palette.RED}")
+                naval = unit is not None and game.domain(unit) == SEA
+                bar.append("NO SEA ROUTE (open water only)" if naval else "NO LAND ROUTE", style=f"bold {palette.RED}")
             elif not route.path:
                 bar.append("ALREADY THERE", style=palette.AMBER)
             else:
-                bar.append(f"ETA {route.eta_weeks} WK · {len(route.path)} CELLS", style="#4fd8ff")
+                bar.append(f"ETA {route.eta_weeks} WK · {miles(game, route.cost):,.0f} MI", style="#4fd8ff")
             bar.append("   ENTER issue · G type grid · ESC abort", style=palette.PHOSPHOR_DIM)
         else:
             unit = self._selected_friendly()
@@ -301,8 +338,12 @@ class MapView(Horizontal):
                 bar.append(" SELECTED ", style=f"bold #000000 on {palette.PHOSPHOR_DIM}")
                 bar.append(f" {unit.designation} {unit.name.upper()}  ", style=palette.PHOSPHOR_BRIGHT)
                 bar.append(_order_text(game, unit), style="#4fd8ff" if unit.active_order else palette.PHOSPHOR_DIM)
-                bar.append(f"  STANCE {unit.stance.upper()}", style=STANCE_STYLE.get(unit.stance, palette.PHOSPHOR))
-                bar.append("   M move · G grid · X cancel · T stance", style=palette.PHOSPHOR_DIM)
+                if game.domain(unit) == SEA:
+                    bar.append(f"  MISSION {unit.mission.upper()}", style=MISSION_STYLE.get(unit.mission, palette.PHOSPHOR))
+                    bar.append("   M sail · G grid · X cancel · T mission", style=palette.PHOSPHOR_DIM)
+                else:
+                    bar.append(f"  STANCE {unit.stance.upper()}", style=STANCE_STYLE.get(unit.stance, palette.PHOSPHOR))
+                    bar.append("   M move · G grid · X cancel · T stance", style=palette.PHOSPHOR_DIM)
             else:
                 bar.append(" NO FORMATION SELECTED ", style=f"{palette.PHOSPHOR_DIM}")
                 bar.append("  place the cursor on a friendly [symbol] or pick one in the Order of Battle",
@@ -402,6 +443,16 @@ class MapView(Horizontal):
         unit = self._order_guard()
         if unit is None:
             return
+        if self.app.game.domain(unit) == SEA:
+            mission = next_mission(unit.mission)
+            try:
+                set_mission(self.app.game, unit.id, mission)
+            except MissionError as error:
+                self.notify(str(error), title="MISSION", severity="warning")
+                return
+            self.app.state_changed()
+            self.notify(f"{unit.designation} → {MISSION_TEXT[mission]}", title="NAVAL MISSION")
+            return
         nxt = STANCE_CYCLE[(STANCE_CYCLE.index(unit.stance) + 1) % len(STANCE_CYCLE)] if unit.stance in STANCE_CYCLE else "defend"
         try:
             set_stance(self.app.game, unit.id, nxt)
@@ -438,6 +489,8 @@ class MapView(Horizontal):
             prompt.append(f"[{templates[unit.unit_type]['symbol']}] ", style=f"bold {friendly_color}")
             prompt.append(f"{unit.designation} ", style=palette.PHOSPHOR_BRIGHT)
             prompt.append(unit.name, style=palette.PHOSPHOR)
+            if game.domain(unit) == SEA:
+                prompt.append(f"  {unit.mission.upper()}", style=MISSION_STYLE.get(unit.mission, palette.PHOSPHOR))
             if unit.supply_state != "supplied":
                 prompt.append(f"  {unit.supply_state.upper()}", style=SUPPLY_STATE_STYLE[unit.supply_state])
             if unit.routing:

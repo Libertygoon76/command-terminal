@@ -34,6 +34,7 @@ class StatusBar(Horizontal):
     def compose(self) -> ComposeResult:
         yield Static(id="sb-title")
         yield Static(id="sb-date", classes="sb-cell")
+        yield Static(id="sb-weather", classes="sb-cell")
         yield Static(id="sb-treasury", classes="sb-cell")
         yield Static(id="sb-manpower", classes="sb-cell")
         yield Static(id="sb-morale", classes="sb-cell")
@@ -140,6 +141,14 @@ class StatusBar(Horizontal):
         self.query_one("#sb-title", Static).update(title)
 
         self.query_one("#sb-date", Static).update(label_value("DATE", f"{game.clock.date_str}  WK {self.turn:03d}"))
+        from src.engine.weather_engine import condition, is_freezing, storm_at_sea
+
+        cond = condition(game)
+        season = game.weather.get("season", "").upper()
+        style = palette.CYAN if is_freezing(game) else (palette.AMBER if cond.get("movement", 1.0) < 0.6 else palette.PHOSPHOR_BRIGHT)
+        weather = label_value("WX", Text(f"{cond.get('glyph', '')} {season} · {cond.get('name', 'Clear').split(' — ')[0].upper()}"
+                                         + (" · STORMS" if storm_at_sea(game) else ""), style=style))
+        self.query_one("#sb-weather", Static).update(weather)
 
         treasury_style = palette.RED if self.treasury < 0 else palette.PHOSPHOR_BRIGHT
         treasury = label_value("TREASURY", palette.money(self.treasury, game.currency), treasury_style)

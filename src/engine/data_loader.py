@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from src.engine.effects import validate_effects
-from src.models import AIState, Email, GameClock, GameState, Nation, ScheduledEmail, Unit, WorldMap
+from src.models import MISSIONS, AIState, AirWing, Email, GameClock, GameState, Nation, ScheduledEmail, Unit, WorldMap
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
@@ -56,8 +56,9 @@ def validate_email_library(library: dict[str, Email], resource_ids: set[str]) ->
 
 def load_orbat(nations: dict[str, Nation], world: WorldMap, units_catalog: dict[str, Any],
                data_dir: Path = DATA_DIR, equipment_ids: set[str] | None = None) -> None:
-    """Load starting formations onto their nations, validating every map coordinate, and seed
-    each formation's equipment_inventory from its template loadout (scaled to current strength)."""
+    """Load starting formations onto their nations, validating every map coordinate (land formations
+    on land, warships at sea), and seed each formation's equipment_inventory from its template loadout
+    plus the upgrades its nation has already researched (scaled to current strength)."""
     template_by_id = {u["id"]: u for u in units_catalog["units"]}
     templates = set(template_by_id)
     for template in units_catalog["units"]:
@@ -81,12 +82,22 @@ def load_orbat(nations: dict[str, Nation], world: WorldMap, units_catalog: dict[
         x, y = unit.location
         if not (1 <= x < world.width - 1 and 0 <= y < world.height):
             raise ValueError(f"{where}: location {unit.location} is off the map (symbol needs x-1..x+1)")
-        if world.is_sea(x, y):
+        template = template_by_id[unit.unit_type]
+        naval = template.get("domain", "land") == "sea"
+        if naval and not world.is_sea(x, y):
+            raise ValueError(f"{where}: warship at {unit.location} is on land")
+        if not naval and world.is_sea(x, y):
             raise ValueError(f"{where}: location {unit.location} is at sea")
+        if unit.mission not in MISSIONS:
+            raise ValueError(f"{where}: unknown mission {unit.mission!r}")
         if not unit.equipment_inventory:
-            template = template_by_id[unit.unit_type]
             share = unit.strength / max(1, template["manpower"])
-            unit.equipment_inventory = {k: round(v * share) for k, v in template.get("loadout", {}).items()}
+            loadout = dict(template.get("loadout", {}))
+            for tech_id, extra in template.get("upgrades", {}).items():
+                if tech_id in nations[unit.nation_id].known_techs:
+                    for item, qty in extra.items():
+                        loadout[item] = loadout.get(item, 0) + qty
+            unit.equipment_inventory = {k: round(v * share) for k, v in loadout.items()}
         nations[unit.nation_id].units.append(unit)
 
 
@@ -107,7 +118,7 @@ def load_ai_states(nations: dict[str, Nation], player_id: str, world: WorldMap,
 
 def new_game(data_dir: Path = DATA_DIR, seed: int | None = None) -> GameState:
     """Build a fresh GameState from the JSON data files."""
-    from src.engine.event_manager import deliver_due_emails  # avoid import cycle
+    from src.engine.event_manager import deliver, deliver_due_emails  # avoid import cycle
 
     config = load_json("config.json", data_dir)
 
@@ -135,6 +146,8 @@ def new_game(data_dir: Path = DATA_DIR, seed: int | None = None) -> GameState:
     world = WorldMap.from_dict(load_json("map/world.json", data_dir))
     catalog["equipment"] = load_json("equipment.json", data_dir)["equipment"]
     catalog["tech_tree"] = load_json("tech_tree.json", data_dir)
+    catalog["weather"] = load_json("weather.json", data_dir)
+    catalog["events_deck"] = load_json("events_deck.json", data_dir)
     equipment_ids = {e["id"] for e in catalog["equipment"]}
     for nation in nations.values():
         if not nation.known_techs:
@@ -161,6 +174,10 @@ def new_game(data_dir: Path = DATA_DIR, seed: int | None = None) -> GameState:
 
     library = load_email_library(data_dir)
     validate_email_library(library, {r["id"] for r in catalog["resources"]})
+    validate_deck(catalog["events_deck"], {r["id"] for r in catalog["resources"]}, equipment_ids)
+    for feature in world.ports():
+        if feature.harbour and not world.is_sea(*feature.harbour):
+            raise ValueError(f"map/world.json: harbour of {feature.name} is not at sea")
     schedule = sorted(
         (ScheduledEmail(e.id, e.arrives_turn) for e in library.values() if e.arrives_turn is not None),
         key=lambda s: s.turn,
@@ -184,7 +201,11 @@ def new_game(data_dir: Path = DATA_DIR, seed: int | None = None) -> GameState:
         ai_states=load_ai_states(nations, player_id, world, data_dir),
     )
     for nation_id, ai in state.ai_states.items():
-        ai.baseline_strength = sum(u.strength for u in nations[nation_id].units)
+        ai.baseline_strength = sum(u.strength for u in nations[nation_id].units if state.domain(u) == "land")
+    state.air_wings = load_air_wings(nations, world, data_dir)
+    from src.engine.weather_engine import bulletin_email, roll_weather
+
+    state.weather = roll_weather(state)  # the campaign opens in the dead of winter
     from src.engine.logistics_engine import compute_network, supply_status
     from src.engine.recon import update_contacts
 
@@ -194,4 +215,34 @@ def new_game(data_dir: Path = DATA_DIR, seed: int | None = None) -> GameState:
         for unit in nation.units:
             unit.supply_state = supply_status(state, unit, info)[0]
     deliver_due_emails(state)
+    deliver(state, bulletin_email(state))
     return state
+
+
+def load_air_wings(nations: dict[str, Nation], world: WorldMap, data_dir: Path = DATA_DIR) -> list[AirWing]:
+    wings = []
+    for raw in load_json("air.json", data_dir)["wings"]:
+        where = f"air.json [{raw['id']}]"
+        if raw["nation"] not in nations:
+            raise ValueError(f"{where}: unknown nation {raw['nation']!r}")
+        if raw.get("sector") and raw["sector"] not in world.regions:
+            raise ValueError(f"{where}: unknown sector {raw['sector']!r}")
+        wings.append(AirWing(id=raw["id"], name=raw["name"], nation_id=raw["nation"], aircraft=int(raw["aircraft"]),
+                             establishment=int(raw.get("establishment", 48)), sector=raw.get("sector")))
+    return wings
+
+
+def validate_deck(deck: dict[str, Any], resource_ids: set[str], equipment_ids: set[str]) -> None:
+    seen = set()
+    for card in deck.get("cards", []):
+        where = f"events_deck.json [{card.get('id')}]"
+        if card["id"] in seen:
+            raise ValueError(f"{where}: duplicate card id")
+        seen.add(card["id"])
+        choices = card.get("choices", [])
+        if not 2 <= len(choices) <= 3:
+            raise ValueError(f"{where}: a dilemma needs 2 or 3 choices")
+        if len({c["id"] for c in choices}) != len(choices):
+            raise ValueError(f"{where}: duplicate choice ids")
+        for choice in choices:
+            validate_effects(choice.get("effects", {}), f"{where} choice {choice['id']!r}", resource_ids, equipment_ids)

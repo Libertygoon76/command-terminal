@@ -15,8 +15,19 @@ A formation that has run dry fights with bayonets: its output drops to near zero
     casualties to enemy unit i = applied x casualty_factor x (strength_i / Σ strength) / defense_i
     defense_i = terrain defense x fortification x stance.defense x body armor
 
-Fortification: within `fort_range` columns of the unit's OWN trench line, or in urban terrain; never for
-formations in ASSAULT stance (they have gone over the top).
+Fortification: within `fort_range` columns of the unit's OWN trench line; urban fortification in urban
+terrain or within settlement_fortification_range rows of a town or city; never for formations in ASSAULT
+stance (they have gone over the top).
+
+COMBINED ARMS (Phase 7) — each side's weekly damage is increased by:
+  * ARTILLERY support: artillery formations (template `support`) NOT themselves in contact, within
+    artillery_support_range rows of one of the side's engaged formations, fire for that battle: their
+    guns' firepower x artillery_support_multiplier (thousands of shells a week). They take no casualties
+    unless the enemy reaches them. Each battery supports one battle a week.
+  * NAVAL GUNFIRE: warships on a BOMBARD mission within naval.bombard_range rows (naval_engine).
+  * AIR SUPPORT: x(1 + air bonus) when the side holds air superiority over the battle's sector (air_engine).
+  * WEATHER: formations without winter kit fight at the freezing condition's `combat` factor.
+Naval battles (fleets in contact at sea) are resolved by naval_engine.fight_naval_round.
 Casualties destroy equipment too (equipment `loss_rate` x casualty fraction) and cost morale.
 
 A formation BREAKS when morale < rout_morale or strength < rout_strength_fraction of its
@@ -37,7 +48,7 @@ from dataclasses import dataclass, field
 
 from src.engine.event_manager import deliver
 from src.engine.intel import estimate
-from src.engine.movement import passable, refresh_engagements, scaled_distance
+from src.engine.movement import SEA, passable, refresh_engagements, scaled_distance
 from src.engine.systems import SimulationSystem, TickReport
 from src.engine.text import fill
 from src.models import ASSAULT, DEFEND, ENGAGED, HOLDING, ROUTING, STANCES, WITHDRAW, Battle, Email, GameState, Unit
@@ -54,7 +65,7 @@ def _cfg(state: GameState) -> dict:
 
 
 def _template(state: GameState, unit: Unit) -> dict:
-    return next(t for t in state.catalog["units"]["units"] if t["id"] == unit.unit_type)
+    return state.template(unit.unit_type)
 
 
 def _stance(state: GameState, stance_id: str) -> dict:
@@ -153,6 +164,9 @@ def fortification(state: GameState, unit: Unit) -> float:
     region = world.region_at(*unit.location)
     if region is not None and region.terrain == "urban":
         return float(cfg.get("urban_fortification", 1.3))
+    reach = float(cfg.get("settlement_fortification_range", 1))
+    if any(scaled_distance(state, (f.x, f.y), unit.location) <= reach for f in world.features):
+        return float(cfg.get("urban_fortification", 1.3))  # street fighting in a town or city
     return 1.0
 
 
@@ -182,7 +196,7 @@ def defense(state: GameState, unit: Unit) -> float:
     region = world.region_at(*unit.location)
     terrain = float(world.terrain_info(region.terrain).get("defense", 1.0)) if region else 1.0
     value = terrain * fortification(state, unit) * float(_stance(state, unit.stance).get("defense", 1.0))
-    value *= 1.0 + state.nations[unit.nation_id].modifiers.get(f"stance_defense:{unit.stance}", 0.0)  # doctrine
+    value *= 1.0 + state.nations[unit.nation_id].modifier(f"stance_defense:{unit.stance}")  # doctrine
     vests = unit.equipment_inventory.get("kevlar_vest", 0)
     if vests and vests >= unit.strength * 0.9:
         reduction = float(_items(state).get("kevlar_vest", {}).get("combat", {}).get("casualty_reduction", 1.0))
@@ -222,8 +236,7 @@ def battle_groups(state: GameState) -> list[set[str]]:
 
 
 def _battle_name(state: GameState, location: tuple[int, int]) -> str:
-    region = state.world_map.region_at(*location)
-    place = region.name if region else "the Coast"
+    place = state.world_map.place_name(*location)
     if place.startswith("The "):
         place = "the " + place[4:]
     base = f"Battle of {place}"
@@ -266,14 +279,14 @@ def _fallback_target(state: GameState, unit: Unit) -> tuple[int, int]:
         return min(hqs, key=lambda h: scaled_distance(state, h.location, unit.location)).location
     from src.engine.logistics_engine import supply_sources
 
-    sources = supply_sources(state, unit.nation_id) or {unit.location}
+    sources = list(supply_sources(state, unit.nation_id)) or [unit.location]
     return min(sources, key=lambda c: scaled_distance(state, c, unit.location))
 
 
 def fall_back(state: GameState, unit: Unit, cells: int) -> None:
     """Step up to `cells` cells toward the fallback target, away from the enemy, never onto an enemy."""
     target = _fallback_target(state, unit)
-    enemies = [u for u in state.all_units() if u.nation_id != unit.nation_id]
+    enemies = [u for u in state.all_units() if u.nation_id != unit.nation_id and state.domain(u) != SEA]
     for _ in range(cells):
         options = []
         x, y = unit.location
@@ -312,6 +325,38 @@ class RoundResult:
     routed: list[Unit]
     destroyed: list[Unit]
     withdrew: list[Unit]
+    support: dict[str, list[str]] = field(default_factory=dict)  # nation -> fire-support lines (for the SITREP)
+
+
+def artillery_support(state: GameState, nation_id: str, engaged: list[Unit], used: set[str]) -> tuple[float, float, list[str]]:
+    """Guns behind the line: (soft, hard, report lines) for `nation_id` in one battle. Consumes their shells."""
+    cfg = _cfg(state)
+    reach = float(cfg.get("artillery_support_range", 2.5))
+    mult = float(cfg.get("artillery_support_multiplier", 1.5))
+    soft = hard = 0.0
+    lines = []
+    for gun in state.nations[nation_id].units:
+        if gun.id in used or gun.engaged or gun.routing or not _template(state, gun).get("support"):
+            continue
+        if not any(scaled_distance(state, gun.location, u.location) <= reach for u in engaged):
+            continue
+        used.add(gun.id)
+        fire = firepower(state, gun)
+        shells = sum(v for k, v in fire.expended.items() if k != "fuel_drums")
+        if shells <= 0:
+            lines.append(f"{gun.designation} in range but OUT OF SHELLS")
+            continue
+        weather = _weather_combat(state, gun)
+        soft += fire.soft * mult * weather
+        hard += fire.hard * mult * weather
+        lines.append(f"{gun.designation} {gun.name}: {shells:,} rounds fired in support")
+    return soft, hard, lines
+
+
+def _weather_combat(state: GameState, unit: Unit) -> float:
+    from src.engine.weather_engine import combat_factor
+
+    return combat_factor(state, unit)
 
 
 def fight_round(state: GameState, battle: Battle, group: set[str]) -> RoundResult:
@@ -328,12 +373,24 @@ def fight_round(state: GameState, battle: Battle, group: set[str]) -> RoundResul
             for unit in side[n]:
                 unit.stance = _choose_ai_stance(state, unit, strength[n], enemy)
 
-    # 1. Everyone fires simultaneously (ammunition is spent now).
+    # 1. Everyone fires simultaneously (ammunition is spent now), with artillery, naval and air support.
+    from src.engine.air_engine import air_bonus
+    from src.engine.naval_engine import bombardment
+
     output: dict[str, tuple[float, float]] = {}
     starved: list[Unit] = []
+    support: dict[str, list[str]] = {}
     lo, hi = cfg.get("noise", [0.8, 1.2])
+    supporters = state.cost_cache.setdefault(("support_used", state.clock.turn), set())
     for n in nations:
         soft = hard = 0.0
+        lines: list[str] = []
+        guns_soft, guns_hard, gun_lines = artillery_support(state, n, side[n], supporters)
+        lines += gun_lines
+        navy_soft, navy_hard, ships = bombardment(state, n, side[n], supporters)
+        lines += [f"{s.designation} {s.name}: naval gunfire from offshore" for s in ships]
+        soft += guns_soft + navy_soft
+        hard += guns_hard + navy_hard
         for unit in side[n]:
             fire = firepower(state, unit)
             for item_id, used in fire.expended.items():
@@ -343,9 +400,16 @@ def fight_round(state: GameState, battle: Battle, group: set[str]) -> RoundResul
             mult = float(_stance(state, unit.stance).get("attack", 1.0)) * (0.5 + unit.morale / 200)
             if unit.supply < float(state.config.get("logistics", {}).get("low_supply_threshold", 25)):
                 mult *= float(cfg.get("low_supply_factor", 0.6))
+            mult *= _weather_combat(state, unit)
             mult *= rng.uniform(lo, hi)
             soft += fire.soft * mult
             hard += fire.hard * mult
+        air = air_bonus(state, n, battle.location)
+        if air > 1.0:
+            soft *= air
+            hard *= air
+            lines.append(f"Air superiority over the sector: +{air - 1:.0%} firepower")
+        support[n] = lines
         output[n] = (soft, hard)
 
     # 2. Casualties to each side from everyone else.
@@ -422,7 +486,7 @@ def fight_round(state: GameState, battle: Battle, group: set[str]) -> RoundResul
         if unit.status == ROUTING:
             unit.engaged_with = []
     battle.weeks += 1
-    return RoundResult(battle, casualties, starved, routed, destroyed, withdrew)
+    return RoundResult(battle, casualties, starved, routed, destroyed, withdrew, support)
 
 
 def _still_fighting(state: GameState, battle: Battle) -> bool:
@@ -486,6 +550,13 @@ def sitrep_email(state: GameState, result: RoundResult) -> Email:
         lines.append(f"  ! Below a quarter of establishment: {', '.join(critical)}.")
     if not starved and not critical:
         lines.append("  Stocks adequate.")
+    ours_support = result.support.get(player, [])
+    enemy_support = [line for n, sup in result.support.items() if n != player for line in sup]
+    lines += ["", "FIRE SUPPORT"]
+    lines += [f"  {line}" for line in ours_support] or [
+        "  None. (Artillery 1-2 cells behind the line, warships on BOMBARD offshore, or air superiority.)"]
+    if enemy_support:
+        lines.append(f"  ! Enemy supporting fire observed ({len(enemy_support)} source(s)).")
     events = []
     events += [f"  {u.designation} has BROKEN and is routing." for u in result.routed if u.nation_id == player]
     events += ["  Enemy formation broken and routing." for u in result.routed if u.nation_id != player]
@@ -579,7 +650,14 @@ class CombatSystem(SimulationSystem):
                     unit.status = HOLDING
                     unit.routing_weeks = 0
 
-        results = [fight_round(state, _battle_for(state, group), group) for group in battle_groups(state)]
+        from src.engine.naval_engine import fight_naval_round, is_naval
+
+        results = []
+        for group in battle_groups(state):
+            battle = _battle_for(state, group)
+            naval = all(is_naval(state, state.unit(i)) for i in group if state.unit(i) is not None)
+            results.append(fight_naval_round(state, battle, group) if naval else fight_round(state, battle, group))
+        state.cost_cache.pop(("support_used", state.clock.turn), None)
         for result in results:
             battle = result.battle
             report.log.append(f"{battle.name}: {result.casualties.get(state.player.id, 0):,} Kestrian casualties.")

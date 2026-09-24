@@ -1,0 +1,56 @@
+{
+  "_comment": [
+    "Air wings: abstract (not drawn on the map). aircraft = current strength; establishment = full strength (refilled",
+    "from the national stockpile's strike_aircraft). sector = starting assignment (region id) or null = at base."
+  ],
+  "wings": [
+    {
+      "id": "kes_1_taw",
+      "name": "1st Tactical Air Wing",
+      "nation": "kestria",
+      "aircraft": 48,
+      "establishment": 48,
+      "sector": null
+    },
+    {
+      "id": "kes_2_taw",
+      "name": "2nd Tactical Air Wing",
+      "nation": "kestria",
+      "aircraft": 44,
+      "establishment": 48,
+      "sector": null
+    },
+    {
+      "id": "kes_3_adw",
+      "name": "3rd Air Defence Wing",
+      "nation": "kestria",
+      "aircraft": 36,
+      "establishment": 48,
+      "sector": null
+    },
+    {
+      "id": "vosk_1_gar",
+      "name": "1st Guards Aviation Regiment",
+      "nation": "vosk",
+      "aircraft": 48,
+      "establishment": 48,
+      "sector": "frontier"
+    },
+    {
+      "id": "vosk_4_faw",
+      "name": "4th Frontal Aviation Wing",
+      "nation": "vosk",
+      "aircraft": 46,
+      "establishment": 48,
+      "sector": null
+    },
+    {
+      "id": "vosk_7_faw",
+      "name": "7th Frontal Aviation Wing",
+      "nation": "vosk",
+      "aircraft": 40,
+      "establishment": 48,
+      "sector": null
+    }
+  ]
+}

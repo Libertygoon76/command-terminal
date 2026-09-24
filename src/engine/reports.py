@@ -51,6 +51,13 @@ def build_status_body(state: GameState) -> str:
         lines.append(_stat("Research", f"{tech['name']} — {weeks_remaining(state, nation, tech['id']):.0f} wk left"))
     else:
         lines.append(_stat("Research", "NO ACTIVE PROJECT"))
+    from src.engine.weather_engine import describe as weather_text
+
+    lines.append(_stat("Weather", weather_text(state)))
+    world = state.world_map
+    closed = [p for p in state.blockades if world.owner_at(*world.feature_named(p).location) == nation.id]
+    if closed:
+        lines.append(_stat("Ports BLOCKADED", ", ".join(closed)))
     in_training = [o for o in state.training if o.nation_id == nation.id]
     lines.append(_stat("In training", ", ".join(f"{o.designation} ({o.weeks_left} wk)" for o in in_training) or "none"))
     awaiting = state.inbox.awaiting_response()

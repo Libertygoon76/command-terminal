@@ -1,8 +1,10 @@
 {
   "_comment": [
-    "Order of battle at game start. location = [x, y] map cell (see data/map/world.json).",
-    "The unit's [symbol] is drawn centred on that cell (x-1 .. x+1). Units sharing a cell, or whose symbols overlap, draw as a stack [*].",
-    "type = template id in units.json. stance = defend | assault | withdraw. Vosk values are ground truth: the player only sees estimates."
+    "Order of battle at game start. location = [x, y] map cell (see data/map/world.json). Land formations must stand on",
+    "land, warships on open water (their home harbour cells are listed per port in world.json).",
+    "The unit's [symbol] is drawn centred on that cell (x-1 .. x+1). Units sharing a cell, or whose symbols overlap,",
+    "draw as a stack [*]. type = template id in units.json. stance = defend | assault | withdraw. mission (warships) =",
+    "patrol | blockade | bombard. Vosk values are ground truth: the player only sees estimates."
   ],
   "units": [
     {
@@ -12,8 +14,8 @@
       "nation": "kestria",
       "type": "infantry_division",
       "location": [
-        69,
-        8
+        121,
+        20
       ],
       "strength": 9400,
       "morale": 78,
@@ -28,8 +30,8 @@
       "nation": "kestria",
       "type": "infantry_division",
       "location": [
-        69,
-        15
+        121,
+        29
       ],
       "strength": 8800,
       "morale": 71,
@@ -44,8 +46,8 @@
       "nation": "kestria",
       "type": "infantry_division",
       "location": [
-        69,
-        21
+        121,
+        38
       ],
       "strength": 9100,
       "morale": 74,
@@ -60,8 +62,8 @@
       "nation": "kestria",
       "type": "militia_battalion",
       "location": [
-        69,
-        21
+        121,
+        38
       ],
       "strength": 1100,
       "morale": 55,
@@ -76,8 +78,8 @@
       "nation": "kestria",
       "type": "armored_brigade",
       "location": [
-        60,
-        21
+        110,
+        38
       ],
       "strength": 3200,
       "morale": 82,
@@ -92,8 +94,8 @@
       "nation": "kestria",
       "type": "artillery_regiment",
       "location": [
-        62,
-        12
+        118,
+        29
       ],
       "strength": 2400,
       "morale": 80,
@@ -108,8 +110,8 @@
       "nation": "kestria",
       "type": "hq_logistics",
       "location": [
-        55,
-        27
+        104,
+        36
       ],
       "strength": 3800,
       "morale": 85,
@@ -118,14 +120,81 @@
       "commander": "Gen. Aurel Vance"
     },
     {
+      "id": "kes_5_inf",
+      "designation": "K-08",
+      "name": "5th Kestrian Infantry Division",
+      "nation": "kestria",
+      "type": "infantry_division",
+      "location": [
+        121,
+        47
+      ],
+      "strength": 8900,
+      "morale": 72,
+      "supply": 94,
+      "stance": "defend",
+      "commander": "Maj. Gen. Tomas Rehn"
+    },
+    {
+      "id": "kes_1_dd",
+      "designation": "KN-1",
+      "name": "1st Destroyer Flotilla",
+      "nation": "kestria",
+      "type": "destroyer_flotilla",
+      "location": [
+        99,
+        15
+      ],
+      "strength": 2000,
+      "morale": 80,
+      "supply": 100,
+      "stance": "defend",
+      "commander": "Capt. Elin Marsh",
+      "mission": "patrol"
+    },
+    {
+      "id": "kes_home_fleet",
+      "designation": "KN-2",
+      "name": "Home Fleet Battle Squadron",
+      "nation": "kestria",
+      "type": "battleship_squadron",
+      "location": [
+        20,
+        6
+      ],
+      "strength": 4600,
+      "morale": 84,
+      "supply": 100,
+      "stance": "defend",
+      "commander": "Vice-Adm. Hugo Stavely",
+      "mission": "patrol"
+    },
+    {
+      "id": "kes_2_sub",
+      "designation": "KN-3",
+      "name": "2nd Submarine Wolfpack",
+      "nation": "kestria",
+      "type": "submarine_wolfpack",
+      "location": [
+        65,
+        62
+      ],
+      "strength": 360,
+      "morale": 78,
+      "supply": 100,
+      "stance": "defend",
+      "commander": "Cdr. Nils Arden",
+      "mission": "patrol"
+    },
+    {
       "id": "vosk_4_rifle",
       "designation": "V-4R",
       "name": "4th Rifle Division",
       "nation": "vosk",
       "type": "infantry_division",
       "location": [
-        78,
-        7
+        130,
+        18
       ],
       "strength": 10500,
       "morale": 64,
@@ -140,8 +209,8 @@
       "nation": "vosk",
       "type": "infantry_division",
       "location": [
-        78,
-        13
+        130,
+        27
       ],
       "strength": 9800,
       "morale": 60,
@@ -156,8 +225,8 @@
       "nation": "vosk",
       "type": "infantry_division",
       "location": [
-        78,
-        20
+        130,
+        36
       ],
       "strength": 11200,
       "morale": 66,
@@ -172,8 +241,8 @@
       "nation": "vosk",
       "type": "infantry_division",
       "location": [
-        78,
-        20
+        130,
+        36
       ],
       "strength": 8600,
       "morale": 58,
@@ -182,14 +251,30 @@
       "commander": "Col. Dmitri Hask"
     },
     {
+      "id": "vosk_12_rifle",
+      "designation": "V-12R",
+      "name": "12th Rifle Division",
+      "nation": "vosk",
+      "type": "infantry_division",
+      "location": [
+        130,
+        46
+      ],
+      "strength": 9900,
+      "morale": 61,
+      "supply": 79,
+      "stance": "defend",
+      "commander": "Gen.-Maj. Oleg Brask"
+    },
+    {
       "id": "vosk_1_gtank",
       "designation": "V-1GT",
       "name": "1st Guards Tank Brigade",
       "nation": "vosk",
       "type": "armored_brigade",
       "location": [
-        88,
-        12
+        142,
+        26
       ],
       "strength": 3900,
       "morale": 81,
@@ -204,8 +289,8 @@
       "nation": "vosk",
       "type": "artillery_regiment",
       "location": [
-        86,
-        19
+        133,
+        36
       ],
       "strength": 2700,
       "morale": 69,
@@ -220,8 +305,8 @@
       "nation": "vosk",
       "type": "hq_logistics",
       "location": [
-        92,
-        22
+        146,
+        36
       ],
       "strength": 4400,
       "morale": 75,
@@ -236,14 +321,65 @@
       "nation": "vosk",
       "type": "armored_brigade",
       "location": [
-        101,
-        27
+        150,
+        46
       ],
       "strength": 3600,
       "morale": 77,
       "supply": 90,
       "stance": "assault",
       "commander": "Gen.-Maj. Sasha Rudin"
+    },
+    {
+      "id": "vosk_north_dd",
+      "designation": "VN-1",
+      "name": "Zarnovsk Destroyer Flotilla",
+      "nation": "vosk",
+      "type": "destroyer_flotilla",
+      "location": [
+        155,
+        14
+      ],
+      "strength": 2000,
+      "morale": 72,
+      "supply": 100,
+      "stance": "defend",
+      "commander": "Kapt. Ivo Merkul",
+      "mission": "patrol"
+    },
+    {
+      "id": "vosk_south_bb",
+      "designation": "VN-2",
+      "name": "Sevrask Battle Squadron",
+      "nation": "vosk",
+      "type": "battleship_squadron",
+      "location": [
+        184,
+        62
+      ],
+      "strength": 4600,
+      "morale": 74,
+      "supply": 100,
+      "stance": "defend",
+      "commander": "Adm. Galina Voss",
+      "mission": "patrol"
+    },
+    {
+      "id": "vosk_3_sub",
+      "designation": "VN-3",
+      "name": "3rd Submarine Wolfpack",
+      "nation": "vosk",
+      "type": "submarine_wolfpack",
+      "location": [
+        147,
+        59
+      ],
+      "strength": 360,
+      "morale": 76,
+      "supply": 100,
+      "stance": "defend",
+      "commander": "Kapt. Rurik Taal",
+      "mission": "patrol"
     }
   ]
 }

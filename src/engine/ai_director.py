@@ -20,7 +20,12 @@ ASSAULT  pick the weaker Kestrian flank; send an armor-led group round it via wa
          an objective in the Kestrian rear (their HQ if it is there); pin the center with probes.
 
 Logistics apply to the AI too: every posture first pulls starving formations back into its own
-supply network. The AI sees everything (it is not subject to Kestrian fog of war) and issues
+supply network. Artillery is kept `artillery_offset` columns BEHIND the trench line, where it can fire
+in support of the battles in front of it without being caught in them.
+
+The AI's fleets are run by naval_engine.ai_naval_orders (patrol at home in DEFEND; blockade Kestrian
+ports and bombard coastal battles in PROBE / ASSAULT; hunt any enemy squadron nearby) and its air
+wings by air_engine.ai_assign_wings. The AI sees everything (it is not subject to Kestrian fog of war) and issues
 orders through the same `issue_move_order` as the player, so it obeys the same rules. Every
 order to a major formation (armor, HQ) may be intercepted by Kestrian SIGINT.
 """
@@ -42,7 +47,11 @@ Order = tuple[Unit, tuple[int, int]]
 
 
 def _role(state: GameState, unit: Unit) -> str:
-    return next(t for t in state.catalog["units"]["units"] if t["id"] == unit.unit_type).get("role", "infantry")
+    return state.role(unit)
+
+
+def _land(state: GameState, units) -> list[Unit]:
+    return [u for u in units if state.domain(u) == "land"]
 
 
 def _front_rows(state: GameState, cfg: dict) -> tuple[int, int]:
@@ -52,13 +61,13 @@ def _front_rows(state: GameState, cfg: dict) -> tuple[int, int]:
 
 def incursion(state: GameState, ai: AIState) -> list[Unit]:
     """Kestrian formations pushed past the threat line (into no-man's-land or beyond)."""
-    return [u for u in state.player.units if u.x >= int(ai.config["threat_line_x"])]
+    return [u for u in _land(state, state.player.units) if u.x >= int(ai.config["threat_line_x"])]
 
 
 def assess_threat(state: GameState, ai: AIState) -> float:
     """Kestrian strength past `threat_line_x` as a fraction of our strength holding the front region."""
-    region = state.world_map.regions[ai.config["front_region"]]
-    ours = sum(u.strength for u in state.nations[ai.nation_id].units if region.contains(*u.location))
+    front = ai.config["front_region"]
+    ours = sum(u.strength for u in state.nations[ai.nation_id].units if state.world_map.in_region(front, *u.location))
     return sum(u.strength for u in incursion(state, ai)) / max(ours, 1)
 
 
@@ -109,6 +118,9 @@ class AIDirector(SimulationSystem):
         planner = {DEFEND: self._defend_orders, PROBE: self._probe_orders, ASSAULT: self._assault_orders}[ai.posture]
         orders += [(u, t) for u, t in planner(state, ai) if u.id not in taken]
 
+        from src.engine.naval_engine import issue_ai_naval_orders
+
+        issue_ai_naval_orders(state, ai, report)
         sigint_cfg = cfg.get("sigint", {})
         sent = 0
         for unit, target in orders[: int(cfg["max_orders_per_week"].get(ai.posture, 3))]:
@@ -120,7 +132,7 @@ class AIDirector(SimulationSystem):
             # Probes and assault groups go in attacking; everything else digs in where it stops.
             attacking = unit.id in ai.assault_group or target in {u.location for u in state.player.units} \
                 or target[0] < int(cfg["front_line_x"][0])
-            unit.stance = STANCE_ASSAULT if attacking else STANCE_DEFEND
+            unit.stance = STANCE_ASSAULT if attacking and _role(state, unit) != "artillery" else STANCE_DEFEND
             intercept = maybe_intercept(state, unit, target, route.eta_weeks, sigint_cfg, sent)
             if intercept is not None:
                 sent += 1
@@ -137,18 +149,25 @@ class AIDirector(SimulationSystem):
         for _ in range(10):
             tx, ty = x + state.rng.randint(-j, j), y + state.rng.randint(-j, j)
             region = world.region_at(tx, ty)
-            if region is None or not 1 <= tx <= world.width - 2:
+            if region is None or not 1 <= tx <= world.width - 2 or world.is_sea(tx, ty):
                 continue
             if zone is None or region.id in zone:
                 return tx, ty
         return None
 
     @staticmethod
+    def _line_x(state: GameState, ai: AIState, unit: Unit, x: int) -> int:
+        """Line formations stand on the line; artillery a few columns behind it."""
+        if _role(state, unit) == "artillery":
+            return int(ai.config["front_line_x"][0]) + int(ai.config.get("artillery_offset", 3))
+        return x
+
+    @staticmethod
     def _zone(ai: AIState) -> set[str]:
         return set(ai.config["home_regions"]) | {ai.config["front_region"]}
 
     def _idle(self, state: GameState, ai: AIState) -> list[Unit]:
-        units = [u for u in state.nations[ai.nation_id].units
+        units = [u for u in _land(state, state.nations[ai.nation_id].units)
                  if u.active_order is None and not u.engaged and not u.routing]
         state.rng.shuffle(units)  # unpredictable within each priority class
         return sorted(units, key=lambda u: ROLE_PRIORITY.get(_role(state, u), 5))
@@ -160,7 +179,7 @@ class AIDirector(SimulationSystem):
             return []
         threshold = float(ai.config.get("resupply_threshold", 25))
         orders = []
-        for unit in state.nations[ai.nation_id].units:
+        for unit in _land(state, state.nations[ai.nation_id].units):
             if unit.supply >= threshold or unit.supply_state == SUPPLIED or unit.engaged or unit.routing:
                 continue
             if unit.active_order and unit.active_order.target in info["network"]:
@@ -183,7 +202,7 @@ class AIDirector(SimulationSystem):
 
         for unit in idle:
             if unit.x < fx0:  # forward of our trenches: pull back to the line
-                target = self._jitter(state, ai, fx1, unit.y, self._zone(ai))
+                target = self._jitter(state, ai, self._line_x(state, ai, unit, fx1), unit.y, self._zone(ai))
                 if target:
                     orders.append((unit, target))
         if intruders:
@@ -191,7 +210,10 @@ class AIDirector(SimulationSystem):
             threat_y = round(sum(u.y for u in intruders) / len(intruders))
             for unit in idle:
                 if unit.x > fx1 + 2 and _role(state, unit) != "hq":
-                    target = self._jitter(state, ai, rng.randint(fx0, fx1), threat_y, self._zone(ai))
+                    x = self._line_x(state, ai, unit, rng.randint(fx0, fx1))
+                    if _role(state, unit) == "artillery" and abs(unit.x - x) <= 2 and abs(unit.y - threat_y) <= 6:
+                        continue  # already in its firing position
+                    target = self._jitter(state, ai, x, threat_y, self._zone(ai))
                     if target:
                         orders.append((unit, target))
         elif rng.random() < float(cfg.get("reserve_move_chance", 0.35)):
@@ -221,10 +243,11 @@ class AIDirector(SimulationSystem):
             idle.remove(probe[0])
 
         for unit in idle:
-            if fx0 <= unit.x <= fx1:
-                continue  # already on the line
-            target = self._jitter(state, ai, rng.randint(fx0, fx1), ai.focus_y + rng.randint(-spread, spread),
-                                  self._zone(ai))
+            if fx0 <= unit.x <= fx1 or (_role(state, unit) == "artillery"
+                                         and abs(unit.x - self._line_x(state, ai, unit, fx0)) <= 1):
+                continue  # already on the line (artillery: in the gun line just behind it)
+            target = self._jitter(state, ai, self._line_x(state, ai, unit, rng.randint(fx0, fx1)),
+                                  ai.focus_y + rng.randint(-spread, spread), self._zone(ai))
             if target and plan_route(state, unit, target):
                 orders.append((unit, target))
 
@@ -245,10 +268,10 @@ class AIDirector(SimulationSystem):
         fx0, fx1 = cfg["front_line_x"]
         chance = max(0.0, ai.tension - cfg["probe_threshold"]) * float(cfg.get("probe_chance_per_tension_point", 0.012))
         line = [u for u in idle if fx0 <= u.x <= fx1 and _role(state, u) in ("infantry", "militia")]
-        if not line or not state.player.units or state.rng.random() >= chance:
+        if not line or not _land(state, state.player.units) or state.rng.random() >= chance:
             return None
         prober = state.rng.choice(line)
-        victim = min(state.player.units, key=lambda k: abs(k.x - prober.x) + abs(k.y - prober.y))
+        victim = min(_land(state, state.player.units), key=lambda k: abs(k.x - prober.x) + abs(k.y - prober.y))
         if state.rng.random() < 0.5:
             return prober, victim.location  # a raid straight at their trenches
         return prober, ((prober.x + victim.x) // 2, victim.y)  # into no-man's-land
@@ -261,7 +284,7 @@ class AIDirector(SimulationSystem):
             # Go round the flank where Kestria is weakest (ties broken at random).
             def strength(name: str) -> float:
                 r0, r1 = flanks[name]["rows"]
-                return sum(u.strength for u in state.player.units if r0 <= u.y <= r1) + rng.random()
+                return sum(u.strength for u in _land(state, state.player.units) if r0 <= u.y <= r1) + rng.random()
 
             ai.assault_flank = min(flanks, key=strength)
             ai.log.append(f"WK {state.clock.turn:03d}: ASSAULT on the {ai.assault_flank} flank")
@@ -305,10 +328,11 @@ class AIDirector(SimulationSystem):
     @staticmethod
     def _objective(state: GameState, flank: dict) -> tuple[int, int]:
         region = state.world_map.regions[flank["objective_region"]]
-        hq = [u for u in state.player.units if _role(state, u) == "hq" and region.contains(*u.location)]
+        world = state.world_map
+        hq = [u for u in state.player.units if _role(state, u) == "hq" and world.in_region(region.id, *u.location)]
         if hq:
             return hq[0].location
-        towns = [f for f in state.world_map.features if region.contains(f.x, f.y)]
+        towns = [f for f in world.features if world.in_region(region.id, f.x, f.y)]
         if towns:
             return towns[0].x, towns[0].y
         x0, y0, x1, y1 = region.rects[0]

@@ -1,0 +1,255 @@
+{
+  "_comment": [
+    "The Event Deck: CLASSIFIED DILEMMAS. At the end of each week, if no dilemma was drawn in the last",
+    "min_weeks_between weeks, a card is drawn with draw_chance. The card is shown as a modal pop-up and the game",
+    "cannot advance until the Lord Protector chooses. Cards are not drawn twice unless `repeatable`.",
+    "Card: id, title, category, weight, text (flavour, {placeholders} as in emails), conditions, choices.",
+    "  conditions (all optional): seasons [Winter|Spring|Summer|Autumn], min_turn, requires_research (a project is",
+    "  running), requires_battle (a battle is being fought), requires_flag / forbids_flag.",
+    "  choices: 2-3 of {id, label, hint (shown under the button), effects}. Effects use the email effect keys:",
+    "    treasury, manpower, population, morale, military_morale, tax_rate, stockpiles {resource: n}, flags {name: v},",
+    "    ai_tension (hidden), equipment {item: n} (national stockpile), army_morale (every formation),",
+    "    modifier {key, value, weeks} (e.g. factory_efficiency +0.15 for 4 weeks), research_weeks (current project)."
+  ],
+  "draw_chance": 0.16,
+  "min_weeks_between": 3,
+  "first_turn": 3,
+  "cards": [
+    {
+      "id": "worker_strike",
+      "title": "Strike at the Ironvale Steelworks",
+      "category": "DOMESTIC",
+      "weight": 10,
+      "text": "Forty thousand steelworkers at the Ironvale and Kessel works have downed tools. They demand bread rations restored to pre-war levels and an end to the seventy-hour week. Pickets have closed the rolling mills; the shell presses stand silent.\n\nThe Minister of Internal Affairs has two battalions of Internal Troops on the trains and awaits your word. The Minister of Labour begs you to listen to the men first.",
+      "choices": [
+        {"id": "crush", "label": "Crush it", "hint": "Troops clear the pickets. Quotas are enforced at bayonet point.",
+         "effects": {"morale": -6, "military_morale": 1, "modifier": {"key": "factory_efficiency", "value": 0.15, "weeks": 4}}},
+        {"id": "concede", "label": "Concede", "hint": "Restore the rations and shorten the week. The treasury pays.",
+         "effects": {"treasury": -60000, "morale": 5}},
+        {"id": "arbitrate", "label": "Appoint an arbitrator", "hint": "Talks drag on; the mills run at half speed meanwhile.",
+         "effects": {"treasury": -20000, "morale": 1, "modifier": {"key": "factory_efficiency", "value": -0.1, "weeks": 3}}}
+      ]
+    },
+    {
+      "id": "vosk_defector",
+      "title": "A Vosk Jet Lands at Harrow",
+      "category": "INTELLIGENCE",
+      "weight": 7,
+      "text": "At dawn a Vosk strike fighter touched down on the Harrow airfield with its guns cold. The pilot, a Guards captain, asks for asylum. He has brought his aircraft, his codebooks, and a grudge against the Chairman.\n\nKarzan is already demanding his return and calling it an act of piracy.",
+      "choices": [
+        {"id": "exploit", "label": "Debrief him in secret", "hint": "Our analysts will read Vosk signals traffic for months.",
+         "effects": {"flags": {"network_lantern": true}, "ai_tension": 4}},
+        {"id": "return", "label": "Send him back", "hint": "A gesture of goodwill. The officers' mess will not forgive it.",
+         "effects": {"ai_tension": -8, "military_morale": -3}},
+        {"id": "parade", "label": "Parade him on newsreel", "hint": "A propaganda triumph at home; Karzan will be enraged.",
+         "effects": {"morale": 4, "ai_tension": 7, "equipment": {"strike_aircraft": 1}}}
+      ]
+    },
+    {
+      "id": "bread_queues",
+      "title": "Bread Queues in Aldmark",
+      "category": "DOMESTIC",
+      "weight": 8,
+      "text": "The flour ration failed to arrive in three districts of the capital this week. Queues formed before dawn and ended in scuffles with the police; a baker's shop on Canal Street was looted. Housewives are chanting outside the Ministry of Supply.",
+      "choices": [
+        {"id": "reserves", "label": "Open the state granaries", "hint": "Grain from the strategic reserve feeds the city.",
+         "effects": {"stockpiles": {"grain": -8000}, "morale": 3}},
+        {"id": "ration", "label": "Tighten rationing", "hint": "The army keeps its bread. The people go hungry.",
+         "effects": {"morale": -4, "stockpiles": {"rations": 1500}}},
+        {"id": "import", "label": "Buy grain through Iren", "hint": "Neutral merchants charge wartime prices.",
+         "effects": {"treasury": -70000, "morale": 3}}
+      ]
+    },
+    {
+      "id": "draft_age",
+      "title": "The General Staff Wants More Men",
+      "category": "MILITARY",
+      "weight": 7,
+      "conditions": {"min_turn": 6},
+      "text": "The Adjutant-General reports the replacement pool will not sustain current losses. He proposes lowering the draft age to seventeen and ending the exemptions for university students and skilled workers.",
+      "choices": [
+        {"id": "lower", "label": "Lower the draft age", "hint": "Fifteen thousand more men. Mothers march on the Assembly.",
+         "effects": {"manpower": 15000, "morale": -6}},
+        {"id": "students", "label": "End student exemptions only", "hint": "A smaller levy, a smaller outcry.",
+         "effects": {"manpower": 6000, "morale": -2}},
+        {"id": "refuse", "label": "Refuse", "hint": "The generals will say you do not want to win.",
+         "effects": {"military_morale": -3}}
+      ]
+    },
+    {
+      "id": "iren_arms_dealer",
+      "title": "A Merchant of Death in Iren",
+      "category": "FOREIGN",
+      "weight": 6,
+      "text": "A broker in the Iren Free Port offers war materiel from undisclosed sources: small arms, heavy shells, even airframes with the serial numbers ground off. Payment in gold, delivery by neutral freighter, no questions asked.",
+      "choices": [
+        {"id": "guns", "label": "Buy rifles and shells", "hint": "3,000 rifles and 3,000 152mm shells into our depots.",
+         "effects": {"treasury": -110000, "equipment": {"rifle_762": 3000, "shell_152_he": 3000}}},
+        {"id": "aircraft", "label": "Buy the airframes", "hint": "Twelve strike fighters and fuel for them.",
+         "effects": {"treasury": -150000, "equipment": {"strike_aircraft": 12, "aviation_fuel": 2000}}},
+        {"id": "decline", "label": "Decline", "hint": "Keep our gold and our hands clean.",
+         "effects": {}}
+      ]
+    },
+    {
+      "id": "ministry_mole",
+      "title": "A Mole in the War Ministry",
+      "category": "INTELLIGENCE",
+      "weight": 6,
+      "text": "Counter-intelligence has traced a leak to the Ministry of War: a colonel on the planning staff meets a Vosk courier every Thursday in the Aldmark botanical gardens. Our operational plans have been read in Karzan for months.",
+      "choices": [
+        {"id": "purge", "label": "Arrest the whole planning staff", "hint": "Thorough. The officer corps will be terrified.",
+         "effects": {"military_morale": -5, "morale": 1, "flags": {"counterintel_purge": true}}},
+        {"id": "turn", "label": "Feed him false plans", "hint": "Let Karzan believe we are weaker and more timid than we are.",
+         "effects": {"treasury": -15000, "ai_tension": -6}},
+        {"id": "ignore", "label": "Watch and wait", "hint": "The leak continues.",
+         "effects": {"ai_tension": 5}}
+      ]
+    },
+    {
+      "id": "war_bonds",
+      "title": "The War Bond Drive",
+      "category": "ECONOMY",
+      "weight": 7,
+      "text": "The Treasury proposes a national war bond campaign: posters, radio appeals, factory quotas for subscriptions. The more ambitious version would make subscription compulsory for every household with savings.",
+      "choices": [
+        {"id": "patriotic", "label": "A patriotic campaign", "hint": "Voluntary subscriptions; modest but willing.",
+         "effects": {"treasury": 140000, "morale": -1}},
+        {"id": "forced", "label": "Compulsory loans", "hint": "Every savings book in the Commonwealth is tapped.",
+         "effects": {"treasury": 230000, "morale": -7}},
+        {"id": "none", "label": "Not now", "hint": "The people have given enough.",
+         "effects": {"morale": 1}}
+      ]
+    },
+    {
+      "id": "crash_program",
+      "title": "The Laboratories Ask for More",
+      "category": "RESEARCH",
+      "weight": 6,
+      "conditions": {"requires_research": true},
+      "text": "The Director of Research & Development requests emergency funds to put the current project on a war footing: triple shifts, requisitioned university laboratories, and priority on scarce instruments.",
+      "choices": [
+        {"id": "fund", "label": "Fund a crash program", "hint": "Four weeks of work in one stroke.",
+         "effects": {"treasury": -80000, "research_weeks": 4}},
+        {"id": "refuse", "label": "Refuse", "hint": "The labs work at their own pace.",
+         "effects": {}}
+      ]
+    },
+    {
+      "id": "frozen_convoy",
+      "title": "Convoy Trapped in the Snow",
+      "category": "MILITARY",
+      "weight": 9,
+      "conditions": {"seasons": ["Winter"]},
+      "text": "A fuel convoy of three hundred trucks bound for the Eastmarch is stranded in drifts on the Ironvale road. The drivers are burning the cargo to stay alive. The front is waiting for that fuel.",
+      "choices": [
+        {"id": "engineers", "label": "Send the engineers", "hint": "Snowploughs and labour battalions dig them out, at a price.",
+         "effects": {"treasury": -30000}},
+        {"id": "abandon", "label": "Let them dig in", "hint": "Most of the fuel is burnt before spring. The front goes short.",
+         "effects": {"equipment": {"fuel_drums": -1500}, "army_morale": -3}},
+        {"id": "airdrop", "label": "Supply them by air", "hint": "Transport sorties burn aviation fuel but save the convoy.",
+         "effects": {"equipment": {"aviation_fuel": -800}, "army_morale": 2}}
+      ]
+    },
+    {
+      "id": "general_mud",
+      "title": "General Mud",
+      "category": "MILITARY",
+      "weight": 8,
+      "conditions": {"seasons": ["Spring", "Autumn"]},
+      "text": "The Rasputitsa has turned every road into a river of mud. Staff officers propose requisitioning farm tractors from the collective farms to haul guns and supplies. The Ministry of Agriculture warns it will ruin the harvest.",
+      "choices": [
+        {"id": "requisition", "label": "Requisition the tractors", "hint": "The army moves; the farms do not.",
+         "effects": {"equipment": {"truck_4t": 150}, "morale": -3, "stockpiles": {"grain": -4000}}},
+        {"id": "wait", "label": "Wait for firm ground", "hint": "The generals chafe at the delay.",
+         "effects": {"military_morale": -2}}
+      ]
+    },
+    {
+      "id": "fleet_unrest",
+      "title": "Unrest in the Fleet",
+      "category": "MILITARY",
+      "weight": 5,
+      "text": "Sailors of the Home Fleet have refused to take their ships out in protest at spoiled rations and unpaid sea allowance. Red flags were briefly seen at the masthead of a destroyer at Port Cassel.",
+      "choices": [
+        {"id": "pay", "label": "Pay the allowances", "hint": "The grievance is settled.",
+         "effects": {"treasury": -45000, "military_morale": 1}},
+        {"id": "court_martial", "label": "Court-martial the ringleaders", "hint": "Discipline is restored. Resentment festers.",
+         "effects": {"military_morale": -4, "army_morale": -2}}
+      ]
+    },
+    {
+      "id": "casualty_lists",
+      "title": "The Casualty Lists",
+      "category": "DOMESTIC",
+      "weight": 7,
+      "conditions": {"min_turn": 8},
+      "text": "The Aldmark Herald has obtained the full casualty lists from the Frontier and intends to print them tomorrow, with photographs. The editor is a war hero with friends in the Assembly.",
+      "choices": [
+        {"id": "censor", "label": "Seize the presses", "hint": "The lists are never printed. Rumour fills the silence.",
+         "effects": {"morale": -2, "military_morale": 2}},
+        {"id": "publish", "label": "Let them print", "hint": "Honest grief. The country mourns.",
+         "effects": {"morale": -5}},
+        {"id": "newsreel", "label": "Answer with a heroic newsreel", "hint": "The Ministry of Information goes to work.",
+         "effects": {"treasury": -25000, "morale": 4}}
+      ]
+    },
+    {
+      "id": "typhus",
+      "title": "Typhus at the Front",
+      "category": "MILITARY",
+      "weight": 6,
+      "conditions": {"min_turn": 5},
+      "text": "The Frontier Army's medical service reports typhus spreading through the forward trenches. Lice, cold and exhaustion; two field hospitals are already overwhelmed.",
+      "choices": [
+        {"id": "quarantine", "label": "Quarantine and delousing", "hint": "Expensive, disruptive, effective.",
+         "effects": {"treasury": -35000, "army_morale": -2}},
+        {"id": "ignore", "label": "Keep the line manned", "hint": "Men die in their dugouts.",
+         "effects": {"manpower": -4000, "army_morale": -6}}
+      ]
+    },
+    {
+      "id": "peace_feeler",
+      "title": "A Feeler from Karzan",
+      "category": "FOREIGN",
+      "weight": 5,
+      "conditions": {"min_turn": 10},
+      "text": "Through the Iren consulate, a man claiming to speak for the Vosk Politburo proposes secret talks: a ceasefire in place, prisoners exchanged, the Frontier demilitarised. He may be sincere. He may be buying time.",
+      "choices": [
+        {"id": "explore", "label": "Explore it quietly", "hint": "Tension may fall. The generals will call it treason.",
+         "effects": {"ai_tension": -12, "military_morale": -4}},
+        {"id": "reject", "label": "Reject it publicly", "hint": "The nation rallies; Karzan loses face.",
+         "effects": {"ai_tension": 6, "morale": 3}},
+        {"id": "leak", "label": "Leak it to the press", "hint": "Embarrass Karzan abroad; alarm our own people.",
+         "effects": {"ai_tension": -4, "morale": -3}}
+      ]
+    },
+    {
+      "id": "bumper_harvest",
+      "title": "A Bumper Harvest",
+      "category": "ECONOMY",
+      "weight": 6,
+      "conditions": {"seasons": ["Summer", "Autumn"]},
+      "text": "The Ministry of Agriculture reports the best harvest in a decade. The granaries are full to bursting and neutral buyers in Iren are offering hard currency.",
+      "choices": [
+        {"id": "export", "label": "Export the surplus", "hint": "Hard currency for the war chest.",
+         "effects": {"treasury": 60000, "stockpiles": {"grain": -6000}}},
+        {"id": "festival", "label": "Harvest festivals", "hint": "Bread, beer and bunting. The people remember what they fight for.",
+         "effects": {"morale": 5, "stockpiles": {"grain": -5000}}}
+      ]
+    },
+    {
+      "id": "sabotage_rail",
+      "title": "Sabotage on the Eastmarch Line",
+      "category": "INTELLIGENCE",
+      "weight": 6,
+      "text": "Partisans have blown a culvert under the main Eastmarch railway. Two ammunition trains were derailed. The local police chief suspects the villagers of Halden sheltered the saboteurs.",
+      "choices": [
+        {"id": "reprisals", "label": "Collective reprisals", "hint": "Hostages are taken. The sabotage stops — for now.",
+         "effects": {"morale": -5, "military_morale": 2}},
+        {"id": "repair", "label": "Repair and patrol", "hint": "Railway troops and lost shells.",
+         "effects": {"treasury": -25000, "equipment": {"shell_152_he": -1200}}}
+      ]
+    }
+  ]
+}

@@ -68,7 +68,7 @@ def assign_factories(state: GameState, nation_id: str, item_id: str, delta: int)
 def forecast(state: GameState, nation: Nation, item_id: str) -> float:
     """Planned weekly output of a line at its current efficiency (ignoring input shortages)."""
     item = equipment_by_id(state)[item_id]
-    bonus = 1.0 + nation.modifiers.get("factory_efficiency", 0.0)  # e.g. Assembly-Line Retooling
+    bonus = max(0.0, 1.0 + nation.modifier("factory_efficiency"))  # Assembly-Line Retooling, strikes, martial law
     return nation.production.get(item_id, 0) * weekly_rate(state, item) * nation.line_efficiency.get(item_id, 0.0) * bonus
 
 
@@ -114,6 +114,17 @@ def demand(state: GameState, nation: Nation) -> dict[str, int]:
             gap = wanted - unit.equipment_inventory.get(item_id, 0)
             if gap > 0:
                 needs[item_id] = needs.get(item_id, 0) + gap
+    # Air wings: missing aircraft, plus four weeks of fuel and bombs for the wings in action.
+    cfg = state.config.get("air", {})
+    wings = [w for w in state.air_wings if w.nation_id == nation.id]
+    missing = sum(max(0, w.establishment - w.aircraft) for w in wings)
+    if missing:
+        needs["strike_aircraft"] = needs.get("strike_aircraft", 0) + missing
+    flying = sum(w.aircraft for w in wings if w.sector)
+    if flying:
+        fuel = cfg.get("patrol_fuel_per_aircraft", 1.5) + cfg.get("support_fuel_per_aircraft", 2.5)
+        needs["aviation_fuel"] = needs.get("aviation_fuel", 0) + int(flying * fuel * 4)
+        needs["bombs"] = needs.get("bombs", 0) + int(flying * cfg.get("bombs_per_aircraft", 5) * 4)
     return needs
 
 

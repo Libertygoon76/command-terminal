@@ -73,13 +73,13 @@ def test_raise_new_formation_spawns_at_capital_underequipped(quiet):
     treasury, pool = nation.treasury, nation.manpower
     order = raise_formation(state, nation.id, "infantry_division")
     assert nation.treasury == treasury - 60000 and nation.manpower == pool - 10000
-    assert order.name == "4th Kestrian Infantry Division" and order.designation == "K-08"
+    assert order.name == "4th Kestrian Infantry Division" and order.designation == "K-09"
     for _ in range(order.weeks_total - 1):
         engine.advance()
         assert state.unit(order.id) is None
     engine.advance()
     unit = state.unit(order.id)
-    assert unit is not None and unit.location == muster_point(state, nation) == (14, 22)
+    assert unit is not None and unit.location == muster_point(state, nation) == (45, 30)
     assert unit.strength == 10000 and 60 <= unit.morale <= 62  # green troops (+2 rest in the rear)
     assert fill_ratio(state, unit, ("small_arms", "artillery")) < 0.6  # weapons arrive slowly: not combat-ready
     assert any(m.template_id == "formation_ready" for m in state.inbox.messages)

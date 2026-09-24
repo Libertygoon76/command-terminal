@@ -1,12 +1,14 @@
 {
-  "_comment": "Unit templates. `symbol` is the terminal NATO-style map glyph, drawn as [symbol]: X infantry, O armor, • artillery, H HQ/logistics, m militia. Stacks draw as [*]. move_speed = map rows per week on plains (a column is half a row: 5 km vs 10 km). detection_radius = rows; enemies outside every friendly radius are hidden on the map. loadout: equipment carried at full establishment (ids in equipment.json); the establishment: what a formation at full strength carries. Resupply tops units up to it from the national stockpile. fuel_use: fuel_drums consumed per week by status. stances: combat multipliers on firepower (attack), casualties taken are divided by defense, and ammunition use is multiplied by ammo. name_pattern: name for newly raised formations ({ordinal} {adjective} {capital}). upgrades: tech id -> extra establishment items once that tech is researched (resupply then delivers them).",
+  "_comment": "Unit templates. domain: land (default) or sea (warships move only on open water). `symbol` is the terminal NATO-style map glyph, drawn as [symbol]: X infantry, O armor, • artillery, H HQ/logistics, m militia, D destroyers, B battle squadron, U submarines. Stacks draw as [*]. SPEED (one map row = 10 miles, config map.miles_per_cell): speed_mpd = sustained march in miles per day over open plains; truck_mpd = extra miles per day with a full establishment of trucks and fuel (scaled by the truck fill). Movement points per week = miles per week / 10; roads and rail stretch them (config map.transport_cost). detection_radius = rows. loadout: equipment carried at full establishment (ids in equipment.json). fuel_use: fuel_drums consumed per week by status. stances: combat multipliers. name_pattern: name for newly raised formations. upgrades: tech id -> extra establishment items once researched. modernize: tech id -> {old item: new item | [new item, quantity ratio]}: once researched the establishment switches to the new item and old stock is turned in as the new arrives. support (artillery): fires in support of friendly battles within combat.artillery_support_range instead of fighting in the line. hull_defense (warships): damage taken is divided by it. asw: hunts submarines. stealth: hard to detect.",
   "units": [
     {
       "id": "infantry_division",
       "name": "Infantry Division",
       "symbol": "X",
       "role": "infantry",
-      "move_speed": 4,
+      "domain": "land",
+      "speed_mpd": 4,
+      "truck_mpd": 3,
       "detection_radius": 5,
       "manpower": 10000,
       "recruit_cost": 60000,
@@ -47,6 +49,18 @@
         },
         "image_intensifier": {
           "night_vision": 250
+        },
+        "winter_warfare": {
+          "winter_gear": 10000
+        }
+      },
+      "modernize": {
+        "intermediate_cartridge": {
+          "rifle_762": "rifle_556",
+          "ammo_762": [
+            "ammo_556",
+            1.3
+          ]
         }
       }
     },
@@ -55,7 +69,8 @@
       "name": "Armored Brigade",
       "symbol": "O",
       "role": "armor",
-      "move_speed": 8,
+      "domain": "land",
+      "speed_mpd": 12,
       "detection_radius": 4,
       "manpower": 3500,
       "recruit_cost": 180000,
@@ -103,6 +118,9 @@
         },
         "image_intensifier": {
           "night_vision": 120
+        },
+        "winter_warfare": {
+          "winter_gear": 3500
         }
       }
     },
@@ -111,7 +129,9 @@
       "name": "Artillery Regiment",
       "symbol": "•",
       "role": "artillery",
-      "move_speed": 3,
+      "domain": "land",
+      "speed_mpd": 3.5,
+      "truck_mpd": 3,
       "detection_radius": 7,
       "manpower": 2500,
       "recruit_cost": 95000,
@@ -149,15 +169,20 @@
       "upgrades": {
         "kevlar_armor": {
           "kevlar_vest": 2000
+        },
+        "winter_warfare": {
+          "winter_gear": 2500
         }
-      }
+      },
+      "support": true
     },
     {
       "id": "militia_battalion",
       "name": "Militia Battalion",
       "symbol": "m",
       "role": "militia",
-      "move_speed": 3,
+      "domain": "land",
+      "speed_mpd": 3.5,
       "detection_radius": 3,
       "manpower": 1200,
       "recruit_cost": 8000,
@@ -191,6 +216,9 @@
       "upgrades": {
         "kevlar_armor": {
           "kevlar_vest": 1100
+        },
+        "winter_warfare": {
+          "winter_gear": 1200
         }
       }
     },
@@ -199,7 +227,9 @@
       "name": "HQ / Logistics Group",
       "symbol": "H",
       "role": "hq",
-      "move_speed": 5,
+      "domain": "land",
+      "speed_mpd": 4,
+      "truck_mpd": 4,
       "detection_radius": 9,
       "manpower": 4000,
       "recruit_cost": 70000,
@@ -238,8 +268,90 @@
         },
         "image_intensifier": {
           "night_vision": 60
+        },
+        "winter_warfare": {
+          "winter_gear": 4000
         }
       }
+    },
+    {
+      "id": "destroyer_flotilla",
+      "name": "Destroyer Flotilla",
+      "symbol": "D",
+      "role": "naval",
+      "domain": "sea",
+      "speed_mpd": 90,
+      "detection_radius": 7,
+      "manpower": 2000,
+      "recruit_cost": 160000,
+      "training_weeks": 16,
+      "asw": true,
+      "hull_defense": 1.0,
+      "loadout": {
+        "destroyer": 8,
+        "naval_shells": 3200,
+        "fuel_drums": 1600
+      },
+      "fuel_use": {
+        "holding": 20,
+        "moving": 160,
+        "engaged": 120
+      },
+      "name_pattern": "{ordinal} Destroyer Flotilla",
+      "upgrades": {}
+    },
+    {
+      "id": "battleship_squadron",
+      "name": "Battleship Squadron",
+      "symbol": "B",
+      "role": "naval",
+      "domain": "sea",
+      "speed_mpd": 70,
+      "detection_radius": 6,
+      "manpower": 4600,
+      "recruit_cost": 520000,
+      "training_weeks": 40,
+      "asw": true,
+      "hull_defense": 1.6,
+      "loadout": {
+        "battleship": 2,
+        "destroyer": 4,
+        "naval_shells": 6000,
+        "fuel_drums": 3000
+      },
+      "fuel_use": {
+        "holding": 40,
+        "moving": 400,
+        "engaged": 300
+      },
+      "name_pattern": "{ordinal} Battle Squadron",
+      "upgrades": {}
+    },
+    {
+      "id": "submarine_wolfpack",
+      "name": "Submarine Wolfpack",
+      "symbol": "U",
+      "role": "naval",
+      "domain": "sea",
+      "speed_mpd": 50,
+      "detection_radius": 3,
+      "manpower": 360,
+      "recruit_cost": 120000,
+      "training_weeks": 20,
+      "stealth": true,
+      "hull_defense": 1.0,
+      "loadout": {
+        "submarine": 6,
+        "torpedoes": 96,
+        "fuel_drums": 600
+      },
+      "fuel_use": {
+        "holding": 10,
+        "moving": 60,
+        "engaged": 40
+      },
+      "name_pattern": "{ordinal} Submarine Wolfpack",
+      "upgrades": {}
     }
   ],
   "stances": [

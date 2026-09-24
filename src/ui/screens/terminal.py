@@ -7,10 +7,13 @@ from textual.containers import Horizontal
 from textual.screen import Screen
 from textual.widgets import Button, ContentSwitcher, Footer, ListView, Static
 
+from src.engine.dilemmas import DilemmaError, card, resolve
 from src.engine.event_manager import GameOverError
+from src.engine.tick_engine import DilemmaPendingError
 from src.ui import palette
+from src.ui.screens.dilemma import DilemmaScreen
 from src.ui.screens.game_over import GameOverScreen
-from src.ui.views import EconomyView, InboxView, MapView, MilitaryView, ResearchView
+from src.ui.views import AirView, EconomyView, InboxView, MapView, MilitaryView, ResearchView
 from src.ui.widgets.sidebar import NAV_ENTRIES, NavItem, Sidebar
 from src.ui.widgets.status_bar import StatusBar
 
@@ -30,6 +33,7 @@ class TerminalScreen(Screen):
         Binding("3", "show('military')", "Military"),
         Binding("4", "show('map')", "Map"),
         Binding("5", "show('research')", "Research"),
+        Binding("6", "show('air')", "Air"),
         Binding("n", "end_turn", "Advance Week"),
         Binding("q", "app.quit", "Log Out"),
     ]
@@ -44,6 +48,7 @@ class TerminalScreen(Screen):
                 yield MilitaryView(id="military")
                 yield MapView(id="map")
                 yield ResearchView(id="research")
+                yield AirView(id="air")
         yield Static(id="comms-log")
         yield Footer()
 
@@ -51,6 +56,8 @@ class TerminalScreen(Screen):
         self._set_view_title("inbox")
         self._log(f"SESSION OPENED. {self.app.game.inbox.unread_count} UNREAD DISPATCH(ES).")
         self.query_one("#mail-list", ListView).focus()
+        if self.app.game.pending_dilemma:
+            self.call_after_refresh(self.show_dilemma)
 
     # --- navigation ----------------------------------------------------------
 
@@ -81,6 +88,9 @@ class TerminalScreen(Screen):
         except GameOverError as error:
             self.notify(str(error), title="TERMINAL LOCKED", severity="error")
             return
+        except DilemmaPendingError:
+            self.show_dilemma()
+            return
         self.app.state_changed()
 
         summary = " ".join(report.log) or "NO NEW REPORTS."
@@ -103,6 +113,30 @@ class TerminalScreen(Screen):
             title=f"WEEK {report.turn:03d} · {report.date}",
             severity="warning" if due_now else "information",
         )
+        if game.pending_dilemma:
+            self.show_dilemma()
+
+    # --- classified dilemmas ---------------------------------------------------
+
+    def show_dilemma(self) -> None:
+        game = self.app.game
+        if not game.pending_dilemma or isinstance(self.app.screen, DilemmaScreen):
+            return
+
+        def decided(choice_id: str | None) -> None:
+            if choice_id is None:
+                return
+            title = card(game, game.pending_dilemma)["title"] if game.pending_dilemma else "DILEMMA"
+            try:
+                changes = resolve(game, choice_id)
+            except (DilemmaError, GameOverError) as error:
+                self.notify(str(error), title="DILEMMA", severity="error")
+                return
+            self.app.state_changed()
+            self._log(f"DECISION RECORDED: {title.upper()}.")
+            self.notify("\n".join(changes) or "No immediate consequences.", title=f"DECISION: {title.upper()}")
+
+        self.app.push_screen(DilemmaScreen(game.pending_dilemma), decided)
 
     # --- helpers -------------------------------------------------------------
 

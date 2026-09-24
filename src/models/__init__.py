@@ -5,6 +5,11 @@ from src.models.ai import AIState
 from src.models.battle import Battle
 from src.models.military import (
     ASSAULT,
+    BLOCKADE,
+    BOMBARD,
+    MISSIONS,
+    PATROL,
+    AirWing,
     DEFEND,
     ENGAGED,
     HOLDING,
@@ -17,12 +22,18 @@ from src.models.military import (
     TrainingOrder,
     Unit,
 )
-from src.models.world_map import MapFeature, MapRegion, WorldMap
+from src.models.world_map import MapFeature, MapRegion, SeaZone, WorldMap
 from src.models.inbox import EXPIRED_RESPONSE, Email, EmailOption, FollowUp, Inbox
 from src.models.nation import Nation
 
 __all__ = [
     "ASSAULT",
+    "AirWing",
+    "BLOCKADE",
+    "BOMBARD",
+    "MISSIONS",
+    "PATROL",
+    "SeaZone",
     "AIState",
     "Battle",
     "DEFEND",

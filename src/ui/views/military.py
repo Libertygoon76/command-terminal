@@ -49,7 +49,7 @@ class MilitaryView(VerticalScroll):
         self.query_one("#mil-training", DataTable).add_columns(
             "ID", "FORMATION", "TYPE", "PROGRESS", "WEEKS LEFT", "MUSTERS AT", "COST PAID")
         self.query_one("#mil-formations", DataTable).add_columns(
-            "ID", "FORMATION", "TYPE", "STRENGTH", "MORALE", "SUPPLY", "AMMO", "READY", "LINE", "STATUS", "STANCE",
+            "ID", "FORMATION", "TYPE", "STRENGTH", "MORALE", "SUPPLY", "AMMO", "READY", "LINE", "STATUS", "STANCE/MISSION",
             "ORDER", "GRID")
         stances = Text()
         for stance in self.app.game.catalog["units"].get("stances", []):
@@ -141,7 +141,7 @@ class MilitaryView(VerticalScroll):
                 f"{template['recruit_cost']:,} {cur}",
                 f"{template['training_weeks']} WK",
                 f"{template.get('fuel_use', {}).get('moving', 0):,} drums",
-                f"{template.get('move_speed', 0)} rows/wk",
+                f"{template.get('speed_mpd', 0):g}{'+' + format(template['truck_mpd'], 'g') if template.get('truck_mpd') else ''} mi/day",
                 f"{template.get('detection_radius', 0)} rows",
                 Text("YES" if affordable else "NO", style=palette.PHOSPHOR_BRIGHT if affordable else palette.RED),
                 key=template["id"],
@@ -153,13 +153,14 @@ class MilitaryView(VerticalScroll):
         title = Text()
         title.append("IN TRAINING — cancel with X ", style=f"bold {palette.AMBER}")
         x, y = muster_point(game, nation)
-        title.append(f"(new formations muster at grid {x:03d}-{y:03d} with ¼ of their kit; "
-                     "logistics issues the rest from the national stockpile)", style=palette.PHOSPHOR_DIM)
+        title.append(f"(new formations muster at grid {x:03d}-{y:03d}, warships at the busiest open harbour, with ¼ of "
+                     "their kit; logistics issues the rest from the national stockpile)", style=palette.PHOSPHOR_DIM)
         self.query_one("#mil-training-title", Static).update(title)
         queue = self.query_one("#mil-training", DataTable)
         cursor = queue.cursor_row
         queue.clear()
         names = {t["id"]: t["name"] for t in game.catalog["units"]["units"]}
+        templates_by_id = {t["id"]: t for t in game.catalog["units"]["units"]}
         for order in training:
             queue.add_row(
                 order.designation,
@@ -167,7 +168,7 @@ class MilitaryView(VerticalScroll):
                 names[order.unit_type].upper(),
                 f"{palette.meter(order.progress * 100, width=12)} {order.progress:.0%}",
                 f"{order.weeks_left}",
-                f"{x:03d}-{y:03d}",
+                "{:03d}-{:03d}".format(*muster_point(game, nation, templates_by_id[order.unit_type])),
                 f"{order.cost:,} {cur}",
                 key=order.id,
             )
@@ -194,7 +195,7 @@ class MilitaryView(VerticalScroll):
                 Text(unit.supply_state.upper(),
                      style=palette.PHOSPHOR if unit.supply_state == "supplied" else f"bold {palette.RED}"),
                 Text(unit.status.upper(), style=f"bold {palette.RED}" if unit.engaged else palette.PHOSPHOR),
-                unit.stance.upper(),
+                unit.mission.upper() if template.get("domain") == "sea" else unit.stance.upper(),
                 (f"MOVE → {unit.active_order.x:03d}-{unit.active_order.y:03d}" if unit.active_order else "HOLD"),
                 f"{unit.x:03d}-{unit.y:03d}",
             )

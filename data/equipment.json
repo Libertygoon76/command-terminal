@@ -8,7 +8,11 @@
     "  `uses_ammo` + `ammo_per_week` (ammo units per weapon per combat week). Tanks also burn `fuel_per_week` fuel_drums in combat.",
     "  `loss_rate`: fraction of the owner's casualty rate at which this item is destroyed (rifles die with their riflemen; guns survive more).",
     "  `casualty_reduction` (protection): multiplier on casualties taken when every man has one.",
-    "hard_attack_bonus / attack_bonus: multiplier bonus when the formation carries at least its establishment share of the item (APFSDS rounds, night vision)."
+    "hard_attack_bonus / attack_bonus: multiplier bonus when the formation carries at least its establishment share of the item (APFSDS rounds, night vision).",
+    "Warships (category warship): `hull` = damage points per ship; losses are rounded stochastically (a ship is sunk or",
+    "  it is not). hard_attack is used in naval battles, soft_attack for shore bombardment; `asw`: full effect vs submarines.",
+    "Aircraft, aviation_fuel and bombs are drawn directly from the national stockpile by Air Wings (config air).",
+    "winter_gear (protection): a formation with a kit for (nearly) every man suffers no frostbite in freezing weather."
   ],
   "equipment": [
     {
@@ -42,7 +46,7 @@
       "factory_days": 3,
       "requires_tech": "intermediate_cartridge",
       "combat": {
-        "soft_attack": 0.035,
+        "soft_attack": 0.04,
         "hard_attack": 0.0,
         "uses_ammo": "ammo_556",
         "ammo_per_week": 0.12,
@@ -264,6 +268,154 @@
       "combat": {
         "attack_bonus": 0.1,
         "loss_rate": 0.5
+      }
+    },
+    {
+      "id": "destroyer",
+      "name": "Destroyer (Tarn class)",
+      "category": "warship",
+      "unit": "ships",
+      "cost": {
+        "steel": 60,
+        "fuel": 6
+      },
+      "batch": 1,
+      "factory_days": 49,
+      "requires_tech": "destroyer_design",
+      "combat": {
+        "soft_attack": 12,
+        "hard_attack": 8,
+        "uses_ammo": "naval_shells",
+        "ammo_per_week": 40,
+        "loss_rate": 1.0,
+        "hull": 10,
+        "asw": true
+      }
+    },
+    {
+      "id": "battleship",
+      "name": "Battleship (Sovereign class)",
+      "category": "warship",
+      "unit": "ships",
+      "cost": {
+        "steel": 420,
+        "fuel": 30
+      },
+      "batch": 1,
+      "factory_days": 210,
+      "requires_tech": "capital_ships",
+      "combat": {
+        "soft_attack": 120,
+        "hard_attack": 45,
+        "uses_ammo": "naval_shells",
+        "ammo_per_week": 150,
+        "loss_rate": 1.0,
+        "hull": 80
+      }
+    },
+    {
+      "id": "submarine",
+      "name": "Diesel-Electric Submarine",
+      "category": "warship",
+      "unit": "boats",
+      "cost": {
+        "steel": 30,
+        "fuel": 3
+      },
+      "batch": 1,
+      "factory_days": 42,
+      "requires_tech": "diesel_submarines",
+      "combat": {
+        "soft_attack": 0,
+        "hard_attack": 12,
+        "uses_ammo": "torpedoes",
+        "ammo_per_week": 4,
+        "loss_rate": 1.0,
+        "hull": 6
+      }
+    },
+    {
+      "id": "naval_shells",
+      "name": "Naval Gun Shells",
+      "category": "ammunition",
+      "unit": "shells",
+      "cost": {
+        "munitions": 0.3
+      },
+      "batch": 250,
+      "factory_days": 2,
+      "requires_tech": "destroyer_design",
+      "combat": {}
+    },
+    {
+      "id": "torpedoes",
+      "name": "Torpedoes (533mm)",
+      "category": "ammunition",
+      "unit": "torpedoes",
+      "cost": {
+        "munitions": 2,
+        "steel": 0.5
+      },
+      "batch": 24,
+      "factory_days": 3,
+      "requires_tech": "diesel_submarines",
+      "combat": {}
+    },
+    {
+      "id": "strike_aircraft",
+      "name": "Strike Fighter (Model 79)",
+      "category": "aircraft",
+      "unit": "aircraft",
+      "cost": {
+        "steel": 6,
+        "fuel": 1
+      },
+      "batch": 4,
+      "factory_days": 14,
+      "requires_tech": "strike_aviation",
+      "combat": {}
+    },
+    {
+      "id": "aviation_fuel",
+      "name": "Aviation Fuel",
+      "category": "consumable",
+      "unit": "drums",
+      "cost": {
+        "fuel": 0.2
+      },
+      "batch": 200,
+      "factory_days": 1,
+      "requires_tech": "strike_aviation",
+      "combat": {}
+    },
+    {
+      "id": "bombs",
+      "name": "Aerial Bombs (250 kg)",
+      "category": "ammunition",
+      "unit": "bombs",
+      "cost": {
+        "munitions": 0.25,
+        "steel": 0.05
+      },
+      "batch": 300,
+      "factory_days": 2,
+      "requires_tech": "strike_aviation",
+      "combat": {}
+    },
+    {
+      "id": "winter_gear",
+      "name": "Cold-Weather Kit",
+      "category": "protection",
+      "unit": "kits",
+      "cost": {
+        "rations": 0.002,
+        "fuel": 0.001
+      },
+      "batch": 1000,
+      "factory_days": 3,
+      "requires_tech": "winter_warfare",
+      "combat": {
+        "loss_rate": 0.8
       }
     }
   ]

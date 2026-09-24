@@ -6,13 +6,21 @@
     "DEFEND -> PROBE: tension >= probe_threshold (random). PROBE -> ASSAULT: tension >= assault_threshold after assault_min_probe_weeks (random). ASSAULT -> PROBE: tension < assault_break_threshold or assault_max_weeks elapsed. PROBE -> DEFEND: tension < defend_threshold.",
     "Any posture -> DEFEND when Kestrian strength at/east of threat_line_x >= threat_ratio x Vosk strength in the front region.",
     "Every posture first pulls back formations whose supply is below resupply_threshold and not SUPPLIED.",
-    "Coordinates: front_line_x / staging_x are map columns. Flank waypoints are [x, y] cells; the objective is the Kestrian HQ in objective_region if present, else a settlement there."
+    "Coordinates: front_line_x / staging_x are map columns. Flank waypoints are [x, y] cells; the objective is the Kestrian HQ in objective_region if present, else a settlement there.",
+    "naval / air: see their _comment blocks. Coordinates follow data/map/world.json (240 x 80)."
   ],
   "vosk": {
     "initial_posture": "DEFEND",
     "initial_tension": 30,
-    "tension_drift": { "DEFEND": 2.5, "PROBE": 1.5, "ASSAULT": -1.0 },
-    "tension_noise": [-2.0, 3.0],
+    "tension_drift": {
+      "DEFEND": 2.5,
+      "PROBE": 1.5,
+      "ASSAULT": -1.0
+    },
+    "tension_noise": [
+      -2.0,
+      3.0
+    ],
     "probe_threshold": 40,
     "probe_chance": 0.6,
     "defend_threshold": 25,
@@ -23,30 +31,104 @@
     "assault_max_weeks": 8,
     "assault_group_size": 3,
     "front_region": "frontier",
-    "home_regions": ["karzan", "vosk_plains", "tal_varos"],
-    "front_line_x": [77, 80],
-    "staging_x": [83, 94],
-    "threat_line_x": 72,
+    "home_regions": [
+      "vosk_marches",
+      "karzan",
+      "zarnov",
+      "dornsk",
+      "sevrask",
+      "tal_varos",
+      "eastern_steppe"
+    ],
+    "front_line_x": [
+      129,
+      132
+    ],
+    "staging_x": [
+      136,
+      150
+    ],
+    "threat_line_x": 124,
     "threat_ratio": 0.35,
     "resupply_threshold": 25,
     "reserve_move_chance": 0.35,
-    "max_orders_per_week": { "DEFEND": 3, "PROBE": 3, "ASSAULT": 4 },
+    "max_orders_per_week": {
+      "DEFEND": 3,
+      "PROBE": 3,
+      "ASSAULT": 4
+    },
     "probe_chance_per_tension_point": 0.012,
     "position_jitter": 2,
     "focus_spread": 4,
     "focus_shift_weeks": 4,
     "sidestep_chance": 0.45,
     "flanks": {
-      "north": { "rows": [5, 11], "waypoints": [[80, 5], [67, 5], [60, 7]], "objective_region": "harrowfen" },
-      "south": { "rows": [22, 30], "waypoints": [[80, 30], [68, 30], [60, 30]], "objective_region": "greywater" }
+      "north": {
+        "rows": [
+          16,
+          26
+        ],
+        "waypoints": [
+          [
+            131,
+            17
+          ],
+          [
+            119,
+            17
+          ],
+          [
+            108,
+            20
+          ]
+        ],
+        "objective_region": "eastmarch"
+      },
+      "south": {
+        "rows": [
+          45,
+          55
+        ],
+        "waypoints": [
+          [
+            131,
+            54
+          ],
+          [
+            119,
+            54
+          ],
+          [
+            108,
+            52
+          ]
+        ],
+        "objective_region": "greywater"
+      }
     },
     "sigint": {
       "chance": 0.25,
-      "flag_bonuses": { "network_lantern": 0.15 },
+      "flag_bonuses": {
+        "network_lantern": 0.15
+      },
       "max_per_week": 2,
-      "major_roles": ["armor", "hq"],
+      "major_roles": [
+        "armor",
+        "hq"
+      ],
       "grid_error": 3,
       "redaction_chance": 0.4
+    },
+    "artillery_offset": 3,
+    "naval": {
+      "_comment": "Fleets: return to harbour when supply < resupply_threshold; otherwise PATROL near home in DEFEND, and in PROBE/ASSAULT send submarines (and destroyers when no enemy fleet is near) to BLOCKADE the richest Kestrian port they can reach, and battle squadrons to BOMBARD coastal battles. Any fleet attacks a visible enemy fleet within hunt_range rows.",
+      "resupply_threshold": 35,
+      "hunt_range": 20,
+      "blockade_standoff": 2
+    },
+    "air": {
+      "_comment": "Each week wings go to sectors with Vosk land battles (most engaged strength first), else the front sector.",
+      "default_sector": "frontier"
     }
   }
 }

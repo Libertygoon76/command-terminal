@@ -13,6 +13,12 @@ ASSAULT = "assault"
 WITHDRAW = "withdraw"
 STANCES = (DEFEND, ASSAULT, WITHDRAW)
 
+# Naval missions (warships only; see naval_engine).
+PATROL = "patrol"  # hold station, engage enemy fleets that come into contact
+BLOCKADE = "blockade"  # close enemy ports within naval.blockade_range: no trade, no supply from them
+BOMBARD = "bombard"  # shell the coast: fire support for friendly land battles within naval.bombard_range
+MISSIONS = (PATROL, BLOCKADE, BOMBARD)
+
 
 @dataclass
 class MoveOrder:
@@ -48,6 +54,7 @@ class Unit:
     morale: float = 70.0  # 0-100
     supply: float = 100.0  # 0-100, % of weekly needs met
     stance: str = DEFEND  # combat stance: defend | assault | withdraw
+    mission: str = PATROL  # warships only: patrol | blockade | bombard
     commander: str = ""
     # --- orders & status ---
     active_order: MoveOrder | None = None
@@ -90,9 +97,26 @@ class Unit:
             morale=float(data.get("morale", 70)),
             supply=float(data.get("supply", 100)),
             stance=data.get("stance", DEFEND),
+            mission=data.get("mission", PATROL),
             commander=data.get("commander", ""),
             equipment_inventory={k: int(v) for k, v in data.get("equipment_inventory", {}).items()},
         )
+
+
+@dataclass
+class AirWing:
+    """An abstract air wing (not a map unit). Assigned to a map sector (region) it contests the
+    skies there; with air superiority it supports every friendly land battle in the sector."""
+
+    id: str
+    name: str
+    nation_id: str
+    aircraft: int
+    establishment: int = 48
+    sector: str | None = None  # region id, or None = held at base
+    status: str = "BASE"  # last week's outcome in its sector: SUPERIORITY | CONTESTED | DENIED | BASE | GROUNDED
+    sorties: int = 0  # support missions flown last week
+    losses: int = 0  # aircraft lost last week
 
 
 @dataclass

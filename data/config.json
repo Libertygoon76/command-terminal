@@ -69,11 +69,12 @@
     "status_sender": "Ministry of the Treasury — Automated Ledger"
   },
   "map": {
-    "_comment": "War Room. Friendly = player nation; everyone else is hostile. column_scale: a column is half as far as a row. transport_cost: multiplier on a step along rail/road/destroyed rail (terrain is ignored there). obstacle_cost: extra multiplier for crossing trench lines. ghost_weeks: how long a lost contact stays plotted. debug_reveal_all: show every enemy (or run main.py --reveal).",
+    "_comment": "War Room. Friendly = player nation; everyone else is hostile. SCALE: miles_per_cell = miles per map row (one grid step); column_scale: a column is half as far as a row (terminal characters are twice as tall as wide), so a column is 5 miles. transport_cost: multiplier on a step along rail/road/destroyed rail (terrain is ignored there). obstacle_cost: extra multiplier for crossing trench lines. ghost_weeks: how long a lost contact stays plotted. debug_reveal_all: show every enemy (or run main.py --reveal).",
     "friendly_color": "#4fd8ff",
     "hostile_color": "#ff3b3b",
     "mixed_stack_color": "#ffb000",
     "stack_symbol": "*",
+    "miles_per_cell": 10,
     "column_scale": 0.5,
     "ghost_weeks": 4,
     "debug_reveal_all": false,
@@ -87,17 +88,18 @@
     }
   },
   "logistics": {
-    "_comment": "Supply is traced each week along the cheapest path (movement costs: roads/rail are cheap) from a source: a friendly city/capital/port, or the nation's home map edge. An in-supply HQ extends the net by hq_range. Paths cannot pass THROUGH enemy zones of control (cells within zoc_radius of an enemy unit). SUPPLIED: within range. OVEREXTENDED: path exists but too long. ISOLATED: no path. In territory owned by another nation, supply cannot use roads/rail and pays terrain cost x hostile_territory_factor.",
+    "_comment": "Supply is traced each week along the cheapest path (movement costs: roads/rail are cheap) from a source: a friendly settlement (source_features; each type reaches source_range_by_type, towns only a short way), an unblockaded port, or the nation's home map edge. An in-supply HQ extends the net by hq_range. Paths cannot pass THROUGH enemy zones of control (cells within zoc_radius of an enemy land unit). SUPPLIED: within range. OVEREXTENDED: path exists but too long. ISOLATED: no path. In territory owned by another nation, supply cannot use roads/rail and pays terrain cost x hostile_territory_factor. Warships are supplied from friendly unblockaded harbours instead (config naval.supply_range).",
     "source_range": 16,
     "hq_range": 10,
     "zoc_radius": 1,
     "source_features": [
       "capital",
       "city",
-      "port"
+      "industrial",
+      "port",
+      "town"
     ],
     "home_edges": {
-      "kestria": "west",
       "vosk": "east"
     },
     "consumption": {
@@ -121,6 +123,13 @@
       "replacement_rate": 0.04,
       "morale_recovery": 2,
       "morale_ceiling": 85
+    },
+    "source_range_by_type": {
+      "capital": 18,
+      "city": 16,
+      "industrial": 16,
+      "port": 16,
+      "town": 7
     }
   },
   "production": {
@@ -130,7 +139,7 @@
     "upkeep_per_factory": 1100
   },
   "combat": {
-    "_comment": "Weekly combat in every battle. Damage = firepower x stance.attack x morale factor x supply factor x noise; casualties = damage x casualty_factor / (terrain defense x fortification x stance.defense). fortification applies within fort_range columns of a trench line or in urban terrain.",
+    "_comment": "Weekly combat in every battle. Damage = firepower x stance.attack x morale factor x supply factor x air support x weather x noise, plus fire support from artillery and warships; casualties = damage x casualty_factor / (terrain defense x fortification x stance.defense). fortification applies within fort_range columns of the unit's own trench line; urban_fortification in urban terrain or within 1 row of a town or city. ARTILLERY (templates with `support`) that is not itself in contact fires for the nearest friendly battle within artillery_support_range rows of an engaged friendly formation: its firepower x artillery_support_multiplier is added to that side and it takes no casualties.",
     "casualty_factor": 1.6,
     "noise": [
       0.8,
@@ -155,7 +164,10 @@
     "aar_estimate_accuracy": 0.75,
     "ai_assault_ratio": 1.5,
     "ai_withdraw_ratio": 0.6,
-    "ai_withdraw_morale": 30
+    "ai_withdraw_morale": 30,
+    "settlement_fortification_range": 1,
+    "artillery_support_range": 2.5,
+    "artillery_support_multiplier": 1.5
   },
   "recruitment": {
     "_comment": "Raising a formation costs its template recruit_cost (CR) and manpower up front, then takes training_weeks. It musters at the capital (or nations.json muster_point) with full manpower, initial_morale, and initial_issue of its establishment drawn from the national stockpile; logistics fills the rest. Cancelling refunds all manpower and cancel_refund of the cost.",
@@ -169,5 +181,30 @@
   "research": {
     "_comment": "One project at a time per nation; progress is kept if you switch. No progress while bankrupt.",
     "halt_when_bankrupt": true
+  },
+  "naval": {
+    "_comment": "Warships move only on open water. SUPPLY: within supply_range (sea movement cost) of a friendly, unblockaded harbour. BLOCKADE: an enemy port is closed while a warship on a BLOCKADE mission lies within blockade_range rows of it and no warship of the port's owner is within the same range (a contested blockade fails): the port stops supplying and its overseas trade is lost. BOMBARD: a warship on a BOMBARD mission, not itself in contact, adds its guns' soft_attack x bombard_multiplier to the nearest friendly land battle within bombard_range rows. NAVAL BATTLE: when hostile fleets make contact, each side's hard_attack x damage_per_attack damages enemy hulls (spread by hull share); non-ASW fire against submarines is x non_asw_vs_submarine. A fleet that loses its nerve (morale < retire_morale) breaks off toward its harbour. in_port_range: rows from a friendly harbour that count as 'in port' (no storm damage).",
+    "supply_range": 45,
+    "blockade_range": 3.0,
+    "bombard_range": 2.5,
+    "bombard_multiplier": 1.0,
+    "damage_per_attack": 0.35,
+    "non_asw_vs_submarine": 0.1,
+    "submarine_stealth": 0.5,
+    "retire_morale": 20,
+    "retire_cells": 4,
+    "in_port_range": 1.5
+  },
+  "air": {
+    "_comment": "Air wings are abstract (not on the map). Each is assigned to a sector (a map region) or held at base. Effective air power = aircraft x fuel ratio x weather air factor. SUPERIORITY: our power >= superiority_ratio x theirs (and > 0); DENIED: the reverse; CONTESTED otherwise. Where both sides fly, each loses aircraft = enemy power x attrition_rate x noise. Every assigned wing burns patrol_fuel_per_aircraft aviation_fuel a week; over a sector with a friendly land battle it also flies support: support_fuel_per_aircraft fuel and bombs_per_aircraft bombs each. A land battle in a sector where a side holds SUPERIORITY gives that side attack_bonus firepower (attack_bonus_no_bombs if the bombs ran out). Wings refill up to replacements_per_week aircraft from the national stockpile.",
+    "superiority_ratio": 1.5,
+    "patrol_fuel_per_aircraft": 1.5,
+    "support_fuel_per_aircraft": 2.5,
+    "bombs_per_aircraft": 5,
+    "attack_bonus": 0.3,
+    "attack_bonus_no_bombs": 0.1,
+    "attrition_rate": 0.04,
+    "replacements_per_week": 6,
+    "enemy_estimate_accuracy": 0.6
   }
 }

@@ -433,3 +433,72 @@ GameOverScreen {
 ResearchView {
     padding: 1 2;
 }
+
+/* ---------- air assets ---------- */
+
+AirView {
+    padding: 1 2;
+}
+
+#air-wings, #air-sectors {
+    height: auto;
+    max-height: 22;
+}
+
+/* ---------- classified dilemma ---------- */
+
+DilemmaScreen {
+    align: center middle;
+    background: rgba(0, 0, 0, 0.75);
+}
+
+#dilemma-dialog {
+    width: 110;
+    max-width: 96%;
+    height: auto;
+    max-height: 92%;
+    padding: 1 2;
+    background: #0c0a02;
+    border: double $ct-amber;
+    border-title-color: $ct-amber;
+    border-title-style: bold;
+}
+
+#dilemma-meta, #dilemma-title {
+    height: auto;
+    margin-bottom: 1;
+}
+
+#dilemma-body {
+    height: auto;
+    max-height: 14;
+    margin-bottom: 1;
+}
+
+#dilemma-choices {
+    height: auto;
+}
+
+.dilemma-choice {
+    width: 1fr;
+    height: auto;
+    min-height: 7;
+    margin: 0 1;
+    padding: 0 1;
+    content-align: left top;
+    text-align: left;
+    background: $ct-panel;
+    color: $ct-phosphor-bright;
+    border: tall $ct-phosphor-dim;
+}
+
+.dilemma-choice:focus, .dilemma-choice:hover {
+    border: tall $ct-amber;
+    background: #1a1404;
+    text-style: none;
+}
+
+#dilemma-footer {
+    height: 1;
+    margin-top: 1;
+}

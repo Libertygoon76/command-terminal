@@ -26,7 +26,10 @@ FEATURE_STYLES = {
     "★": Style(color="#ffd24a", bold=True),
     "◉": Style(color="#e8e8e8", bold=True),
     "⊕": Style(color="#e8e8e8", bold=True),
+    "▣": Style(color="#d0b070", bold=True),
+    "○": Style(color="#b8b8b8"),
 }
+BLOCKADED = Style(color="#ff3b3b", bold=True, blink=False)
 
 # Background tint per region owner: the situation-map "colour wash" of territory.
 OWNER_BG = {
@@ -163,6 +166,10 @@ class MapCanvas(ScrollView, can_focus=True):
             if order and (order.x, order.y) not in occupied:
                 bg = OWNER_BG.get(world.owner_at(order.x, order.y), OWNER_BG[None])
                 rows[order.y][order.x] = (DESTINATION_GLYPH, Style(color=friendly_color, bgcolor=bg, bold=True))
+        for port in world.ports():  # blockaded harbours glow red
+            if port.name in game.blockades and (port.x, port.y) not in occupied:
+                bg = OWNER_BG.get(world.owner_at(port.x, port.y), OWNER_BG[None])
+                rows[port.y][port.x] = ("⊕", BLOCKADED + Style(bgcolor=bg))
         self._rows = rows
         self._occupied = occupied
         self._supply_view = player_supply_picture(game)
@@ -189,6 +196,8 @@ class MapCanvas(ScrollView, can_focus=True):
             return Style(color="#2aa0a0", bgcolor=bg)
         if ch == "^":
             return Style(color="#8a8f86", bgcolor=bg)
+        if ch == "∩":
+            return Style(color="#8a7a5a", bgcolor=bg)
         if ch == "~":
             return Style(color="#1f5670", bgcolor=bg)
         if ch.isalnum() or ch in "-/":

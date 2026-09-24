@@ -21,13 +21,20 @@ def distance(state: GameState, a: tuple[int, int], b: tuple[int, int]) -> float:
 
 
 def detection_radius(state: GameState, unit: Unit) -> float:
-    template = next(t for t in state.catalog["units"]["units"] if t["id"] == unit.unit_type)
-    return float(template.get("detection_radius", 5))
+    return float(state.template(unit.unit_type).get("detection_radius", 5))
+
+
+def sighting_range(state: GameState, observer: Unit, target: Unit) -> float:
+    """Submarines (template `stealth`) are seen at half range, except by ASW ships (destroyers)."""
+    radius = detection_radius(state, observer)
+    if state.template(target.unit_type).get("stealth") and not state.template(observer.unit_type).get("asw"):
+        radius *= float(state.config.get("naval", {}).get("submarine_stealth", 0.5))
+    return radius
 
 
 def is_detected(state: GameState, hostile: Unit) -> bool:
     return any(
-        distance(state, f.location, hostile.location) <= detection_radius(state, f) for f in state.player.units
+        distance(state, f.location, hostile.location) <= sighting_range(state, f, hostile) for f in state.player.units
     ) or bool(hostile.engaged_with)
 
 

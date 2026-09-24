@@ -27,37 +27,38 @@ def game():
 
 def test_world_map_grid_and_regions(game):
     world = game.world_map
-    assert (world.width, world.height) == (128, 42)
+    assert (world.width, world.height) == (240, 80)
     assert all(len(row) == world.width for row in world.base)
-    assert world.region_at(69, 8).id == "frontier"
-    assert world.region_at(14, 22).id == "aldmark"
+    assert world.region_at(121, 20).id == "frontier"
+    assert world.region_at(45, 30).id == "aldmark"
     assert world.is_sea(0, 0)
-    assert world.is_national_border(67, 10)  # Stonereach | Frontier boundary
-    assert not world.is_national_border(30, 10)  # inside Harrowfen
+    assert world.is_national_border(119, 30)  # Eastmarch | Frontier boundary
+    assert not world.is_national_border(40, 33)  # inside Aldmark
 
 
 def test_units_have_locations_on_land(game):
     units = game.all_units()
-    assert len(game.player.units) == 7 and len(game.nations["vosk"].units) == 8
+    assert len(game.player.units) == 11 and len(game.nations["vosk"].units) == 12
     for unit in units:
-        assert not game.world_map.is_sea(unit.x, unit.y), unit.id
+        naval = game.domain(unit) == "sea"
+        assert game.world_map.is_sea(unit.x, unit.y) == naval, unit.id  # warships at sea, armies on land
 
 
 def test_markers_stack_same_cell(game):
     markers = build_markers(game)
-    friendly_stack = marker_at(markers, 69, 21)
+    friendly_stack = marker_at(markers, 121, 38)
     assert friendly_stack.is_stack and friendly_stack.text == "[*]" and friendly_stack.side == FRIENDLY
     assert {u.id for u in friendly_stack.units} == {"kes_2_inf", "kes_aldmark_militia"}
-    hostile_stack = marker_at(markers, 78, 20)
+    hostile_stack = marker_at(markers, 130, 36)
     assert hostile_stack.is_stack and hostile_stack.side == HOSTILE
-    single = marker_at(markers, 69, 8)
+    single = marker_at(markers, 121, 20)
     assert single.text == "[X]" and not single.is_stack
 
 
 def test_overlapping_symbols_merge_and_mixed_sides(game):
-    game.unit("kes_1_inf").location = (77, 7)  # symbol 76-78 would overlap V-4R at 77-79
+    game.unit("kes_1_inf").location = (129, 18)  # symbol 128-130 would overlap V-4R at 129-131
     markers = build_markers(game)
-    merged = marker_at(markers, 78, 7) or marker_at(markers, 77, 7)
+    merged = marker_at(markers, 130, 18) or marker_at(markers, 129, 18)
     assert merged.is_stack and merged.side == MIXED
     # No two markers ever share a cell.
     cells = [(m.y, x) for m in markers for x in range(m.x - 1, m.x + 2)]
@@ -112,12 +113,12 @@ def test_war_room_renders_overlay_and_readouts():
             assert canvas.virtual_size.width > canvas.size.width
             assert canvas.size.height >= 30  # map fills the pane vertically
 
-            # Overlay drawn at exact columns (row 8: K-01 [X] centred on x=69).
-            canvas.jump_to(69, 8)
+            # Overlay drawn at exact columns (row 20: K-01 [X] centred on x=121).
+            canvas.jump_to(121, 20)
             await pilot.pause()
-            line = _strip_text(canvas, 8)
+            line = _strip_text(canvas, 20)
             sx = int(canvas.scroll_offset.x)
-            assert line[68 - sx:71 - sx] == "[X]"
+            assert line[120 - sx:123 - sx] == "[X]"
             assert len(line) == canvas.size.width  # nothing overflows the pane
             if SHOTS:
                 Path(SHOTS).mkdir(parents=True, exist_ok=True)
@@ -127,7 +128,7 @@ def test_war_room_renders_overlay_and_readouts():
             assert "FRIENDLY FORMATION" in text and "9,400 / 10,000" in text and "SUPPLY" in text
 
             # Hostile: estimates only; true strength and morale hidden.
-            canvas.jump_to(78, 7)
+            canvas.jump_to(130, 18)
             await pilot.pause()
             text = _readout(app)
             assert "HOSTILE" in text and "EST. STRENGTH" in text and "CERTAINTY" in text
@@ -136,7 +137,7 @@ def test_war_room_renders_overlay_and_readouts():
                 app.save_screenshot(str(Path(SHOTS) / "p3_2_hostile.svg"))
 
             # Stack readout lists both formations.
-            canvas.jump_to(69, 21)
+            canvas.jump_to(121, 38)
             await pilot.pause()
             text = _readout(app)
             assert "STACK — 2 FORMATIONS" in text and "MILITIA" in text
@@ -147,10 +148,10 @@ def test_war_room_renders_overlay_and_readouts():
             await pilot.press("right_square_bracket")
             await pilot.pause()
             assert marker_at(canvas.markers, *canvas.cursor) is not None
-            assert canvas.cursor != (69, 21)
+            assert canvas.cursor != (121, 38)
 
             # Panning: cursor to the far east scrolls the map.
-            canvas.jump_to(120, 30)
+            canvas.jump_to(220, 30)
             await pilot.pause()
             assert canvas.scroll_offset.x > 0
             assert "TAL VAROS" in _readout(app)
@@ -158,11 +159,12 @@ def test_war_room_renders_overlay_and_readouts():
                 app.save_screenshot(str(Path(SHOTS) / "p3_4_panned.svg"))
 
             # Mouse: click a cell -> cursor goes there (content offset + scroll).
-            canvas.scroll_to(0, 0, animate=False, immediate=True)
+            canvas.scroll_to(80, 12, animate=False, immediate=True)
             await pilot.pause()
-            await pilot.click(MapCanvas, offset=(69, 15))
+            sx, sy = int(canvas.scroll_offset.x), int(canvas.scroll_offset.y)
+            await pilot.click(MapCanvas, offset=(121 - sx, 29 - sy))
             await pilot.pause()
-            assert canvas.cursor == (69, 15)
+            assert canvas.cursor == (121, 29)
             assert "K-02" in _readout(app)
 
             # Order-of-battle list: highlighting a hostile contact jumps the cursor to it.
@@ -170,7 +172,7 @@ def test_war_room_renders_overlay_and_readouts():
             orbat.focus()
             orbat.highlighted = orbat.get_option_index("vosk_9_rifle")
             await pilot.pause()
-            assert canvas.cursor == (78, 13)
+            assert canvas.cursor == (130, 27)
             # Deep reserves are beyond detection range: not listed, not drawn.
             assert "vosk_3_gtank" not in {o.id for o in orbat.options}
 

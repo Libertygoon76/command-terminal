@@ -1,5 +1,5 @@
 {
-  "_comment": "Starting state of every nation. military_factories: total military factories. production: factories assigned per equipment id. national_stockpile: finished equipment in depots. resource_output: raw/manufactured resources produced per week (placeholder domestic economy). known_techs: null = tech_tree.known_at_start. adjective: used in new formation names. tax_policy: id from config economy.tax_policies (sets the rate). trade_income: base trade/industrial income per week. muster_point: [x, y] where new formations appear (null = the capital).",
+  "_comment": "Starting state of every nation. military_factories: total military factories. production: factories assigned per equipment id. national_stockpile: finished equipment in depots. resource_output: raw/manufactured resources produced per week (placeholder domestic economy). known_techs: null = tech_tree.known_at_start. adjective: used in new formation names. tax_policy: id from config economy.tax_policies (sets the rate). trade_income: domestic industrial & trade income per week (overseas trade comes from the nation's ports in world.json and stops while they are blockaded). muster_point: [x, y] where new land formations appear (null = the capital); warships muster at a friendly harbour.",
   "nations": [
     {
       "id": "kestria",
@@ -37,7 +37,12 @@
         "lt_tank": 10,
         "shell_76": 3000,
         "truck_4t": 200,
-        "fuel_drums": 3000
+        "fuel_drums": 3000,
+        "naval_shells": 3000,
+        "torpedoes": 60,
+        "aviation_fuel": 4000,
+        "bombs": 3000,
+        "strike_aircraft": 12
       },
       "resource_output": {
         "grain": 3000,
@@ -52,7 +57,7 @@
       "known_techs": null,
       "adjective": "Kestrian",
       "tax_policy": "normal",
-      "trade_income": 24000,
+      "trade_income": 11000,
       "muster_point": null
     },
     {
@@ -92,7 +97,13 @@
         "lt_tank": 30,
         "shell_76": 6000,
         "truck_4t": 400,
-        "fuel_drums": 6000
+        "fuel_drums": 6000,
+        "naval_shells": 5000,
+        "torpedoes": 100,
+        "aviation_fuel": 6000,
+        "bombs": 5000,
+        "strike_aircraft": 20,
+        "winter_gear": 8000
       },
       "resource_output": {
         "grain": 2500,
@@ -104,10 +115,19 @@
         "munitions": 900,
         "rations": 350
       },
-      "known_techs": null,
+      "known_techs": [
+        "standard_rifle_762",
+        "towed_artillery_152",
+        "light_tank_chassis",
+        "destroyer_design",
+        "capital_ships",
+        "diesel_submarines",
+        "strike_aviation",
+        "winter_warfare"
+      ],
       "adjective": "Vosk",
       "tax_policy": "high",
-      "trade_income": 30000,
+      "trade_income": 14000,
       "muster_point": null
     }
   ]

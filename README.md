@@ -20,16 +20,21 @@ Use Windows Terminal (not the legacy console) for correct colors and box-drawing
 
 ## Controls
 
-`1`–`5` switch views · arrows / Enter navigate · `Tab` moves focus · `a`–`d` reply to the open dispatch · `h` hides archived mail · `n` advances the week · `q` logs out.
+`1`–`6` switch views · arrows / Enter navigate · `Tab` moves focus · `a`–`d` reply to the open dispatch · `h` hides archived mail · `n` advances the week · `q` logs out.
 
 War Room (`4`): select a friendly unit (cursor or Order of Battle) → `m` → move the cursor → `Enter`
-to issue a move order (`Esc` aborts) · `g` type a grid reference · `x` cancel an order · `s` supply overlay. · `t` cycle combat stance (DEFEND / ASSAULT / WITHDRAW).
+to issue a move order (`Esc` aborts) · `g` type a grid reference · `x` cancel an order · `s` supply overlay · `t` cycle combat stance (DEFEND / ASSAULT / WITHDRAW), or a warship's mission (PATROL / BLOCKADE / BOMBARD). One map row = 10 miles.
 
 Economy (`2`): highlight a production line → `+` / `-` assign or remove a military factory · `0` close the line. · `[` / `]` lower / raise taxes.
 
 Military (`3`): highlight a formation type → `r` raise it · highlight one in training → `x` cancel.
 
 Research (`5`): highlight a technology → `Enter` start (or switch) · `x` stop.
+
+Air Assets (`6`): highlight a wing → `[` / `]` move it between sectors · `0` recall it to base.
+
+Classified Dilemmas pop up between weeks: press `1`–`3` (or click) to decide. The week cannot advance until you do.
+`python main.py --event worker_strike` forces a card at the next week; `python main.py --list-events` lists the deck.
 
 `python main.py --reveal` lifts the fog of war and shows the AI's hidden posture (debug).
 

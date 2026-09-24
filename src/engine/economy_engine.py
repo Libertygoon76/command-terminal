@@ -1,8 +1,10 @@
 """The national economy: taxation, trade, the weekly ledger, and bankruptcy.
 
 Weekly income:
-    tax   = population x tax_rate x tax_revenue_per_capita_weekly x productivity(civil morale)
-    trade = nation.trade_income x productivity(civil morale)        (base trade/industrial income)
+    tax      = population x tax_rate x tax_revenue_per_capita_weekly x productivity(civil morale)
+    industry = nation.trade_income x productivity(civil morale)     (domestic trade & industry)
+    overseas = sum of the nation's OPEN ports' `trade` (world.json) x productivity. A port under naval
+               BLOCKADE (naval_engine) earns nothing; the ledger shows what is being lost.
 Weekly expenses: civil administration, armed forces pay, military production (per assigned
 factory), the active research project, and interest on debt.
 
@@ -79,6 +81,14 @@ def compute_ledger(state: GameState, nation: Nation | None = None) -> Ledger:
     ledger.income[f"Tax revenue ({nation.tax_rate:.0%} rate, {prod:.0%} productivity)"] = round(tax)
     if nation.trade_income:
         ledger.income["Trade & industry"] = round(nation.trade_income * prod)
+    from src.engine.naval_engine import lost_trade, port_trade
+
+    overseas, open_ports = port_trade(state, nation.id)
+    if overseas:
+        ledger.income[f"Overseas trade ({open_ports} open port{'s' if open_ports != 1 else ''})"] = round(overseas * prod)
+    lost = lost_trade(state, nation.id)
+    if lost:
+        ledger.notes.append(f"NAVAL BLOCKADE: {lost:,} {state.currency}/week of overseas trade lost")
 
     ledger.expenses["Civil administration"] = int(cfg.get("civil_upkeep_weekly", 38000))
     ledger.expenses["Armed forces pay"] = int(cfg.get("military_upkeep_weekly", 16000))
@@ -99,6 +109,10 @@ def run_economy(state: GameState, nation: Nation) -> Ledger:
     cfg = _cfg(state)
     ledger = compute_ledger(state, nation)
     nation.adjust_treasury(ledger.net)
+    from src.engine.effects import tick_timed_modifiers
+
+    for mod in tick_timed_modifiers(nation):
+        ledger.notes.append(f"Expired: {mod['key'].replace('_', ' ')} {mod['value']:+.0%}")
 
     drift = float(tax_policy(state, nation).get("morale_per_week", 0.0))
     if drift:

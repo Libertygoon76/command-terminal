@@ -26,6 +26,7 @@ from src.engine.logistics_engine import (
 )
 from src.engine.movement import step_cost
 from src.engine.sigint import is_major_order
+from tests.conftest import settle_dilemma
 from src.models.ai import ASSAULT, DEFEND, PROBE
 
 
@@ -43,46 +44,43 @@ def quiet():
 def test_routes_avoid_sea_and_respect_terrain(quiet):
     state, _ = quiet
     unit = state.unit("kes_7_arm")
-    route = plan_route(state, unit, (14, 28))  # across Greywater into Aldmark
+    route = plan_route(state, unit, (40, 33))  # across the continent into Aldmark
     assert route and all(not state.world_map.is_sea(x, y) for x, y in route.path)
-    assert plan_route(state, unit, (66, 37)) is None  # Iren Free Port is an island
+    assert plan_route(state, unit, (125, 71)) is None  # Iren Free Port is an island
     # Mountains are slower than plains for the same distance.
-    plains = plan_route(state, state.unit("kes_frontier_hq"), (55, 31 - 2))
-    hq = state.unit("kes_frontier_hq")
-    mountain_unit_route = plan_route(state, hq, (55, 12))
-    assert mountain_unit_route.cost > plains.cost
+    assert step_cost(state, (70, 17), (70, 18)) > step_cost(state, (40, 33), (40, 34))
 
 
 def test_order_validation(quiet):
     state, _ = quiet
     with pytest.raises(OrderError):
-        issue_move_order(state, "vosk_4_rifle", (80, 10))  # not ours
+        issue_move_order(state, "vosk_4_rifle", (131, 22))  # not ours
     with pytest.raises(OrderError):
         issue_move_order(state, "kes_1_inf", (0, 0))  # sea
     with pytest.raises(OrderError):
-        issue_move_order(state, "kes_1_inf", (66, 37))  # unreachable island
+        issue_move_order(state, "kes_1_inf", (125, 71))  # unreachable island
 
 
 def test_units_march_each_week_and_arrive(quiet):
     state, engine = quiet
     unit = state.unit("kes_7_arm")
     start = unit.location
-    route = issue_move_order(state, unit.id, (60, 28))
+    route = issue_move_order(state, unit.id, (96, 40))
     assert unit.status == MOVING and route.eta_weeks >= 1
     engine.advance()
     assert unit.location != start
     for _ in range(route.eta_weeks + 2):
         engine.advance()
-    assert unit.location == (60, 28) and unit.active_order is None and unit.status == HOLDING
+    assert unit.location == (96, 40) and unit.active_order is None and unit.status == HOLDING
 
 
 def test_cancel_order(quiet):
     state, engine = quiet
     unit = state.unit("kes_1_inf")
-    issue_move_order(state, unit.id, (60, 8))
+    issue_move_order(state, unit.id, (110, 20))
     cancel_order(state, unit.id)
     engine.advance()
-    assert unit.location == (69, 8) and unit.status == HOLDING
+    assert unit.location == (121, 20) and unit.status == HOLDING
 
 
 # --- skirmish detection ---------------------------------------------------------------
@@ -92,7 +90,7 @@ def test_same_tile_contact_engages_and_sends_clash(quiet):
     state, engine = quiet
     ours, theirs = state.unit("kes_1_inf"), state.unit("vosk_4_rifle")
     issue_move_order(state, ours.id, theirs.location)
-    for _ in range(4):
+    for _ in range(8):
         engine.advance()
         if ours.engaged:
             break
@@ -107,19 +105,19 @@ def test_same_tile_contact_engages_and_sends_clash(quiet):
 def test_crossing_paths_engages(quiet):
     state, _ = quiet
     ours, theirs = state.unit("kes_1_inf"), state.unit("vosk_4_rifle")
-    ours.location, theirs.location = (72, 10), (73, 10)
-    issue_move_order(state, ours.id, (73, 10))
-    issue_move_order(state, theirs.id, (72, 10), nation_id="vosk")
+    ours.location, theirs.location = (124, 22), (125, 22)
+    issue_move_order(state, ours.id, (125, 22))
+    issue_move_order(state, theirs.id, (124, 22), nation_id="vosk")
     pairs = resolve_movement(state)
     assert pairs and ours.engaged and theirs.engaged
-    assert ours.location == (73, 10) and theirs.location == (72, 10)  # they swapped: crossed paths
+    assert ours.location == (125, 22) and theirs.location == (124, 22)  # they swapped: crossed paths
 
 
 def test_adjacent_contact_engages_without_sharing_a_cell(quiet):
     state, engine = quiet
-    ours, theirs = state.unit("kes_1_inf"), state.unit("vosk_4_rifle")  # V-4R holds (78, 7)
-    issue_move_order(state, ours.id, (76, 7))
-    for _ in range(4):
+    ours, theirs = state.unit("kes_1_inf"), state.unit("vosk_4_rifle")  # V-4R holds (130, 18)
+    issue_move_order(state, ours.id, (128, 18))
+    for _ in range(8):
         engine.advance()
         if ours.engaged:
             break
@@ -131,11 +129,11 @@ def test_adjacent_contact_engages_without_sharing_a_cell(quiet):
 def test_breaking_contact(quiet):
     state, engine = quiet
     ours, theirs = state.unit("kes_1_inf"), state.unit("vosk_4_rifle")
-    ours.location = (77, 7)
+    ours.location = (129, 18)
     issue_move_order(state, ours.id, theirs.location)
     engine.advance()
     assert ours.engaged
-    issue_move_order(state, ours.id, (60, 8))  # withdraw
+    issue_move_order(state, ours.id, (110, 20))  # withdraw
     engine.advance()
     engine.advance()
     assert not ours.engaged and not theirs.engaged and not state.engagements
@@ -175,7 +173,7 @@ def test_ai_state_machine_transitions():
 
     # Kestria pushes past its trench line in strength -> DEFEND from any posture.
     for i, unit in enumerate(state.player.units):
-        unit.location = (74, 6 + i * 3)
+        unit.location = (126, 17 + i * 3)
     director.run(state, ai, TickReport(1, ""))
     assert ai.posture == DEFEND
 
@@ -184,7 +182,7 @@ def test_ai_pulls_starving_units_back_into_supply():
     state = new_game(seed=2)
     ai = state.ai_states["vosk"]
     tank = state.unit("vosk_3_gtank")
-    tank.location = (50, 28)  # deep inside Kestria
+    tank.location = (60, 34)  # deep inside Kestria
     compute_network(state, "vosk")
     tank.supply, tank.supply_state = 10.0, OVEREXTENDED
     AIDirector().run(state, ai, TickReport(1, ""))
@@ -230,17 +228,17 @@ def test_ai_is_deterministic_per_seed():
 
 def test_only_detected_enemies_are_drawn_and_lost_contacts_leave_ghosts(quiet):
     state, engine = quiet
-    tank = state.unit("vosk_1_gtank")  # deep reserve at (88, 12)
+    tank = state.unit("vosk_1_gtank")  # deep reserve at (142, 26)
     assert tank.id not in state.contacts
     assert all(tank not in m.units for m in build_markers(state))
 
     scout = state.unit("kes_1_inf")
-    scout.location = (84, 12)  # 2 rows' worth of distance: well inside radius 5
+    scout.location = (138, 26)  # 2 rows' worth of distance: well inside radius 5
     update_contacts(state)
     assert state.contacts[tank.id].visible
-    assert tank in marker_at(build_markers(state), 88, 12).units
+    assert tank in marker_at(build_markers(state), 142, 26).units
 
-    scout.location = (60, 8)
+    scout.location = (110, 20)
     engine.advance()
     contact = state.contacts[tank.id]
     assert not contact.visible
@@ -269,21 +267,21 @@ def test_everyone_starts_in_supply():
 def test_roads_rails_fast_trenches_slow_and_supply_cannot_use_enemy_rail():
     state = new_game(seed=1)
     world = state.world_map
-    assert world.transport_at(30, 24) == "rail" and world.transport_at(71, 10) == "trench"
-    rail = step_cost(state, (29, 23), (29, 24))
-    plain = step_cost(state, (29, 22), (29, 23))
+    assert world.transport_at(30, 29) == "rail" and world.transport_at(123, 22) == "trench"
+    rail = step_cost(state, (30, 28), (30, 29))
+    plain = step_cost(state, (40, 33), (40, 34))
     assert rail < plain
-    trench = step_cost(state, (71, 9), (71, 10))
-    assert trench > step_cost(state, (70, 9), (70, 10))
+    trench = step_cost(state, (123, 21), (123, 22))
+    assert trench > step_cost(state, (122, 21), (122, 22))
     # Vosk supply across Kestrian rail pays terrain x hostile factor instead.
-    assert supply_step_cost(state, "vosk", (29, 23), (29, 24)) > rail
-    assert supply_step_cost(state, "kestria", (29, 23), (29, 24)) == rail
+    assert supply_step_cost(state, "vosk", (30, 28), (30, 29)) > rail
+    assert supply_step_cost(state, "kestria", (30, 28), (30, 29)) == rail
 
 
 def test_overextended_units_get_no_delivery(quiet):
     state, _ = quiet
     raider = state.unit("kes_1_inf")
-    raider.location = (100, 20)  # deep in the Vosk Plains, far past any road we control
+    raider.location = (190, 45)  # deep in the Dornsk Basin, far past any road we control
     before = raider.supply
     update_supply(state)
     assert raider.supply_state == OVEREXTENDED and raider.supply < before
@@ -292,8 +290,8 @@ def test_overextended_units_get_no_delivery(quiet):
 def test_isolation_attrition_and_no_advance(quiet):
     state, engine = quiet
     state.config["logistics"]["zoc_radius"] = 3
-    unit = state.unit("kes_7_arm")  # (60, 21)
-    state.unit("vosk_4_rifle").location = (62, 21)  # enemy right beside it, ZOC swallows every approach
+    unit = state.unit("kes_7_arm")  # (110, 38)
+    state.unit("vosk_4_rifle").location = (112, 38)  # enemy right beside it, ZOC swallows every approach
     report = TickReport(2, "")
     LogisticsEngine().on_tick(state, report)
     assert unit.supply_state == ISOLATED
@@ -304,7 +302,7 @@ def test_isolation_attrition_and_no_advance(quiet):
     update_supply(state)
     assert unit.supply == 0 and unit.strength < strength and unit.morale < morale
     # At 0% supply: cannot advance, may only fall back inside the supply net.
-    issue_move_order(state, unit.id, (100, 20))  # deep into Vosk territory
+    issue_move_order(state, unit.id, (190, 45))  # deep into Vosk territory
     assert unit.active_order.target not in state.supply_networks["kestria"]["network"]
     assert not can_advance(state, unit)
     home = next(iter(sorted(state.supply_networks["kestria"]["network"])))
@@ -360,6 +358,7 @@ def test_sigint_intercepts_major_ai_orders():
 # --- the whole loop, fuzzed --------------------------------------------------------------
 
 
+@pytest.mark.live
 @pytest.mark.parametrize("seed", range(12))
 def test_fuzzed_campaigns_with_player_orders(seed):
     state = new_game(seed=seed)
@@ -373,14 +372,18 @@ def test_fuzzed_campaigns_with_player_orders(seed):
         for unit in state.player.units:
             if rng.random() < 0.3:
                 try:
-                    issue_move_order(state, unit.id, (rng.randint(40, 100), rng.randint(5, 30)))
+                    if state.domain(unit) == "sea":
+                        issue_move_order(state, unit.id, (rng.randint(2, 237), rng.randint(0, 79)))
+                    else:
+                        issue_move_order(state, unit.id, (rng.randint(80, 150), rng.randint(14, 58)))
                 except OrderError:
                     pass
+        settle_dilemma(state, rng)
         engine.advance()
         if state.game_over:
             break
         for unit in state.all_units():
-            assert not world.is_sea(*unit.location)
+            assert world.is_sea(*unit.location) == (state.domain(unit) == "sea")
             assert (unit.status == ENGAGED) == bool(unit.engaged_with)
         cells = [(m.y, x) for m in build_markers(state) for x in range(m.x - 1, m.x + 2)]
         assert len(cells) == len(set(cells))
@@ -430,14 +433,14 @@ def test_issue_orders_from_the_war_room():
             game = app.game
             k01 = game.unit("kes_1_inf")
 
-            # Hidden enemy: the Guards tank brigade at (88,12) is not drawn.
-            canvas.jump_to(88, 12)
+            # Hidden enemy: the Guards tank brigade at (142,26) is not drawn.
+            canvas.jump_to(142, 26)
             await pilot.pause()
             sx = int(canvas.scroll_offset.x)
-            assert _row_text(canvas, 12)[87 - sx:90 - sx] not in ("[O]", "[H]", "[X]", "[•]", "[*]")
+            assert _row_text(canvas, 26)[141 - sx:144 - sx] not in ("[O]", "[H]", "[X]", "[•]", "[*]")
 
             # Select K-01, press M, move the cursor, ENTER.
-            canvas.jump_to(69, 8)
+            canvas.jump_to(121, 20)
             await pilot.pause()
             await pilot.press("m")
             await pilot.pause()
@@ -447,36 +450,36 @@ def test_issue_orders_from_the_war_room():
                 await pilot.press("left")
             await pilot.press("down", "down")
             await pilot.pause()
-            assert canvas.route_preview and canvas.route_preview[-1] == (63, 10)
+            assert canvas.route_preview and canvas.route_preview[-1] == (115, 22)
             _shot(app, "p4_1_targeting")
             await pilot.press("enter")
             await pilot.pause()
             assert not canvas.targeting
-            assert k01.active_order and k01.active_order.target == (63, 10)
+            assert k01.active_order and k01.active_order.target == (115, 22)
             assert "MOVE →" in str(app.screen.query_one("#intel-readout", Static).render()) or True
 
             # Advance: the unit marches.
             await pilot.press("n")
             await pilot.pause()
-            assert k01.location != (69, 8)
+            assert k01.location != (121, 20)
             await pilot.press("4")
             await pilot.pause()
 
             # G: type an exact grid reference for K-05, then confirm.
-            canvas.jump_to(60, 21)
+            canvas.jump_to(110, 38)
             await pilot.pause()
             await pilot.press("g")
             await pilot.pause()
             assert isinstance(app.screen, CoordinatesScreen)
             field = app.screen.query_one(Input)
-            field.value = "58,27"
+            field.value = "100,40"
             await pilot.press("enter")
             await pilot.pause()
-            assert canvas.targeting and canvas.cursor == (58, 27)
+            assert canvas.targeting and canvas.cursor == (100, 40)
             await pilot.press("enter")
             await pilot.pause()
             k05 = game.unit("kes_7_arm")
-            assert k05.active_order and k05.active_order.target == (58, 27)
+            assert k05.active_order and k05.active_order.target == (100, 40)
             _shot(app, "p4_2_orders")
 
             # X cancels (select K-05 again first).
@@ -541,9 +544,12 @@ def test_supply_overlay_does_not_leak_hidden_enemies():
 
     state = new_game(seed=1)
     tank = state.unit("vosk_1_gtank")
-    tank.location = (60, 14)  # a hidden raider inside our net, beyond every detection radius
+    tank.location = (80, 34)  # a hidden raider inside our net, beyond every detection radius
     for unit in state.player.units:
-        unit.location = (20, 20)
+        if state.domain(unit) == "land":
+            unit.location = (40, 40)
+        else:
+            unit.location = (20, 6)
     from src.engine.recon import update_contacts
 
     update_contacts(state)
@@ -552,4 +558,4 @@ def test_supply_overlay_does_not_leak_hidden_enemies():
     network, zoc = player_supply_picture(state)
     assert tank.location in state.supply_networks["kestria"]["zoc"]  # the simulation knows
     assert tank.location not in zoc  # the player's overlay does not
-    assert (60, 14) in network  # and the hole is painted over
+    assert (80, 34) in network  # and the hole is painted over

@@ -38,10 +38,17 @@ def _ordinal(n: int) -> str:
     return f"{n}{suffix}"
 
 
-def muster_point(state: GameState, nation: Nation) -> tuple[int, int]:
+def muster_point(state: GameState, nation: Nation, template: dict | None = None) -> tuple[int, int]:
+    """Where a new formation appears: land formations at the capital (or muster_point), warships at the
+    busiest open harbour."""
+    world = state.world_map
+    if template is not None and template.get("domain") == "sea":
+        ports = sorted((p for p in world.ports() if p.harbour and world.owner_at(p.x, p.y) == nation.id),
+                       key=lambda p: (p.name in state.blockades, -p.trade, p.name))
+        if ports:
+            return ports[0].harbour
     if nation.muster_point and passable(state, *nation.muster_point):
         return nation.muster_point
-    world = state.world_map
     capital = next((f for f in world.features if f.type == "capital" and world.owner_at(f.x, f.y) == nation.id), None)
     if capital and passable(state, capital.x, capital.y):
         return capital.x, capital.y
@@ -125,7 +132,7 @@ def muster(state: GameState, order: TrainingOrder) -> Unit:
         name=order.name,
         nation_id=order.nation_id,
         unit_type=order.unit_type,
-        location=muster_point(state, nation),
+        location=muster_point(state, nation, template),
         strength=int(template["manpower"]),
         morale=float(_cfg(state).get("initial_morale", 60)),
         supply=100.0,
@@ -145,10 +152,10 @@ def ready_email(state: GameState, unit: Unit) -> Email:
     from src.engine.logistics_engine import fill_ratio
 
     tpl = state.catalog["generated"]["formation_ready"]
-    region = state.world_map.region_at(*unit.location)
+    place = state.world_map.place_name(*unit.location)
     body = "\n".join([
         f"{unit.name.upper()} ({unit.designation}) has completed training and reported for duty at grid "
-        f"{unit.x:03d}-{unit.y:03d} ({region.name if region else 'the muster area'}).",
+        f"{unit.x:03d}-{unit.y:03d} ({place}).",
         "",
         f"Strength: {unit.strength:,} men. Morale: {unit.morale:.0f}% (green troops).",
         f"Ammunition on hand: {fill_ratio(unit=unit, state=state):.0%} of establishment. "

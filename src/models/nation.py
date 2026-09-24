@@ -62,7 +62,8 @@ class Nation:
     muster_point: tuple[int, int] | None = None  # where new formations appear (None = the capital)
     research_project: str | None = None  # tech id being researched
     research_progress: dict[str, float] = field(default_factory=dict)  # tech id -> weeks done (kept on switch)
-    modifiers: dict[str, float] = field(default_factory=dict)  # from researched techs, e.g. factory_efficiency
+    modifiers: dict[str, float] = field(default_factory=dict)  # permanent (researched techs), e.g. factory_efficiency
+    timed_modifiers: list[dict[str, Any]] = field(default_factory=list)  # {key, value, weeks_left, source} from events
 
     def __post_init__(self) -> None:
         self.morale = _clamp(float(self.morale), MORALE_MIN, MORALE_MAX)
@@ -94,6 +95,10 @@ class Nation:
         self.stockpiles[resource_id] = max(0, self.stockpiles.get(resource_id, 0) + int(amount))
 
     # --- derived ------------------------------------------------------------
+
+    def modifier(self, key: str) -> float:
+        """Permanent plus temporary (event) modifiers for `key`."""
+        return self.modifiers.get(key, 0.0) + sum(float(m["value"]) for m in self.timed_modifiers if m["key"] == key)
 
     @property
     def morale_band(self) -> str:

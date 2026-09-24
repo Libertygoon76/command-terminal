@@ -40,9 +40,11 @@ class CommandTerminalApp(App):
 
     revision: reactive[int] = reactive(0)
 
-    def __init__(self, skip_boot: bool = False, seed: int | None = None, reveal: bool = False) -> None:
+    def __init__(self, skip_boot: bool = False, seed: int | None = None, reveal: bool = False,
+                 event: str | None = None) -> None:
         super().__init__()
         self._reveal = reveal
+        self._forced_event = event
         self._new_campaign(seed)
         self._skip_boot = skip_boot
 
@@ -50,6 +52,12 @@ class CommandTerminalApp(App):
         self.game = new_game(seed=seed)
         if self._reveal:
             self.game.config.setdefault("map", {})["debug_reveal_all"] = True
+        if self._forced_event:  # main.py --event: this card is drawn when the first week is advanced
+            from src.engine.dilemmas import card
+
+            card(self.game, self._forced_event)  # fail fast on a typo
+            self.game.forced_card = self._forced_event
+            self._forced_event = None
         self.tick_engine = build_default_engine(self.game)
 
     def restart_campaign(self) -> None:
