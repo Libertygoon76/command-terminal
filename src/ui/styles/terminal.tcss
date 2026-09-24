@@ -186,6 +186,99 @@ DataTable > .datatable--cursor {
     color: $ct-phosphor-bright;
 }
 
+/* ---------- status bar flashes ---------- */
+
+.sb-cell.-up {
+    background: #0f3d1a;
+}
+
+.sb-cell.-down {
+    background: #4a0d0d;
+}
+
+/* ---------- sidebar button ---------- */
+
+#advance-week {
+    width: 100%;
+    margin: 0 1 1 1;
+    background: $ct-panel;
+    color: $ct-amber;
+    border: tall $ct-amber;
+    text-style: bold;
+}
+
+#advance-week:hover, #advance-week:focus {
+    background: #3a2a00;
+}
+
+#advance-week:disabled {
+    color: #ff3b3b;
+    border: tall #8b0000;
+}
+
+/* ---------- reply buttons ---------- */
+
+#reply-panel {
+    height: auto;
+    margin-top: 1;
+}
+
+.reply-button {
+    width: 100%;
+    height: 3;
+    margin-bottom: 1;
+    background: $ct-panel;
+    color: $ct-phosphor-bright;
+    border: tall $ct-phosphor-dim;
+    content-align: left middle;
+    text-align: left;
+}
+
+.reply-button:hover, .reply-button:focus {
+    background: #1a3a1f;
+    border: tall $ct-amber;
+    color: $ct-amber;
+}
+
+/* ---------- confirm dialog ---------- */
+
+ConfirmReplyScreen {
+    align: center middle;
+    background: #000000 70%;
+}
+
+#confirm-dialog {
+    width: 76;
+    height: auto;
+    padding: 1 2;
+    background: $ct-surface;
+    border: heavy $ct-amber;
+    border-title-color: $ct-amber;
+    border-title-style: bold;
+}
+
+#confirm-text {
+    height: auto;
+}
+
+#confirm-buttons {
+    height: auto;
+    margin-top: 1;
+    align-horizontal: center;
+}
+
+#confirm-buttons Button {
+    margin: 0 2;
+    background: $ct-panel;
+    color: $ct-phosphor-bright;
+    border: tall $ct-phosphor-dim;
+}
+
+#confirm-buttons Button:focus {
+    border: tall $ct-amber;
+    color: $ct-amber;
+}
+
 /* ---------- toasts ---------- */
 
 Toast {

@@ -19,6 +19,13 @@ def _clamp(value: float, low: float, high: float) -> float:
     return max(low, min(high, value))
 
 
+def morale_band(value: float) -> str:
+    for upper, label in MORALE_BANDS:
+        if value < upper:
+            return label
+    return MORALE_BANDS[-1][1]
+
+
 @dataclass
 class Nation:
     """A sovereign state — the player's or an AI rival's.
@@ -33,13 +40,15 @@ class Nation:
     capital: str
     treasury: int  # may go negative (debt)
     manpower: int  # recruitable pool, never negative
-    morale: float  # 0-100 civilian morale
+    morale: float  # 0-100 civilian morale; 0 = revolution
+    military_morale: float  # 0-100 armed forces loyalty; too low = coup
     population: int
     tax_rate: float  # 0.0-1.0
     stockpiles: dict[str, int] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self.morale = _clamp(float(self.morale), MORALE_MIN, MORALE_MAX)
+        self.military_morale = _clamp(float(self.military_morale), MORALE_MIN, MORALE_MAX)
         self.tax_rate = _clamp(float(self.tax_rate), 0.0, 1.0)
         self.manpower = max(0, int(self.manpower))
 
@@ -51,8 +60,17 @@ class Nation:
     def adjust_manpower(self, amount: int) -> None:
         self.manpower = max(0, self.manpower + int(amount))
 
+    def adjust_population(self, amount: int) -> None:
+        self.population = max(0, self.population + int(amount))
+
     def adjust_morale(self, delta: float) -> None:
         self.morale = _clamp(self.morale + delta, MORALE_MIN, MORALE_MAX)
+
+    def adjust_military_morale(self, delta: float) -> None:
+        self.military_morale = _clamp(self.military_morale + delta, MORALE_MIN, MORALE_MAX)
+
+    def adjust_tax_rate(self, delta: float) -> None:
+        self.tax_rate = _clamp(self.tax_rate + delta, 0.0, 1.0)
 
     def adjust_stockpile(self, resource_id: str, amount: int) -> None:
         self.stockpiles[resource_id] = max(0, self.stockpiles.get(resource_id, 0) + int(amount))
@@ -61,10 +79,11 @@ class Nation:
 
     @property
     def morale_band(self) -> str:
-        for upper, label in MORALE_BANDS:
-            if self.morale < upper:
-                return label
-        return MORALE_BANDS[-1][1]
+        return morale_band(self.morale)
+
+    @property
+    def military_morale_band(self) -> str:
+        return morale_band(self.military_morale)
 
     @property
     def in_debt(self) -> bool:
@@ -82,6 +101,7 @@ class Nation:
             treasury=int(data["treasury"]),
             manpower=int(data["manpower"]),
             morale=float(data["morale"]),
+            military_morale=float(data.get("military_morale", 60)),
             population=int(data["population"]),
             tax_rate=float(data["tax_rate"]),
             stockpiles=dict(data.get("stockpiles", {})),

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from src.models import Email, GameState
+from src.models import Email, GameOver, GameState
 
 
 @dataclass
@@ -13,6 +13,7 @@ class TickReport:
     date: str
     log: list[str] = field(default_factory=list)
     new_messages: list[Email] = field(default_factory=list)
+    game_over: GameOver | None = None
 
 
 class SimulationSystem:

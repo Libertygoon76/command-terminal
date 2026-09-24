@@ -50,11 +50,21 @@ class MilitaryView(VerticalScroll):
             stances.append(stance["description"] + "\n", style=palette.PHOSPHOR)
         self.query_one("#mil-stances", Static).update(stances)
         self.refresh_view()
+        self.watch(self.app, "revision", self._on_revision, init=False)
+
+    def _on_revision(self, _revision: int) -> None:
+        self.refresh_view()
 
     def refresh_view(self) -> None:
         nation = self.app.game.player
         summary = Text()
         summary.append_text(label_value("MANPOWER POOL     ", f"{nation.manpower:,}"))
+        summary.append("\n")
+        coup_at = self.app.game.config.get("fail_states", {}).get("coup_military_morale", 10)
+        mil_style = palette.MORALE_STYLE.get(nation.military_morale_band, palette.PHOSPHOR)
+        summary.append_text(label_value("MILITARY MORALE   ", Text(
+            f"{nation.military_morale:.0f} / 100  {palette.meter(nation.military_morale)}  "
+            f"{nation.military_morale_band}  (COUP AT {coup_at})", style=mil_style)))
         summary.append("\n")
         summary.append_text(label_value("ACTIVE FORMATIONS ", "0"))
         summary.append("\n")

@@ -8,17 +8,19 @@ See [GAME_DESIGN.md](GAME_DESIGN.md) for the full design.
 ```bash
 python -m venv .venv
 .venv\Scripts\activate        # Windows  (source .venv/bin/activate on macOS/Linux)
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 python main.py
 ```
 
-`python main.py --skip-boot` skips the boot sequence.
+`python main.py --skip-boot` skips the boot sequence; `--seed N` makes a campaign reproducible.
+
+Run the tests with `python -m pytest`.
 
 Use Windows Terminal (not the legacy console) for correct colors and box-drawing characters.
 
 ## Controls
 
-`1`–`4` switch views · arrows / Enter navigate · `Tab` moves focus · `n` ends the turn · `q` logs out.
+`1`–`4` switch views · arrows / Enter navigate · `Tab` moves focus · `a`–`d` reply to the open dispatch · `h` hides archived mail · `n` advances the week · `q` logs out.
 
 ## Content
 

@@ -5,8 +5,9 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.screen import Screen
-from textual.widgets import ContentSwitcher, DataTable, Footer, ListView, Static
+from textual.widgets import Button, ContentSwitcher, Footer, ListView, Static
 
+from src.engine.event_manager import GameOverError
 from src.ui import palette
 from src.ui.views import EconomyView, InboxView, MapView, MilitaryView
 from src.ui.widgets.sidebar import NAV_ENTRIES, NavItem, Sidebar
@@ -16,14 +17,18 @@ VIEW_TITLES = {view_id: label for view_id, label, _ in NAV_ENTRIES}
 
 
 class TerminalScreen(Screen):
-    """The command desktop: status bar, navigation sidebar, switchable main display, comms log."""
+    """The command desktop: status bar, navigation sidebar, switchable main display, comms log.
+
+    The screen only issues commands (advance week, switch view). Widgets redraw themselves
+    by watching `app.revision`.
+    """
 
     BINDINGS = [
         Binding("1", "show('inbox')", "Inbox"),
         Binding("2", "show('economy')", "Economy"),
         Binding("3", "show('military')", "Military"),
         Binding("4", "show('map')", "Map"),
-        Binding("n", "end_turn", "End Turn"),
+        Binding("n", "end_turn", "Advance Week"),
         Binding("q", "app.quit", "Log Out"),
     ]
 
@@ -57,40 +62,55 @@ class TerminalScreen(Screen):
         if isinstance(event.item, NavItem):
             self.action_show(event.item.view_id)
 
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "advance-week":
+            self.action_end_turn()
+
     def _set_view_title(self, view_id: str) -> None:
         self.query_one("#main-view").border_title = VIEW_TITLES[view_id]
 
     # --- turn advance --------------------------------------------------------
 
-    async def action_end_turn(self) -> None:
-        report = self.app.tick_engine.advance()
-
-        self.query_one(StatusBar).refresh_status()
-        await self.query_one(InboxView).refresh_view()
-        self.query_one(EconomyView).refresh_view()
-        self.query_one(MilitaryView).refresh_view()
-        self.query_one(MapView).refresh_view()
-        self.query_one(Sidebar).refresh_counts()
+    def action_end_turn(self) -> None:
+        game = self.app.game
+        try:
+            report = self.app.tick_engine.advance()
+        except GameOverError as error:
+            self.notify(str(error), title="TERMINAL LOCKED", severity="error")
+            return
+        self.app.state_changed()
 
         summary = " ".join(report.log) or "NO NEW REPORTS."
         self._log(summary.upper())
+
+        if report.game_over:
+            self.action_show("inbox")
+            self.notify(
+                "The government has fallen. Read the final dispatch.",
+                title="CRITICAL ALERT: SYSTEM PURGE",
+                severity="error",
+                timeout=12,
+            )
+            return
+
+        awaiting = game.inbox.awaiting_response()
+        due_now = sum(1 for m in awaiting if m.reply_by_turn == game.clock.turn)
+        lines = [summary]
+        if due_now:
+            lines.append(f"{due_now} DISPATCH(ES) MUST BE ANSWERED THIS WEEK.")
         self.notify(
-            f"WEEK {report.turn:03d} · {report.date}\n{summary}",
-            title="TURN ADVANCED",
-            severity="warning" if report.new_messages else "information",
+            "\n".join(lines),
+            title=f"WEEK {report.turn:03d} · {report.date}",
+            severity="warning" if due_now else "information",
         )
-
-    # --- inbox events --------------------------------------------------------
-
-    def on_inbox_view_mail_opened(self, event: InboxView.MailOpened) -> None:
-        self.query_one(Sidebar).refresh_counts()
 
     # --- helpers -------------------------------------------------------------
 
     def _log(self, message: str) -> None:
         clock = self.app.game.clock
+        fallen = self.app.game.game_over is not None
         line = Text()
-        line.append(" COMMS ", style=f"bold {palette.BACKGROUND} on {palette.PHOSPHOR_DIM}")
+        line.append(" COMMS ", style=f"bold {palette.BACKGROUND} on {palette.RED if fallen else palette.PHOSPHOR_DIM}")
         line.append(f" WK {clock.turn:03d} // {clock.date_str} » ", style=palette.PHOSPHOR_DIM)
-        line.append(message, style=palette.PHOSPHOR)
+        line.append(message, style=palette.RED if fallen else palette.PHOSPHOR)
         self.query_one("#comms-log", Static).update(line)

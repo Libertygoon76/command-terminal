@@ -1,0 +1,23 @@
+{
+  "_comment": "Pushed as a pinned, undeletable TOP SECRET dispatch when a fail state triggers. Keys: revolution | coup | collapse.",
+  "alerts": {
+    "revolution": {
+      "sender": "AEGIS CORE // AUTOMATED FAILSAFE",
+      "subject": "CRITICAL ALERT: SYSTEM PURGE — ARMED REVOLUTION",
+      "headline": "GOVERNMENT FALLEN: ARMED REVOLUTION.",
+      "body": "CRITICAL ALERT. THIS MESSAGE IS GENERATED AUTOMATICALLY.\n\nAs of {date}, civil order in the {nation} has ceased to exist.\n\nArmed revolutionary committees have seized the rail yards, the radio masts and the Parliament in {capital}. Gendarmerie units have deserted or joined the crowds. The office of the {leader_title} has been declared dissolved by a Provisional Council.\n\nUnder Protocol ZERO this terminal is being purged. All command authority is revoked. Cryptographic keys are being destroyed.\n\nThere is no further action available.\n\n>> SESSION TERMINATED <<"
+    },
+    "coup": {
+      "sender": "AEGIS CORE // AUTOMATED FAILSAFE",
+      "subject": "CRITICAL ALERT: SYSTEM PURGE — MILITARY COUP",
+      "headline": "GOVERNMENT FALLEN: MILITARY COUP.",
+      "body": "CRITICAL ALERT. THIS MESSAGE IS GENERATED AUTOMATICALLY.\n\nAt 0340 on {date}, armored units of the Aldmark garrison surrounded the Chancellery. A 'Council of National Salvation' composed of senior officers has announced over state radio that the {leader_title} has been relieved of office 'for the good of the nation'.\n\nYour protection detail has been disarmed. Loyalist commanders are not answering.\n\nUnder Protocol ZERO this terminal is being purged. All command authority is revoked. Cryptographic keys are being destroyed.\n\nThere is no further action available.\n\n>> SESSION TERMINATED <<"
+    },
+    "collapse": {
+      "sender": "AEGIS CORE // AUTOMATED FAILSAFE",
+      "subject": "CRITICAL ALERT: SYSTEM PURGE — STATE INSOLVENCY",
+      "headline": "GOVERNMENT FALLEN: STATE COLLAPSE.",
+      "body": "CRITICAL ALERT. THIS MESSAGE IS GENERATED AUTOMATICALLY.\n\nAs of {date}, the Treasury of the {nation} has defaulted on all obligations.\n\nCivil servants have not been paid. Soldiers have not been paid. Foreign creditors have seized our gold reserves and our shipping. Ministries have stopped answering. Provincial governors in the east have begun negotiating with the Vosk Hegemony directly.\n\nThe state no longer functions. Under Protocol ZERO this terminal is being purged. All command authority is revoked.\n\nThere is no further action available.\n\n>> SESSION TERMINATED <<"
+    }
+  }
+}

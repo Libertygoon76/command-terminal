@@ -3,7 +3,7 @@ from __future__ import annotations
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.containers import Vertical
-from textual.widgets import Label, ListItem, ListView, Static
+from textual.widgets import Button, Label, ListItem, ListView, Static
 
 from src.ui import palette
 
@@ -41,10 +41,15 @@ class NavItem(ListItem):
 class Sidebar(Vertical):
     def compose(self) -> ComposeResult:
         yield ListView(*(NavItem(*entry) for entry in NAV_ENTRIES), id="nav-list")
+        yield Button(Text("▶ ADVANCE WEEK  [N]"), id="advance-week", variant="warning")
         yield Static(id="sys-info")
 
     def on_mount(self) -> None:
         self.border_title = "SYS // NAV"
+        self.refresh_counts()
+        self.watch(self.app, "revision", self._on_revision, init=False)
+
+    def _on_revision(self, _revision: int) -> None:
         self.refresh_counts()
 
     def refresh_counts(self) -> None:
@@ -53,15 +58,32 @@ class Sidebar(Vertical):
             if item.view_id == "inbox":
                 item.set_badge(game.inbox.unread_count)
 
+        button = self.query_one("#advance-week", Button)
+        button.disabled = game.game_over is not None
+        if game.game_over:
+            button.label = Text("■ TERMINAL LOCKED")
+
+        awaiting = game.inbox.awaiting_response()
+        due_now = sum(1 for m in awaiting if m.reply_by_turn == game.clock.turn)
+
         info = Text()
-        info.append("TERMINAL\n", style=palette.PHOSPHOR_DIM)
-        info.append(f"{game.config.get('terminal_designation', '')}\n\n", style=palette.PHOSPHOR)
+        info.append("NATION\n", style=palette.PHOSPHOR_DIM)
+        info.append(f"{game.player.name.upper()}\n\n", style=palette.PHOSPHOR)
         info.append("OPERATOR\n", style=palette.PHOSPHOR_DIM)
         info.append(f"{game.player.leader_title.upper()}\n\n", style=palette.PHOSPHOR)
         info.append("CLEARANCE\n", style=palette.PHOSPHOR_DIM)
         info.append("OMEGA\n\n", style=f"bold {palette.RED}")
         info.append("AWAITING REPLY\n", style=palette.PHOSPHOR_DIM)
-        info.append(f"{game.inbox.awaiting_response_count}", style=f"bold {palette.AMBER}")
+        info.append(f"{len(awaiting)}", style=f"bold {palette.AMBER}")
+        if due_now:
+            info.append(f"  ({due_now} DUE THIS WEEK)", style=f"bold {palette.RED}")
+        info.append("\n\n")
+        info.append("INSOLVENCY\n", style=palette.PHOSPHOR_DIM)
+        if game.weeks_insolvent:
+            grace = game.config.get("fail_states", {}).get("bankruptcy_grace_weeks", 8)
+            info.append(f"WEEK {game.weeks_insolvent} OF {grace}", style=f"bold {palette.RED}")
+        else:
+            info.append("NONE", style=palette.PHOSPHOR)
         self.query_one("#sys-info", Static).update(info)
 
     def highlight(self, view_id: str) -> None:

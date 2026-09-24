@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import json
+import random
 from datetime import date
 from pathlib import Path
 from typing import Any
 
-from src.models import Email, GameClock, GameState, Nation
+from src.engine.effects import validate_effects
+from src.models import Email, GameClock, GameState, Nation, ScheduledEmail
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+
+ALERT_CAUSES = ("revolution", "coup", "collapse")
 
 
 def load_json(relative_path: str, data_dir: Path = DATA_DIR) -> Any:
@@ -21,7 +25,36 @@ def load_json(relative_path: str, data_dir: Path = DATA_DIR) -> Any:
         raise ValueError(f"Malformed JSON in {path}: {e}") from None
 
 
-def new_game(data_dir: Path = DATA_DIR) -> GameState:
+def load_email_library(data_dir: Path = DATA_DIR) -> dict[str, Email]:
+    library: dict[str, Email] = {}
+    for raw in load_json("events/emails.json", data_dir)["emails"]:
+        email = Email.from_dict(raw)
+        if email.id in library:
+            raise ValueError(f"events/emails.json: duplicate email id {email.id!r}")
+        library[email.id] = email
+    return library
+
+
+def validate_email_library(library: dict[str, Email], resource_ids: set[str]) -> None:
+    """Catch content mistakes at startup instead of mid-game."""
+    for email in library.values():
+        where = f"events/emails.json [{email.id}]"
+        validate_effects(email.on_arrival, f"{where} on_arrival", resource_ids)
+        responses = list(email.options) + ([email.on_expire] if email.on_expire else [])
+        option_ids = [o.id for o in email.options]
+        if len(option_ids) != len(set(option_ids)):
+            raise ValueError(f"{where}: duplicate option ids")
+        if email.deadline_weeks is not None and not email.options:
+            raise ValueError(f"{where}: deadline_weeks set but the email has no options")
+        for option in responses:
+            validate_effects(option.effects, f"{where} option {option.id!r}", resource_ids)
+            for follow_up in option.follow_ups:
+                for target in follow_up.email_ids:
+                    if target not in library:
+                        raise ValueError(f"{where} option {option.id!r}: follow-up email {target!r} does not exist")
+
+
+def new_game(data_dir: Path = DATA_DIR, seed: int | None = None) -> GameState:
     """Build a fresh GameState from the JSON data files."""
     from src.engine.event_manager import deliver_due_emails  # avoid import cycle
 
@@ -37,21 +70,37 @@ def new_game(data_dir: Path = DATA_DIR) -> GameState:
         days_per_turn=int(config.get("days_per_turn", 7)),
     )
 
+    alerts = load_json("events/system_alerts.json", data_dir)["alerts"]
+    missing = [cause for cause in ALERT_CAUSES if cause not in alerts]
+    if missing:
+        raise ValueError(f"events/system_alerts.json: missing alerts for {missing}")
+
     catalog = {
         "resources": load_json("resources.json", data_dir)["resources"],
         "units": load_json("units.json", data_dir),
         "map": load_json("map/world.json", data_dir),
+        "alerts": alerts,
     }
 
-    emails = [Email.from_dict(e) for e in load_json("events/emails.json", data_dir)["emails"]]
+    library = load_email_library(data_dir)
+    validate_email_library(library, {r["id"] for r in catalog["resources"]})
+    schedule = sorted(
+        (ScheduledEmail(e.id, e.arrives_turn) for e in library.values() if e.arrives_turn is not None),
+        key=lambda s: s.turn,
+    )
+
+    if seed is None:
+        seed = config.get("random_seed")
 
     state = GameState(
         clock=clock,
         player=nations[player_id],
         nations=nations,
-        pending_emails=sorted(emails, key=lambda e: e.arrives_turn),
+        email_library=library,
+        schedule=schedule,
         config=config,
         catalog=catalog,
+        rng=random.Random(seed),
     )
     deliver_due_emails(state)
     return state

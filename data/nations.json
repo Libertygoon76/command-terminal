@@ -8,6 +8,7 @@
       "treasury": 1250000,
       "manpower": 48000,
       "morale": 62,
+      "military_morale": 55,
       "population": 8400000,
       "tax_rate": 0.18,
       "stockpiles": {
@@ -29,6 +30,7 @@
       "treasury": 2100000,
       "manpower": 91000,
       "morale": 48,
+      "military_morale": 70,
       "population": 13100000,
       "tax_rate": 0.27,
       "stockpiles": {
