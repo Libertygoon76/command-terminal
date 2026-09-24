@@ -143,6 +143,8 @@
       ],
       "max_sectors": 1,
       "radius": 7
-    }
+    },
+    "military_morale_recovery": 0.4,
+    "military_morale_ceiling": 70
   }
 }

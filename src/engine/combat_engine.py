@@ -177,6 +177,11 @@ def fortification(state: GameState, unit: Unit) -> float:
     region = world.region_at(*unit.location)
     if region is not None and region.terrain == "urban":
         return float(cfg.get("urban_fortification", 1.3))
+    from src.engine.cities import bunker_fortification
+
+    bunker = bunker_fortification(state, unit)  # concrete strongpoints built in a Kestrian city
+    if bunker > 1.0:
+        return bunker
     reach = float(cfg.get("settlement_fortification_range", 1))
     if any(scaled_distance(state, (f.x, f.y), unit.location) <= reach for f in world.features):
         return float(cfg.get("urban_fortification", 1.3))  # street fighting in a town or city
@@ -708,11 +713,17 @@ class CombatSystem(SimulationSystem):
                 continue
             battle.ended_turn = state.clock.turn
             battle.victor = _decide(state, battle)
+            if battle.victor is not None:
+                from src.engine.diplomacy import battle_standing
+
+                battle_standing(state, battle.victor)  # the neutral powers lean toward whoever is winning
             if battle.victor is not None:  # every army's loyalty rises and falls with its battles
+                # ...in proportion to their size: a skirmish is not Verdun.
+                size = min(1.0, sum(battle.casualties.values()) / float(cfg.get("morale_battle_size", 4000)))
                 for nation_id in sorted({n for n, _ in battle.roster.values()}):
                     delta = cfg.get("victory_military_morale", 3) if nation_id == battle.victor \
                         else cfg.get("defeat_military_morale", -4)
-                    state.nations[nation_id].adjust_military_morale(float(delta))
+                    state.nations[nation_id].adjust_military_morale(float(delta) * size)
             report.new_messages.append(deliver(state, aar_email(state, battle)))
             report.log.append(f"{battle.name} has ended.")
         for unit in state.all_units():

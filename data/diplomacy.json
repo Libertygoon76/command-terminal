@@ -1,0 +1,207 @@
+{
+  "_comment": [
+    "Foreign Affairs (src/engine/diplomacy.py). Off-map powers that are not at war: they trade, sell arms and choose sides.",
+    "alignment: ONE score per power, -100 (firmly with the Vosk Hegemony) .. +100 (firmly with Kestria). It drifts",
+    "  drift_per_week back toward starting_alignment; envoys, battles, sunk freighters, events and the Hotline move it.",
+    "  alignment_floor / alignment_ceiling: how far ideology lets it go either way, whatever the gifts.",
+    "preferences: tax_policy {policy: alignment per week} (Oakhaven despises oppressive taxes); victory_weight",
+    "  multiplies the swing a won battle gives (Tor respects strength).",
+    "trade: a trade agreement adds trade_income_bonus_cr CR/week while one of the partner's ports is open. Kestria may",
+    "  sign at alignment >= trade_min_alignment, the Vosk at alignment <= -trade_min_alignment; the power cancels",
+    "  when it drifts back past trade_cancel_alignment (toward the other side).",
+    "lend_lease_inventory: {id, item (equipment id), quantity, cost_cr, min_alignment, delivery_weeks[, name]}. Kestria",
+    "  buys at alignment >= min_alignment, the Vosk at alignment <= -min_alignment. Convoys sail to the first open",
+    "  port (ports), wait at sea while all are blockaded, and may be torpedoed by enemy wolfpacks at sea.",
+    "gift: an envoy costs gift_cost CR and swings alignment by up to gift_gain toward the sender (less as it nears 100).",
+    "Faction texts and inventories after the design team's faction sheet (Oakhaven, Tor, Vael)."
+  ],
+  "drift_per_week": 1.0,
+  "gift_cost": 25000,
+  "gift_gain": 8,
+  "sub_attack_chance": 0.08,
+  "sub_loss": 0.3,
+  "victory_alignment": 1,
+  "ports": {
+    "kestria": [
+      "Port Cassel",
+      "Saltmere",
+      "Greyhaven",
+      "Northwatch",
+      "Brenmouth"
+    ],
+    "vosk": [
+      "Zarnovsk",
+      "Sevrask",
+      "Kolvaan",
+      "Kalinsk"
+    ]
+  },
+  "ai": {
+    "gift_chance": 0.1,
+    "gift_until": 40,
+    "buy_chance": 0.12,
+    "min_treasury": 900000
+  },
+  "factions": {
+    "OAKHAVEN": {
+      "id": "oakhaven",
+      "name": "The Oakhaven Republic",
+      "adjective": "Oakhaven",
+      "leader": "President Margaret Caul",
+      "description": "A wealthy naval superpower dominating the western ocean. They prefer democracies and are disgusted by high civilian taxes or oppression. They offer high-tech gear.",
+      "starting_alignment": 15,
+      "alignment_floor": -5,
+      "trade_income_bonus_cr": 3500,
+      "trade_min_alignment": 10,
+      "trade_cancel_alignment": 0,
+      "trade_signed": [
+        "kestria"
+      ],
+      "preferences": {
+        "tax_policy": {
+          "high": -0.5,
+          "oppressive": -1.5
+        },
+        "victory_weight": 1
+      },
+      "lend_lease_inventory": [
+        {
+          "id": "oak_medical",
+          "item": "medical_supplies",
+          "cost_cr": 30000,
+          "quantity": 2500,
+          "min_alignment": 20,
+          "delivery_weeks": 2
+        },
+        {
+          "id": "oak_fighters",
+          "item": "strike_aircraft",
+          "name": "Strike Fighters",
+          "cost_cr": 120000,
+          "quantity": 48,
+          "min_alignment": 60,
+          "delivery_weeks": 4
+        },
+        {
+          "id": "oak_tanks",
+          "name": "Light Tank Battalion (Model 64)",
+          "items": {
+            "lt_tank": 12,
+            "shell_76": 3000
+          },
+          "cost_cr": 95000,
+          "min_alignment": 35,
+          "delivery_weeks": 4
+        },
+        {
+          "id": "oak_artillery",
+          "name": "Howitzer Battery Package",
+          "items": {
+            "howitzer_152": 12,
+            "shell_152_he": 2500
+          },
+          "cost_cr": 70000,
+          "min_alignment": 30,
+          "delivery_weeks": 4
+        },
+        {
+          "id": "oak_trucks",
+          "name": "Motor Transport Column",
+          "items": {
+            "truck_4t": 200,
+            "fuel_drums": 2000
+          },
+          "cost_cr": 40000,
+          "min_alignment": 15,
+          "delivery_weeks": 3
+        }
+      ]
+    },
+    "TOR": {
+      "id": "tor",
+      "name": "United Provinces of Tor",
+      "adjective": "Toran",
+      "leader": "Protector-General Oskar Tor",
+      "description": "A sprawling, heavily industrialized autocracy to the south. They care little for the suffering of Kestria's citizens, but respect military strength.",
+      "starting_alignment": -5,
+      "trade_income_bonus_cr": 2000,
+      "trade_min_alignment": 10,
+      "trade_cancel_alignment": 0,
+      "trade_signed": [],
+      "preferences": {
+        "victory_weight": 3
+      },
+      "lend_lease_inventory": [
+        {
+          "id": "tor_rifles",
+          "item": "rifle_762",
+          "cost_cr": 15000,
+          "quantity": 10000,
+          "min_alignment": 0,
+          "delivery_weeks": 2
+        },
+        {
+          "id": "tor_shells",
+          "item": "shell_152_he",
+          "cost_cr": 25000,
+          "quantity": 5000,
+          "min_alignment": 10,
+          "delivery_weeks": 2
+        },
+        {
+          "id": "tor_fuel",
+          "name": "Tanker Convoy (motor fuel)",
+          "items": {
+            "fuel_drums": 5000
+          },
+          "cost_cr": 30000,
+          "min_alignment": 5,
+          "delivery_weeks": 2
+        }
+      ]
+    },
+    "VAEL": {
+      "id": "vael",
+      "name": "Sovereign State of Vael",
+      "adjective": "Vaelish",
+      "leader": "The Council of Savants",
+      "description": "A fiercely neutral scientific hub. They refuse to sell weapons of war, but their medical and engineering expertise is unmatched.",
+      "starting_alignment": 25,
+      "alignment_floor": -50,
+      "alignment_ceiling": 50,
+      "trade_income_bonus_cr": 1500,
+      "trade_min_alignment": 10,
+      "trade_cancel_alignment": 0,
+      "trade_signed": [],
+      "preferences": {
+        "victory_weight": 0
+      },
+      "lend_lease_inventory": [
+        {
+          "id": "vael_winter",
+          "item": "winter_gear",
+          "cost_cr": 20000,
+          "quantity": 10000,
+          "min_alignment": 20,
+          "delivery_weeks": 2
+        },
+        {
+          "id": "vael_avgas",
+          "item": "aviation_fuel",
+          "cost_cr": 12000,
+          "quantity": 4000,
+          "min_alignment": 0,
+          "delivery_weeks": 1
+        },
+        {
+          "id": "vael_medical",
+          "item": "medical_supplies",
+          "cost_cr": 26000,
+          "quantity": 2500,
+          "min_alignment": 15,
+          "delivery_weeks": 2
+        }
+      ]
+    }
+  }
+}

@@ -61,6 +61,8 @@ def check_victory(state: GameState, report: TickReport | None = None) -> str | N
     enemy = state.nations.get(cfg.get("enemy", "vosk"))
     if enemy is None:
         return None
+    if state.flags.get("armistice_accepted"):
+        return "armistice"
     if capital_held(state):
         state.occupation_weeks += 1
         if state.occupation_weeks == 1 and report is not None:
@@ -99,6 +101,9 @@ def victory_email(state: GameState, how: str) -> Email:
     if how == "occupation":
         cause = (f"Kestrian forces have held {capital} for {state.occupation_weeks} weeks. The {enemy.leader_title} "
                  "has been taken in the ruins of the Chancellery.")
+    elif how == "armistice":
+        cause = ("The Chancellor's armistice has been signed on the present lines. The Hegemony's army is spent; its "
+                 "delegates in Iren have accepted every Kestrian condition that matters.")
     else:
         cause = (f"The {enemy.name} is bankrupt and its army has lost the will to fight. Unpaid regiments are "
                  "marching home; the garrison of " + capital + " has declared for a provisional government.")

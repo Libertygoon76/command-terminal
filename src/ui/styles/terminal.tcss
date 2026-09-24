@@ -526,3 +526,33 @@ DilemmaScreen.-emergency #dilemma-dialog {
     border: double #ff3b3b;
     border-title-color: #ff3b3b;
 }
+
+/* ---------- expansion 1.1: diplomacy & cities ---------- */
+
+DiplomacyView, CitiesView {
+    padding: 1 2;
+}
+
+#dip-nations, #dip-catalog, #dip-shipments, #city-table {
+    height: auto;
+    max-height: 30;
+}
+
+#city-panels {
+    height: auto;
+    min-height: 24;
+    margin-top: 1;
+}
+
+#city-detail {
+    width: 1fr;
+    padding: 0 1;
+}
+
+#city-news-scroll {
+    width: 1fr;
+    height: 24;
+    padding: 0 1;
+    border: round $ct-phosphor-dim;
+    border-title-color: $ct-amber;
+}

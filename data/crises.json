@@ -15,7 +15,8 @@
     "DISASTERS: with disaster_chance a disaster strikes a Kestrian region of a matching terrain: it wrecks rail and",
     "  road (cells) within radius rows of a railway in the region, kills civilians and hurts morale, and raises",
     "  a CRITICAL EMERGENCY: fund relief (relief_cost), deploy the nearest formation not in battle (it cannot",
-    "  move or fight for military_weeks weeks), or ignore it (ignore_morale). Combat Engineers repair the damage."
+    "  move or fight for military_weeks weeks), or ignore it (ignore_morale). Combat Engineers repair the damage.",
+    "MEDICAL SUPPLIES in the national stockpile: medical_use crates per infected site per week halve the toll and double the burnout chance."
   ],
   "first_turn": 4,
   "outbreak_chance": 0.06,
@@ -26,38 +27,114 @@
   "quarantine_weeks": 2,
   "medicine_weeks": 2,
   "nag_weeks": 3,
-  "cordon": {"morale": -4, "military_morale": -2},
+  "cordon": {
+    "morale": -4,
+    "military_morale": -2
+  },
   "ignore_outbreak_morale": -2,
   "frontline_x": 110,
   "diseases": {
-    "trench_typhus": {"name": "Trench Typhus", "weight": 4, "starts_in": "frontline",
-                      "city_morale": 1.0, "factory_output": 0.03, "unit_attrition": 0.03, "unit_morale": 3,
-                      "spread_chance": 0.35, "spread_range_city": 10, "spread_range_unit": 2.5, "burnout_chance": 0.04,
-                      "description": "Louse-borne fever of the trenches. Whole companies go down with it."},
-    "industrial_flu": {"name": "Industrial Influenza", "weight": 3, "starts_in": "industry",
-                       "city_morale": 1.5, "factory_output": 0.08, "unit_attrition": 0.012, "unit_morale": 2,
-                       "spread_chance": 0.3, "spread_range_city": 14, "spread_range_unit": 3, "burnout_chance": 0.06,
-                       "description": "A virulent influenza sweeping the crowded factory barracks."},
-    "cholera": {"name": "Cholera", "weight": 3, "starts_in": "city",
-                "city_morale": 2.0, "factory_output": 0.05, "unit_attrition": 0.025, "unit_morale": 3,
-                "spread_chance": 0.25, "spread_range_city": 12, "spread_range_unit": 3, "burnout_chance": 0.05,
-                "description": "Bad water in overcrowded districts: the old killer of besieged and starving towns."}
+    "trench_typhus": {
+      "name": "Trench Typhus",
+      "weight": 4,
+      "starts_in": "frontline",
+      "city_morale": 1.0,
+      "factory_output": 0.03,
+      "unit_attrition": 0.03,
+      "unit_morale": 3,
+      "spread_chance": 0.35,
+      "spread_range_city": 10,
+      "spread_range_unit": 2.5,
+      "burnout_chance": 0.04,
+      "description": "Louse-borne fever of the trenches. Whole companies go down with it."
+    },
+    "industrial_flu": {
+      "name": "Industrial Influenza",
+      "weight": 3,
+      "starts_in": "industry",
+      "city_morale": 1.5,
+      "factory_output": 0.08,
+      "unit_attrition": 0.012,
+      "unit_morale": 2,
+      "spread_chance": 0.3,
+      "spread_range_city": 14,
+      "spread_range_unit": 3,
+      "burnout_chance": 0.06,
+      "description": "A virulent influenza sweeping the crowded factory barracks."
+    },
+    "cholera": {
+      "name": "Cholera",
+      "weight": 3,
+      "starts_in": "city",
+      "city_morale": 2.0,
+      "factory_output": 0.05,
+      "unit_attrition": 0.025,
+      "unit_morale": 3,
+      "spread_chance": 0.25,
+      "spread_range_city": 12,
+      "spread_range_unit": 3,
+      "burnout_chance": 0.05,
+      "description": "Bad water in overcrowded districts: the old killer of besieged and starving towns."
+    }
   },
   "disasters": {
-    "severe_flooding": {"name": "Severe Flooding", "terrains": ["river", "coastal", "marsh"], "weight": 4,
-                        "radius": 3, "cells": [5, 9], "population": 6000, "morale": -2,
-                        "text": "Days of torrential rain have burst the embankments. {region} is under water: bridges swept away, the railway embankment breached in a dozen places, villages drowned."},
-    "earthquake": {"name": "Earthquake", "terrains": ["mountain", "hills"], "weight": 2,
-                   "radius": 3, "cells": [6, 10], "population": 9000, "morale": -3,
-                   "text": "A violent earthquake has struck {region}. Tunnels have collapsed, cuttings are choked with rock, towns lie in ruins and thousands are trapped."},
-    "mine_collapse": {"name": "Mine Collapse", "terrains": ["hills"], "weight": 2,
-                      "radius": 2, "cells": [3, 6], "population": 1500, "morale": -2,
-                      "factory": {"value": -0.1, "weeks": 4},
-                      "text": "The main shaft of the {region} colliery has collapsed after an explosion. Hundreds of miners are entombed; subsidence has torn up the colliery railway, and the steel mills are starved of coal."}
+    "severe_flooding": {
+      "name": "Severe Flooding",
+      "terrains": [
+        "river",
+        "coastal",
+        "marsh"
+      ],
+      "weight": 4,
+      "radius": 3,
+      "cells": [
+        5,
+        9
+      ],
+      "population": 6000,
+      "morale": -2,
+      "text": "Days of torrential rain have burst the embankments. {region} is under water: bridges swept away, the railway embankment breached in a dozen places, villages drowned."
+    },
+    "earthquake": {
+      "name": "Earthquake",
+      "terrains": [
+        "mountain",
+        "hills"
+      ],
+      "weight": 2,
+      "radius": 3,
+      "cells": [
+        6,
+        10
+      ],
+      "population": 9000,
+      "morale": -3,
+      "text": "A violent earthquake has struck {region}. Tunnels have collapsed, cuttings are choked with rock, towns lie in ruins and thousands are trapped."
+    },
+    "mine_collapse": {
+      "name": "Mine Collapse",
+      "terrains": [
+        "hills"
+      ],
+      "weight": 2,
+      "radius": 2,
+      "cells": [
+        3,
+        6
+      ],
+      "population": 1500,
+      "morale": -2,
+      "factory": {
+        "value": -0.1,
+        "weeks": 4
+      },
+      "text": "The main shaft of the {region} colliery has collapsed after an explosion. Hundreds of miners are entombed; subsidence has torn up the colliery railway, and the steel mills are starved of coal."
+    }
   },
   "relief_cost": 50000,
   "relief_morale": 2,
   "military_weeks": 3,
   "military_morale": 4,
-  "ignore_morale": -8
+  "ignore_morale": -8,
+  "medical_use": 200
 }

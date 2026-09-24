@@ -12,7 +12,8 @@
     "Warships (category warship): `hull` = damage points per ship; losses are rounded stochastically (a ship is sunk or",
     "  it is not). hard_attack is used in naval battles, soft_attack for shore bombardment; `asw`: full effect vs submarines.",
     "Aircraft, aviation_fuel and bombs are drawn directly from the national stockpile by Air Wings (config air).",
-    "winter_gear (protection): a formation with a kit for (nearly) every man suffers no frostbite in freezing weather."
+    "winter_gear (protection): a formation with a kit for (nearly) every man suffers no frostbite in freezing weather.",
+    "medical_supplies (category medical): held in the national stockpile; while there are enough, every infected site uses crises.medical_use a week and suffers half the toll, and the disease burns out twice as fast. Bought abroad (Oakhaven, Vael) or produced after Field Medicine."
   ],
   "equipment": [
     {
@@ -417,6 +418,20 @@
       "combat": {
         "loss_rate": 0.8
       }
+    },
+    {
+      "id": "medical_supplies",
+      "name": "Medical Supplies",
+      "category": "medical",
+      "unit": "crates",
+      "cost": {
+        "rations": 0.02,
+        "fuel": 0.01
+      },
+      "batch": 300,
+      "factory_days": 3,
+      "requires_tech": "field_medicine",
+      "combat": {}
     }
   ]
 }

@@ -1,0 +1,40 @@
+{
+  "_comment": [
+    "Vosk Hotline cables (src/engine/hotline.py), after the design team's cable sheet. `trigger` picks when the Chancellor calls; subject and body are the cable; `terms` is appended when the cable carries a demand, and the replies (options) are defined in code per trigger.",
+    "Triggers: kestria_winning (the Vosk just lost a major battle), vosk_winning (the Vosk just won a major battle or hold Kestrian soil), vosk_preparing_assault (the Vosk General Staff has gone over to the ASSAULT), vosk_collapsing (Vosk military morale has broken), ceasefire_broken."
+  ],
+  "signature": "Chancellor V. Krov",
+  "sender": "Chancellor V. Krov, Vosk Hegemony — DIRECT LINE (HOTLINE)",
+  "cables": [
+    {
+      "trigger": "kestria_winning",
+      "subject": "COMMUNIQUE: URGENT CEASEFIRE PROPOSAL",
+      "body": "Lord Protector. We acknowledge your recent... advances. The Hegemony is willing to discuss an immediate cessation of hostilities to prevent further senseless bloodshed. A mutual withdrawal to the pre-war borders is proposed. \n\n- Chancellor V. Krov",
+      "terms": "The Hegemony proposes a ceasefire of {weeks} weeks along the whole front, from midnight."
+    },
+    {
+      "trigger": "vosk_winning",
+      "subject": "COMMUNIQUE: TERMS OF SURRENDER",
+      "body": "Your lines are breaking. Our armor rolls unopposed. Capitulate now, cede the Eastern Marches to the Hegemony, and we will spare your capital from the fire. Do not throw more Kestrian boys into the meatgrinder. \n\n- Chancellor V. Krov",
+      "terms": "Short of capitulation, the Hegemony will accept an indemnity of {indemnity} CR for a pause of {weeks} weeks."
+    },
+    {
+      "trigger": "vosk_preparing_assault",
+      "subject": "COMMUNIQUE: UNCONDITIONAL WARNING",
+      "body": "You have pushed our patience to the brink. The might of the Vosk industrial machine has been unleashed. When the sky turns dark with our bombers and our tanks cross your trenches, remember that you brought this upon yourselves. \n\n- Chancellor V. Krov",
+      "terms": "There is still one way back: withdraw your divisions from the Frontier, or pay the Hegemony an indemnity of {indemnity} CR for your provocations."
+    },
+    {
+      "trigger": "vosk_collapsing",
+      "subject": "COMMUNIQUE: REQUEST FOR ARMISTICE",
+      "body": "Lord Protector. I will not insult you with pretence. My armies are bleeding, my treasury is empty, and there are crowds in the streets of Karzan. The Hegemony asks for an ARMISTICE: an end to the fighting on the present lines, prisoners exchanged, and a peace conference in neutral Vael. If you refuse, we will fight for every village. \n\n- Chancellor V. Krov",
+      "terms": ""
+    },
+    {
+      "trigger": "ceasefire_broken",
+      "subject": "COMMUNIQUE: THE CEASEFIRE IS BROKEN",
+      "body": "Your guns have spoken while our envoys were still at the table. Let the world see what the word of Kestria is worth. The ceasefire is at an end, and every foreign chancery has been informed. \n\n- Chancellor V. Krov",
+      "terms": ""
+    }
+  ]
+}

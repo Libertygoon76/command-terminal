@@ -65,7 +65,10 @@ def build_default_engine(state: GameState) -> TickEngine:
     from src.engine.air_engine import AirSystem
     from src.engine.combat_engine import CombatSystem
     from src.engine.command import CommandSystem
+    from src.engine.cities import CitySystem
     from src.engine.crisis_engine import CrisisSystem
+    from src.engine.diplomacy import DiplomacySystem
+    from src.engine.hotline import HotlineSystem
     from src.engine.electronic_warfare import EWSystem
     from src.engine.engineering import EngineeringSystem
     from src.engine.dilemmas import DilemmaSystem
@@ -92,6 +95,7 @@ def build_default_engine(state: GameState) -> TickEngine:
             AirSystem(),  # air wings contest their sectors; superiority decided before the fighting
             CombatSystem(),  # land battles (with artillery, naval gunfire, air support) and naval battles
             NavalSystem(),  # blockades imposed and lifted; storms at sea
+            HotlineSystem(),  # the Vosk Chancellor calls: ceasefires, ultimatums, armistice
             ReconSystem(),  # what our forces can now see
             ResearchSystem(),  # labs progress; breakthroughs unlock production and upgrade loadouts
             RecruitmentSystem(),  # training completes; new formations muster
@@ -100,6 +104,8 @@ def build_default_engine(state: GameState) -> TickEngine:
             EngineeringSystem(),  # combat engineers rebuild wrecked railways and roads
             FrostSystem(),  # frostbite for formations without winter kit
             CrisisSystem(),  # the home front: epidemics, natural disasters, relief duty (CRITICAL EMERGENCY)
+            CitySystem(),  # local morale, construction queues, the local news wire
+            DiplomacySystem(),  # relations drift, treaties, the enemy's foreign ministry, lend-lease convoys
             EconomyEngine(),  # taxes, trade (minus blockaded ports), expenses
             EventManager(),  # dispatches, deadlines
             EWSystem(),  # jamming ticks down; last reports of formations still in contact

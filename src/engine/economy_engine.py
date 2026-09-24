@@ -86,6 +86,16 @@ def compute_ledger(state: GameState, nation: Nation | None = None) -> Ledger:
     overseas, open_ports = port_trade(state, nation.id)
     if overseas:
         ledger.income[f"Overseas trade ({open_ports} open port{'s' if open_ports != 1 else ''})"] = round(overseas * prod)
+    from src.engine.diplomacy import nations as foreign_nations
+    from src.engine.diplomacy import trade_income
+
+    if state.foreign:
+        income, active, suspended = trade_income(state, nation.id)
+        if income:
+            ledger.income[f"Foreign trade agreements ({len(active)})"] = round(income * prod)
+        if suspended:
+            names = ", ".join(foreign_nations(state)[n]["name"] for n in suspended)
+            ledger.notes.append(f"FOREIGN TRADE SUSPENDED (every port blockaded): {names}")
     lost = lost_trade(state, nation.id)
     if lost:
         ledger.notes.append(f"NAVAL BLOCKADE: {lost:,} {state.currency}/week of overseas trade lost")

@@ -283,6 +283,7 @@ def test_enemy_military_morale_falls_with_defeats(quiet):
     theirs.strength = 3
     _engage(state, ours, theirs, [])
     before = state.nations["vosk"].military_morale
+    state.config["combat"]["morale_battle_size"] = 1  # count it as a full-size battle (swings scale with size)
     from src.engine.combat_engine import CombatSystem
 
     CombatSystem().on_tick(state, TickReport(2, ""))

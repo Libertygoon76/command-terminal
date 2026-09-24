@@ -15,6 +15,8 @@ NAV_ENTRIES = (
     ("map", "STRATEGIC MAP", "4"),
     ("research", "RESEARCH", "5"),
     ("air", "AIR ASSETS", "6"),
+    ("diplomacy", "DIPLOMACY", "7"),
+    ("cities", "CITIES", "8"),
 )
 
 

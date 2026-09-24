@@ -71,6 +71,10 @@ def build_status_body(state: GameState) -> str:
 
     for line in health_summary(state):
         lines.append(_stat("EPIDEMIC", line))
+    if state.ceasefire_weeks:
+        lines.append(_stat("CEASEFIRE", f"{state.ceasefire_weeks} week(s) left"))
+    if any(s["to"] == nation.id for s in state.shipments):
+        lines.append(_stat("Lend-lease at sea", ", ".join(s["name"] for s in state.shipments if s["to"] == nation.id)))
     relief = [u.designation for u in nation.units if u.relief_weeks]
     if relief:
         lines.append(_stat("On relief duty", ", ".join(relief)))

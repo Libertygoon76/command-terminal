@@ -13,7 +13,7 @@ from src.engine.tick_engine import DilemmaPendingError
 from src.ui import palette
 from src.ui.screens.dilemma import DilemmaScreen
 from src.ui.screens.game_over import GameOverScreen
-from src.ui.views import AirView, EconomyView, InboxView, MapView, MilitaryView, ResearchView
+from src.ui.views import AirView, CitiesView, DiplomacyView, EconomyView, InboxView, MapView, MilitaryView, ResearchView
 from src.ui.widgets.sidebar import NAV_ENTRIES, NavItem, Sidebar
 from src.ui.widgets.status_bar import StatusBar
 
@@ -34,6 +34,8 @@ class TerminalScreen(Screen):
         Binding("4", "show('map')", "Map"),
         Binding("5", "show('research')", "Research"),
         Binding("6", "show('air')", "Air"),
+        Binding("7", "show('diplomacy')", "Diplomacy"),
+        Binding("8", "show('cities')", "Cities"),
         Binding("n", "end_turn", "Advance Week"),
         Binding("ctrl+s,f5", "save_game", "Save"),
         Binding("q", "app.quit", "Log Out"),
@@ -50,6 +52,8 @@ class TerminalScreen(Screen):
                 yield MapView(id="map")
                 yield ResearchView(id="research")
                 yield AirView(id="air")
+                yield DiplomacyView(id="diplomacy")
+                yield CitiesView(id="cities")
         yield Static(id="comms-log")
         yield Footer()
 

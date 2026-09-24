@@ -150,6 +150,9 @@ def new_game(data_dir: Path = DATA_DIR, seed: int | None = None) -> GameState:
     catalog["events_deck"] = load_json("events_deck.json", data_dir)
     catalog["commanders"] = load_json("commanders.json", data_dir)
     catalog["crises"] = load_json("crises.json", data_dir)
+    catalog["diplomacy"] = load_json("diplomacy.json", data_dir)
+    catalog["cities"] = load_json("cities.json", data_dir)
+    catalog["hotline"] = load_json("hotline.json", data_dir)
     equipment_ids = {e["id"] for e in catalog["equipment"]}
     for nation in nations.values():
         if not nation.known_techs:
@@ -210,6 +213,11 @@ def new_game(data_dir: Path = DATA_DIR, seed: int | None = None) -> GameState:
 
     assign_commanders(state)
     log_signals(state)
+    from src.engine.cities import init_cities
+    from src.engine.diplomacy import init_foreign
+
+    init_foreign(state)
+    init_cities(state)
     from src.engine.weather_engine import bulletin_email, roll_weather
 
     state.weather = roll_weather(state)  # the campaign opens in the dead of winter

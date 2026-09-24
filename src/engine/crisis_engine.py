@@ -128,7 +128,10 @@ def start_outbreak(state: GameState, disease_id: str | None = None, site: str | 
         candidates = [c for c in candidates if c not in state.infections]
         if not candidates:
             return None
-        site = rng.choice(candidates)
+        weights = [_hospital_factor(state, c, "outbreak_factor") for c in candidates]
+        if sum(weights) <= 0:
+            return None
+        site = rng.choices(candidates, weights=weights, k=1)[0]
     outbreak = f"OB-{state.clock.turn:03d}-{disease_id}"
     infect(state, site, disease_id, outbreak)
     state.flags[f"outbreak_nag:{outbreak}"] = state.clock.turn
@@ -168,9 +171,22 @@ def spread(state: GameState) -> list[tuple[str, str]]:
         targets = sorted((d, t) for d, t in targets if t not in state.infections and d <= reach)
         if targets:
             target = targets[0][1]
+            if state.rng.random() >= _hospital_factor(state, target, "spread_factor"):
+                continue  # the hospital's isolation wards hold
             infect(state, target, inf["disease"], inf["outbreak"])
             new.append((site, target))
     return new
+
+
+def _hospital_factor(state: GameState, site: str, key: str) -> float:
+    """How much of the usual epidemic risk a site runs (a city with a hospital runs far less)."""
+    if not site.startswith("city:"):
+        return 1.0
+    from src.engine.cities import buildings, has_building
+
+    if has_building(state, site[5:], "hospital"):
+        return float(buildings(state)["hospital"].get(key, 0.2))
+    return 1.0
 
 
 def quarantine(state: GameState, outbreak: str, mode: str = "fund") -> list[str]:
@@ -194,16 +210,26 @@ def run_epidemics(state: GameState, report: TickReport) -> None:
     cfg = _cfg(state)
     nation = state.player
     medicine = FIELD_MEDICINE in nation.known_techs
+    # Medical supplies from the depots (bought abroad or made after Field Medicine) halve the toll.
+    use = int(cfg.get("medical_use", 200))
+    stock = nation.national_stockpile.get("medical_supplies", 0)
+    treated: set[str] = set()
+    for site in sorted(state.infections):
+        if stock >= use:
+            stock -= use
+            treated.add(site)
+    nation.national_stockpile["medical_supplies"] = stock
     # Toll.
     for site, inf in sorted(state.infections.items()):
         info = disease(state, inf["disease"])
+        toll = 0.5 if site in treated else 1.0
         if site.startswith("city:"):
-            nation.adjust_morale(-float(info.get("city_morale", 1.0)))
+            nation.adjust_morale(-float(info.get("city_morale", 1.0)) * toll)
         else:
             unit = state.unit(site[5:])
             if unit is None:
                 continue
-            lost = min(unit.strength - 1, int(math.ceil(unit.strength * float(info.get("unit_attrition", 0.02)))))
+            lost = min(unit.strength - 1, int(math.ceil(unit.strength * float(info.get("unit_attrition", 0.02)) * toll)))
             if lost > 0:
                 unit.strength -= lost
                 report.log.append(f"{info['name'].upper()}: {unit.designation} lost {lost:,} men to disease.")
@@ -223,7 +249,8 @@ def run_epidemics(state: GameState, report: TickReport) -> None:
                 del state.infections[site]
                 report.log.append(f"{site_label(state, site)}: the {disease(state, inf['disease'])['name'].lower()} is over.")
                 continue
-        elif state.rng.random() < float(disease(state, inf["disease"]).get("burnout_chance", 0.05)):
+        elif state.rng.random() < float(disease(state, inf["disease"]).get("burnout_chance", 0.05)) * (
+                2.0 if site in treated else 1.0):
             del state.infections[site]
     # Spread, and nag while an outbreak runs unchecked.
     fresh = spread(state)

@@ -111,6 +111,13 @@ class AIDirector(SimulationSystem):
         elif ai.posture == ASSAULT:
             if ai.tension < cfg["assault_break_threshold"] or ai.weeks_in_posture >= int(cfg["assault_max_weeks"]):
                 posture = PROBE
+        nation = state.nations[ai.nation_id]  # the regime's propaganda slowly restores the army's spirit
+        ceiling = float(cfg.get("military_morale_ceiling", 70))
+        if nation.military_morale < ceiling and not nation.bankrupt:
+            nation.adjust_military_morale(min(float(cfg.get("military_morale_recovery", 0.4)),
+                                              ceiling - nation.military_morale))
+        if state.ceasefire_weeks > 0:  # the Chancellor's ceasefire: the army holds its fire
+            posture = DEFEND
         self._set_posture(state, ai, posture)
 
         orders = self._resupply_orders(state, ai)
@@ -122,7 +129,8 @@ class AIDirector(SimulationSystem):
         from src.engine.naval_engine import issue_ai_naval_orders
 
         issue_ai_naval_orders(state, ai, report)
-        ai_jamming(state, ai, report)
+        if state.ceasefire_weeks <= 0:
+            ai_jamming(state, ai, report)
         sigint_cfg = cfg.get("sigint", {})
         sent = 0
         for unit, target in orders[: int(cfg["max_orders_per_week"].get(ai.posture, 3))]:

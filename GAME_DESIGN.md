@@ -1,7 +1,7 @@
 # COMMAND TERMINAL — Game Design Document
 
 > Living document. Update it whenever a system is designed, changed, or cut.
-> Last major revision: Phase 8 (the home front: epidemics and natural disasters with CRITICAL EMERGENCY choices; chain of command & insubordination, electronic warfare, scorched earth & combat engineers, victory by capitulation, save/load), 2026-09-24.
+> Last major revision: Expansion 1.1 (the living world: foreign powers & lend-lease, city management, local news, the Vosk Hotline), 2026-09-24. Before that, Phase 8 (the home front: epidemics and natural disasters with CRITICAL EMERGENCY choices; chain of command & insubordination, electronic warfare, scorched earth & combat engineers, victory by capitulation, save/load), 2026-09-24.
 
 ---
 
@@ -745,6 +745,104 @@ From week 4, each week has a **5%** chance that a disaster strikes a Kestrian re
 
 ---
 
+## Expansion 1.1 — The Living World `[X1.1]`
+
+**Goal:** turn the war simulator into a geopolitical grand-strategy game. The world beyond the map is larger (three
+off-map powers who trade, sell arms and choose sides), the nation deeper (every city a living place with people, morale,
+construction and its own newspaper), and the enemy has a voice (the Hotline). Faction sheets, Hotline cables and many
+headlines come from the design team's content sheets (`data/diplomacy.json`, `data/hotline.json`, `data/cities.json`).
+
+### X1. Foreign Affairs & Lend-Lease (Diplomacy tab `7`)
+Module `src/engine/diplomacy.py`, data `data/diplomacy.json`.
+
+| Power | Character | Start | Trade (CR/wk) | Sells |
+|-------|-----------|-------|---------------|-------|
+| **The Oakhaven Republic** | Naval superpower across the western ocean; prefers democracies, **disgusted by high taxes** (−0.5/wk at High, −1.5/wk at Oppressive). Never leans past −5 toward the Vosk. | +15 (treaty with Kestria) | 3,500 | medical supplies, strike fighters (48), **light tanks (12)**, howitzers, trucks |
+| **United Provinces of Tor** | Industrial autocracy to the south; ignores suffering, **respects strength** (battle swings ×3). | −5 | 2,000 | rifles (10,000), 152mm shells, fuel |
+| **Sovereign State of Vael** | Neutral scientific hub; **sells no weapons of war**; ignores battles; bounded ±50. | +25 | 1,500 | winter gear, aviation fuel, medical supplies |
+
+- **Alignment:** one score per power, **−100 (with the Vosk) … +100 (with Kestria)**. It drifts 1/week back toward its
+  starting value.
+- **Envoys** (`g`, 25,000 CR): swing a power up to +8 toward the sender (less the further it already leans).
+- **Trade agreements** (`t`): sign when a power leans +10 your way. They add weekly income while one of your trade ports
+  is open; **with every port blockaded the trade is suspended**. The power cancels when it drifts back past 0.
+- **Lend-Lease** (`b`/Enter on a package): pay now, and the convoy sails 1–5 weeks to the first open port (Port Cassel,
+  Saltmere, Greyhaven, Northwatch, Brenmouth) and unloads into the national stockpile.
+  - While every port is blockaded the convoy waits at sea.
+  - Each week at sea, every enemy submarine wolfpack out of port has an 8% chance to torpedo 30% of the cargo, and the
+    neutral blames the attacker (−5).
+  - **Keeping ports open and hunting wolfpacks with destroyers matters.**
+- **The Vosk foreign ministry** does all of this from the other end of the scale: it courts the powers, signs trade,
+  and buys arms landed in Vosk ports, which Kestrian blockades can hold at sea. A passive player watches the neutrals
+  drift toward the Hegemony.
+- **Won battles** swing every power (except Vael) toward the winner.
+- **Medical supplies** (new stockpile item; bought abroad or produced after Field Medicine): 200 crates per infected
+  site a week halve the epidemic toll and double the burnout chance.
+
+### X2. Deep City Management (Cities tab `8`)
+Modules `src/engine/cities.py`, model `src/models/city.py` (`City`), data `data/cities.json`.
+- **Every Kestrian settlement is a City** (26 of them): `population` (by type: capital ~900k, city ~320k, industry
+  ~260k, port ~180k, town ~45k), `local_morale`, `buildings`, a `construction_queue` and a local news wire.
+- **Local morale** moves 20% a week toward national civil morale plus local factors:
+
+| Factor | Effect on local morale |
+|--------|------------------------|
+| Epidemic in the city | −25 (−10 if quarantined) |
+| Battle within 40 miles | −15 |
+| Enemy in sight | −6 |
+| Harbour blockaded | −10 |
+| Wrecked infrastructure nearby | −12 |
+| Hospital / bunkers / new industry | +8 / +4 / +3 |
+
+  A city below 15 is in **unrest** and costs the nation 0.25 civil morale a week.
+- **Construction** (City Inspector: `h`, `b`, `i`; `x` cancels the last project for a 50% refund). Paid up front,
+  one project at a time per city:
+
+| Building | Cost | Weeks | Effect |
+|----------|------|-------|--------|
+| **Hospital** | 60,000 | 6 | Epidemics start there and reach it only **one fifth** as often; local morale +8 |
+| **Bunker Complex** | 45,000 | 4 | Kestrian formations within 1 row defend as if **entrenched** (fortification ×1.8) |
+| **Local Industry** (max 2) | 120,000 | 10 | **+1 military factory** for the national war economy |
+
+### X3. The Local News Wire
+Each week a city may print a headline (always, when something urgent is happening), chosen from the pool of its most
+pressing situation: epidemic, quarantine, battle nearby, enemy near, blockade, disaster damage, construction, a
+completed building, winter, unrest, high spirits, or a quiet week. Examples: *"Citizens report hearing artillery
+throughout the night; panic buying at local markets."* · *"Mass graves dug outside city limits as quarantine fails."* ·
+*"Steelworker quotas exceeded; patriotic parades in the town square."* The last 12 are kept per city (saved with the game).
+
+### X4. The Vosk Hotline & the expanded event deck
+Module `src/engine/hotline.py`, cables `data/hotline.json` (signed **Chancellor V. Krov**), config `hotline`. At most one
+call every 6 weeks, answered like any dispatch (a/b/c), with a 2-week deadline:
+
+| Trigger | Cable | Replies |
+|---------|-------|---------|
+| Vosk military morale < 20 | REQUEST FOR ARMISTICE | Accept: **the war ends in a negotiated victory** · Refuse |
+| The Vosk lose a battle of ≥ 2,500 men | URGENT CEASEFIRE PROPOSAL | Accept a 4-week ceasefire (their AI holds its fire; tension −20, civil +4, military −3) · Refuse |
+| The Vosk win such a battle, or stand on Kestrian soil | TERMS OF SURRENDER | Reject · Buy a 4-week pause (120,000 CR) |
+| The Vosk go over to the ASSAULT | UNCONDITIONAL WARNING | Pay an indemnity · **Withdraw our divisions from the Frontier** · Defy |
+
+- **Breaking a ceasefire** (a new battle during it) jumps tension by 20 and costs 10 alignment with every power.
+- Military morale now swings with battles **in proportion to their size** (full swing at 4,000 casualties). The Vosk
+  regime slowly restores its army's morale (+0.4/week up to 70) unless bankrupt, so collapse has to be earned.
+- **Event deck:** six new cards hook into the powers and cities:
+  - *Oakhaven Wants a Consideration* (a bribe; needs the Oakhaven treaty)
+  - *Aldmark Workers Strike for a Hospital* (build it, promise it, or break the strike)
+  - *Tor Weighs an Embargo*
+  - *The Oakhaven Volunteer Squadron* (alignment ≥ +50)
+  - *A Vaelish Medical Mission* (a hospital for Greywater)
+  - *Arms for the Enemy* (seize Toran freighters)
+
+  New card conditions: `requires_relation`, `requires_trade` and `requires_city_without`. New effect keys: `relations`,
+  `rival_relations`, `build`, `city_morale`, `ceasefire`, `armistice` and `withdraw_frontier`.
+
+### X5. Save / load
+Cities (`City` objects), `foreign` alignments and treaties, `shipments` at sea, the ceasefire and Hotline timers are all
+part of the saved GameState; the round-trip test plays a saved and a loaded campaign side by side and checks they stay
+identical.
+
+---
+
 ## 5. Architecture
 
 ### 5.1 Principles
@@ -782,6 +880,9 @@ command-terminal/
 │   ├── events_deck.json     # CLASSIFIED DILEMMA cards
 │   ├── commanders.json      # commander traits, starting assignments, replacement pool, cost of relieving
 │   ├── crises.json          # epidemics (diseases, spread, quarantine) and natural disasters
+│   ├── diplomacy.json       # off-map powers: alignment, trade, lend-lease (X1.1)
+│   ├── cities.json          # city populations, buildings, local morale, news headlines (X1.1)
+│   ├── hotline.json         # Chancellor V. Krov's cables (X1.1)
 │   └── ui/boot_sequence.json
 ├── src/
 │   ├── models/              # nation.py, inbox.py, game_state.py, military.py (Unit, MoveOrder, Contact), battle.py,
@@ -806,6 +907,9 @@ command-terminal/
 │   │   ├── engineering.py   # scorched earth sabotage, combat engineer repairs, map damage
 │   │   ├── savegame.py      # save / load (JSON codec for the whole GameState)
 │   │   ├── crisis_engine.py # the home front: epidemics, natural disasters, relief duty, emergency cards
+│   │   ├── diplomacy.py     # foreign powers, envoys, trade agreements, lend-lease convoys, Vosk foreign ministry
+│   │   ├── cities.py        # city management: local morale, construction, bunkers, the local news wire
+│   │   ├── hotline.py       # the Vosk Hotline: ceasefire, surrender terms, ultimatum, armistice
 │   │   ├── recon.py         # detection radius, contacts, ghosts (active fog of war)
 │   │   ├── ai_director.py   # Vosk DEFEND / PROBE / ASSAULT state machine
 │   │   ├── sigint.py        # intercepts of major AI orders
@@ -819,7 +923,7 @@ command-terminal/
 │       ├── app.py           # owns GameState + TickEngine, `revision` reactive
 │       ├── screens/         # boot, terminal, confirm (reply), coordinates, game_over (purge lock), dilemma (event card)
 │       ├── widgets/         # status_bar.py (reactive), sidebar.py (nav + ADVANCE WEEK), map_canvas.py (War Room)
-│       └── views/           # inbox, economy, military (recruitment), map (War Room), research, air (Air Assets)
+│       └── views/           # inbox, economy, military, map (War Room), research, air, diplomacy, cities
 ├── tools/generate_world_map.py  # optional: regenerate world.json (overwrites it)
 └── tests/                   # conftest (calm-world fixture), test_engine, test_ui, test_war_room, test_phase4–8
 ```
@@ -833,6 +937,7 @@ command-terminal/
 4. **Air**: wings contest their sectors (AI tasks its wings first); superiority, losses, fuel and bombs
 5. **Combat**: routed units rally; land battles (with artillery, naval gunfire, air support, winter penalty, commander traits) and naval battles; routing/withdrawing formations may sabotage rail and road; SITREP / AAR
 6. **Naval**: storms at sea; blockades imposed and lifted (+ dispatches)
+6a. **Hotline**: ceasefires tick or break; the Vosk Chancellor may call
 7. **Recon**: detection (submarines at half range), contacts acquired/lost, ghosts
 8. **Research**: labs progress (unless bankrupt); breakthroughs unlock lines and upgrade establishments
 9. **Recruitment**: training advances; formations muster at the capital, warships at a harbour
@@ -840,6 +945,7 @@ command-terminal/
 11. **Logistics**: land and sea supply nets, fuel burn (mud ×2 for armor), supply, attrition, resupply, re-arming turn-in, replacements
 11a. **Engineering**: combat engineers rebuild wrecked track
 12. **Frost**: frostbite for formations without winter kit
+12b. **Cities**: local morale, construction, news; **Diplomacy**: alignment drift, treaties, the Vosk foreign ministry, lend-lease convoys
 12a. **Crises**: relief duty counts down; epidemics take their toll, clear, spread (and nag); new outbreaks and disasters raise CRITICAL EMERGENCY modals
 13. **Economy**: ledger for every nation (taxes, trade, overseas trade minus blockaded ports, factories, research), timed modifiers expire
 14. **Events**: expire overdue dispatches (apply `on_expire`), deliver due emails (apply `on_arrival`)
@@ -851,7 +957,7 @@ command-terminal/
 ### 5.4 Controls
 | Key | Action |
 |-----|--------|
-| `1`–`6` | Inbox / Economy / Military / Map / Research / Air Assets |
+| `1`–`8` | Inbox / Economy / Military / Map / Research / Air Assets / Diplomacy / Cities |
 | `↑ ↓ Enter`, `Tab` | Navigate lists / move focus |
 | `a`–`d` | Reply to the open dispatch with option A–D (asks to confirm: `y` / `n`) |
 | `h` | Hide / show archived dispatches |
@@ -871,6 +977,8 @@ command-terminal/
 | Dilemma: `1`–`3` or click | Choose (the week cannot advance until you do) |
 | Military: `f` | Relieve the highlighted formation's commander (−6 military morale) |
 | `ctrl+s` / `F5` | Save the campaign (`python main.py --load` resumes it) |
+| Diplomacy: `g` / `t` / `b` | Send an envoy / sign or cancel a trade agreement / buy the highlighted lend-lease package |
+| Cities: `h` / `b` / `i` / `x` | Build a Hospital / Bunker Complex / Local Industry in the highlighted city / cancel the last project |
 | Emergency: `1`–`3` or click | Answer a CRITICAL EMERGENCY (outbreak or disaster); the game waits for you |
 | Game over: `r` / `q` | Restart the campaign / exit |
 | `n` or **▶ ADVANCE WEEK** | Advance one week |
@@ -906,6 +1014,7 @@ SVG screenshots from the UI tests.
 | **6** | **The backbone of the state**: tax policies and trade income, bankruptcy spiral, recruitment and training (muster under-equipped), R&D with breakthroughs, unlocks, establishment upgrades and tech effects, Protocol Zero lock with restart. ✅ |
 | **7** | **Continental war**: 240×80 map at 10 miles per cell with oceans, 50 settlements and ports; miles-per-day marching; navies (destroyers, battleships, submarines) with PATROL / BLOCKADE / BOMBARD, naval battles and blockades of trade and supply; artillery fire support; abstract air wings and air superiority; weather and seasons (Rasputitsa, frostbite, Cold-Weather Kits, storms); the CLASSIFIED DILEMMA event deck; 5.56mm re-arming. ✅ |
 | **8** | **The home front, human friction and the endgame**: epidemics (Trench Typhus, Industrial Influenza, Cholera) with spread, quarantine, cordons and Field Medicine; natural disasters wrecking infrastructure with CRITICAL EMERGENCY choices (fund relief, deploy the military, ignore); commanders with hidden traits and insubordination, relieving command; electronic warfare and loss of signal; scorched earth and combat engineers; victory by capitulation (occupy Karzan, or bankrupt and demoralise the Hegemony); save/load. ✅ |
+| **X1.1** | **The living world**: three off-map powers (Oakhaven, Tor, Vael) with one alignment axis, envoys, trade agreements, lend-lease convoys through open ports and past wolfpacks, the Vosk foreign ministry; 26 living cities with population, local morale, hospitals, bunkers and new industry; the local news wire; the Vosk Hotline (ceasefire, surrender terms, ultimatum, armistice); six new event cards; medical supplies. ✅ |
 | 9 | Strategic bombing of factories (air wings over industrial centres), amphibious landings, multiple research slots. |
 | 10 | Domestic Politics & the Draft (§7.4): war weariness, rationing, conscription laws, factions. |
 | 11 | Diplomacy, balance pass. |
@@ -987,6 +1096,8 @@ a formation, and the home front pays for all of it.
 - Can Kestria jam back (its own EW brigade blinding the Vosk AI's knowledge)? Currently the AI has perfect information.
 - Should the Vosk also suffer epidemics and disasters (a plague behind their lines as an opportunity)? Currently only
   the home front suffers them.
+- Should the player be able to make peace with Tor or Oakhaven formally (alliances that bring in volunteers or fleets)?
+- Cities under enemy occupation: should Vosk-held Kestrian cities keep their data (and rise up behind the lines)?
 - Crises are harsh when ignored: two in ten random-choice campaigns ended in revolution. Is that the right pressure?
 - Should the player see a supply-flow projection (who will be OVEREXTENDED if a move order completes) before
   confirming an order?

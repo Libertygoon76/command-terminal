@@ -15,6 +15,13 @@ Supported keys (all deltas):
     research_weeks                        float, weeks of progress on the current research project
     quarantine                            {outbreak, mode}  contain an epidemic (mode fund | cordon)
     relief_unit                           {unit, weeks}  pull a formation off the line for disaster relief
+    relations                             {nation: delta}  Kestria's standing with an off-map nation
+    rival_relations                       {nation: delta}  the enemy's standing with an off-map nation
+    build                                 {city, building}  a city project paid for by the event (queued free)
+    city_morale                           {city: delta}  local morale in a city
+    ceasefire                             weeks  (Hotline) the enemy holds its fire
+    armistice                             true   (Hotline) the war ends in a negotiated victory
+    withdraw_frontier                     true   (Hotline) our divisions pull out of the Frontier trenches
 """
 
 from __future__ import annotations
@@ -33,7 +40,8 @@ NATION_EFFECTS: dict[str, tuple[str, str, str]] = {
     "tax_rate": ("TAX RATE", "adjust_tax_rate", "rate"),
 }
 SPECIAL_EFFECTS = {"stockpiles", "flags", "ai_tension", "equipment", "army_morale", "modifier", "research_weeks",
-                   "quarantine", "relief_unit"}
+                   "quarantine", "relief_unit", "relations", "rival_relations", "build", "city_morale", "ceasefire",
+                   "armistice", "withdraw_frontier"}
 MODIFIER_LABELS = {"factory_efficiency": ("FACTORY OUTPUT", "pct")}
 VALID_EFFECT_KEYS = set(NATION_EFFECTS) | SPECIAL_EFFECTS
 
@@ -55,9 +63,11 @@ def validate_effects(effects: dict[str, Any], where: str, resource_ids: set[str]
         elif key == "modifier":
             if not isinstance(value, dict) or "key" not in value or not isinstance(value.get("value"), (int, float)):
                 raise ValueError(f"{where}: modifier effect needs {{key, value[, weeks]}}, got {value!r}")
-        elif key in ("quarantine", "relief_unit"):
+        elif key in ("quarantine", "relief_unit", "relations", "rival_relations", "build", "city_morale"):
             if not isinstance(value, dict):
                 raise ValueError(f"{where}: {key} effect needs an object, got {value!r}")
+        elif key in ("armistice", "withdraw_frontier"):
+            continue
         elif key != "flags" and not isinstance(value, (int, float)):
             raise ValueError(f"{where}: effect {key!r} must be a number, got {value!r}")
 
@@ -142,6 +152,42 @@ def apply_effects(state: GameState, effects: dict[str, Any]) -> list[str]:
             unit = assign_relief(state, value["unit"], int(value.get("weeks", 3)))
             if unit is not None:
                 changes.append(f"{unit.designation} ON RELIEF DUTY FOR {value.get('weeks', 3)} WEEKS (CANNOT MOVE OR FIGHT)")
+        elif key in ("relations", "rival_relations"):
+            from src.engine.diplomacy import adjust_relation, nations, rival_of
+
+            who = nation.id if key == "relations" else rival_of(state, nation.id)
+            for nid, delta in value.items():
+                if nid in state.foreign and delta:
+                    adjust_relation(state, nid, who, float(delta))
+                    if key == "relations":
+                        changes.append(describe(f"RELATIONS WITH {nations(state)[nid]['name'].upper()}", delta,
+                                                "points", state.currency))
+        elif key == "build":
+            from src.engine.cities import CityError, buildings, order_building
+
+            try:
+                order_building(state, value["city"], value["building"], free=True)
+                changes.append(f"{buildings(state)[value['building']]['name'].upper()} ORDERED IN {value['city'].upper()} "
+                               "(PAID BY THE STATE)")
+            except CityError as error:
+                changes.append(str(error).upper())
+        elif key == "city_morale":
+            for city_name, delta in value.items():
+                city = state.cities.get(city_name)
+                if city is not None and delta:
+                    city.local_morale = max(0.0, min(100.0, city.local_morale + float(delta)))
+                    changes.append(describe(f"{city_name.upper()} LOCAL MORALE", delta, "points", state.currency))
+        elif key == "ceasefire" and value:
+            state.ceasefire_weeks = max(state.ceasefire_weeks, int(value))
+            changes.append(f"CEASEFIRE IN FORCE FOR {int(value)} WEEKS")
+        elif key == "armistice" and value:
+            state.flags["armistice_accepted"] = True
+            changes.append("ARMISTICE ACCEPTED: THE WAR WILL END")
+        elif key == "withdraw_frontier" and value:
+            from src.engine.hotline import withdraw_from_frontier
+
+            moved = withdraw_from_frontier(state)
+            changes.append(f"{len(moved)} FORMATION(S) ORDERED OUT OF THE FRONTIER")
     return changes
 
 
@@ -180,6 +226,17 @@ def preview_effects(state: GameState, effects: dict[str, Any]) -> list[str]:
             unit = state.unit(value["unit"])
             label = unit.designation if unit else value["unit"]
             lines.append(f"{label} CANNOT MOVE OR FIGHT FOR {value.get('weeks', 3)} WEEKS")
+        elif key == "relations":
+            from src.engine.diplomacy import nations
+
+            lines += [describe(f"RELATIONS WITH {nations(state)[n]['name'].upper()}", d, "points", state.currency)
+                      for n, d in value.items() if n in nations(state) and d]
+        elif key == "build":
+            from src.engine.cities import buildings
+
+            lines.append(f"NEW {buildings(state)[value['building']]['name'].upper()} IN {value['city'].upper()} (FREE)")
+        elif key == "city_morale":
+            lines += [describe(f"{c.upper()} LOCAL MORALE", d, "points", state.currency) for c, d in value.items() if d]
     return lines
 
 

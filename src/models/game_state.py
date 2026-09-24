@@ -8,6 +8,7 @@ from typing import Any
 from src.models.inbox import Email, Inbox
 from src.models.ai import AIState
 from src.models.battle import Battle
+from src.models.city import City
 from src.models.military import AirWing, Contact, TrainingOrder, Unit
 from src.models.nation import Nation
 from src.models.world_map import WorldMap
@@ -115,6 +116,12 @@ class GameState:
     infections: dict[str, dict[str, Any]] = field(default_factory=dict)  # "city:<name>" / "unit:<id>" -> infection
     crisis_cards: dict[str, dict[str, Any]] = field(default_factory=dict)  # runtime CRITICAL EMERGENCY cards
     dilemma_queue: list[str] = field(default_factory=list)  # modal cards waiting behind the one on screen
+    # --- Expansion 1.1: the living world ---
+    cities: dict[str, City] = field(default_factory=dict)  # settlement name -> City (Kestrian settlements)
+    foreign: dict[str, dict[str, Any]] = field(default_factory=dict)  # off-map nation -> {relations, trade}
+    shipments: list[dict[str, Any]] = field(default_factory=list)  # lend-lease convoys at sea
+    ceasefire_weeks: int = 0  # Hotline ceasefire in force (the Vosk hold their fire)
+    hotline_turn: int = 0  # when the Vosk Chancellor last called
 
     def template(self, unit_type: str) -> dict[str, Any]:
         """Unit template (units.json) by id."""

@@ -1,0 +1,145 @@
+{
+  "_comment": [
+    "Cities (src/engine/cities.py). Every Kestrian settlement is a living city with population, local morale and a",
+    "construction queue (one project at a time, paid for up front).",
+    "population: starting population by settlement type (x 0.85..1.15, seeded).",
+    "local morale: each week moves `morale_pull` of the way toward the national civil morale plus local factors",
+    "  (morale_factors). A city below unrest_below costs the nation unrest_morale civil morale a week.",
+    "buildings: cost (CR), weeks to build, max per city, and effects:",
+    "  hospital  - outbreaks start here only outbreak_factor as often, the disease reaches it only spread_factor as",
+    "              often, and local morale is higher;",
+    "  bunker    - Kestrian formations within `radius` rows fight with at least `fortification` (as a trench line);",
+    "  local_industry - +1 to the national pool of military factories when finished.",
+    "news: local headlines. Each week a city may print one; the most urgent situation picks the pool.",
+    "  {city}, {region}, {disease}, {building}, {nation} are filled in."
+  ],
+  "population": {
+    "capital": 900000,
+    "city": 320000,
+    "industrial": 260000,
+    "port": 180000,
+    "town": 45000
+  },
+  "morale_pull": 0.2,
+  "unrest_below": 15,
+  "unrest_morale": 0.25,
+  "news_chance": 0.4,
+  "news_keep": 12,
+  "battle_radius": 4,
+  "morale_factors": {
+    "infected": -25,
+    "quarantined": -10,
+    "battle_near": -15,
+    "enemy_near": -6,
+    "blockaded": -10,
+    "hospital": 8,
+    "bunker": 4,
+    "local_industry": 3,
+    "disaster": -12
+  },
+  "buildings": {
+    "hospital": {
+      "name": "Hospital",
+      "cost": 60000,
+      "weeks": 6,
+      "max": 1,
+      "outbreak_factor": 0.2,
+      "spread_factor": 0.2,
+      "description": "Isolation wards, a laboratory and trained staff. Epidemics rarely start or spread here."
+    },
+    "bunker": {
+      "name": "Bunker Complex",
+      "cost": 45000,
+      "weeks": 4,
+      "max": 1,
+      "radius": 1.0,
+      "fortification": 1.8,
+      "description": "Reinforced-concrete strongpoints, cellars and tank traps: defenders fight as if entrenched."
+    },
+    "local_industry": {
+      "name": "Local Industry",
+      "cost": 120000,
+      "weeks": 10,
+      "max": 2,
+      "description": "A new munitions works: +1 military factory for the national war economy."
+    }
+  },
+  "news": {
+    "battle_near": [
+      "Citizens report hearing artillery throughout the night; panic buying at local markets.",
+      "Ambulance trains unload at {city} station hour after hour. The schools have become field hospitals.",
+      "Windows rattle in {city} as the guns fire all night. Refugees from the front fill the churches.",
+      "Military police close the road east of {city}. Wounded men sleep on the station platforms.",
+      "Artillery heard in the distance; rolling blackouts implemented city-wide.",
+      "Air raid sirens sound for the third time this week. Shelters at capacity.",
+      "Refugees flood the central plaza; military cordons established to maintain order."
+    ],
+    "enemy_near": [
+      "Vosk scouts reported in the woods outside {city}; the home guard digs trenches in the parks.",
+      "Blackout strictly enforced in {city}. Rumours of enemy tanks beyond the river unsettle the town.",
+      "{city} evacuates its children west as the front draws closer."
+    ],
+    "infected": [
+      "Mass graves dug outside city limits as quarantine fails.",
+      "{disease} spreads through the tenements of {city}; the undertakers cannot keep up.",
+      "Doctors in {city} beg for disinfectant and clean water as {disease} cases double in a week.",
+      "Churches in {city} ring the passing bell every hour. {disease} fills the fever wards.",
+      "Hospitals overwhelmed; military police enforce strict street curfews.",
+      "Mass graves expanded outside city limits. Local authorities urge calm.",
+      "Pharmacies looted overnight. Ministry of Health issues stark warning."
+    ],
+    "quarantined": [
+      "Troops and nurses seal the infected districts of {city}; delousing stations work around the clock.",
+      "Quarantine holds in {city}: new {disease} cases fall for the first time in weeks.",
+      "Quarantine lines hold, but citizens report smell of burning from southern wards."
+    ],
+    "blockaded": [
+      "Enemy warships off {city}: the harbour is empty, dockers idle, bread queues lengthen.",
+      "Not a single merchantman has entered {city} this week. Coffee and sugar vanish from the shops.",
+      "Harbor master reports all civilian shipping halted. Docks stand eerily silent.",
+      "Fish markets empty. Foreign cargo ships refuse to break the Vosk naval line.",
+      "Panic buying at grocers as import shipments fail to arrive for second week."
+    ],
+    "disaster": [
+      "Survivors still being dug from the rubble around {city}. The railway will not run for weeks.",
+      "Relief kitchens feed thousands in {city} after the disaster. Engineers promise the line within the month."
+    ],
+    "construction": [
+      "Scaffolding rises over {city}: work on the new {building} goes on through the night.",
+      "{city} council celebrates as foundations are laid for a new {building}.",
+      "City center paralyzed by Ministry of Infrastructure heavy machinery.",
+      "Local unions protest 16-hour shifts required for state construction projects.",
+      "Citizens complain of deafening drilling as state project breaks ground."
+    ],
+    "completed": [
+      "The new {building} in {city} opens its doors. Crowds cheer the Lord Protector's name.",
+      "Ribbon cut on {city}'s new {building}; the mayor calls it 'a fortress for the future.'"
+    ],
+    "winter": [
+      "Coal ration cut again in {city}. Families burn furniture to stay warm.",
+      "Frozen pipes burst across {city}; queues for water at the fire hydrants."
+    ],
+    "low_morale": [
+      "Angry crowds outside {city} town hall demand bread and an end to the war.",
+      "Anti-war slogans painted overnight on the walls of {city}. Police make arrests.",
+      "Munitions workers in {city} walk out after another cut to the bread ration."
+    ],
+    "high_morale": [
+      "Steelworker quotas exceeded; patriotic parades in the town square.",
+      "{city} oversubscribes its war-bond quota by half. Bunting on every street.",
+      "Volunteers queue around the block at the {city} recruiting office.",
+      "A brass band plays in {city} market square as the harvest comes in early."
+    ],
+    "quiet": [
+      "Life goes on in {city}: the trams run, the cinemas are full, the war feels far away.",
+      "{city} newspaper prints the week's casualty lists. The cafés are quieter than they were.",
+      "Allotments dug in every park in {city} as the 'Grow for Victory' campaign takes hold.",
+      "Women take over the {city} tram depot as the men go to the front.",
+      "Local steel quotas met; Mayor declares public holiday.",
+      "Minor protests over ration cards dispersed by civil police.",
+      "Train schedules delayed due to troop movements at Central Station.",
+      "Cinema attendance up 12% as government releases new war newsreels.",
+      "Black market prices for coffee and sugar hit record highs."
+    ]
+  }
+}

@@ -61,6 +61,14 @@ def eligible(state: GameState, entry: dict) -> bool:
         return False
     if cond.get("forbids_flag") and state.flags.get(cond["forbids_flag"]):
         return False
+    for nid, low in cond.get("requires_relation", {}).items():  # off-map nations (Expansion 1.1)
+        if nid not in state.foreign or state.foreign[nid]["alignment"] < float(low):
+            return False
+    if "requires_trade" in cond and state.player.id not in state.foreign.get(cond["requires_trade"], {}).get("trade", []):
+        return False
+    missing = cond.get("requires_city_without")
+    if missing and (missing["city"] not in state.cities or state.cities[missing["city"]].count(missing["building"])):
+        return False
     return True
 
 

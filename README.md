@@ -20,7 +20,7 @@ Use Windows Terminal (not the legacy console) for correct colors and box-drawing
 
 ## Controls
 
-`1`–`6` switch views · arrows / Enter navigate · `Tab` moves focus · `a`–`d` reply to the open dispatch · `h` hides archived mail · `n` advances the week · `q` logs out.
+`1`–`8` switch views · arrows / Enter navigate · `Tab` moves focus · `a`–`d` reply to the open dispatch · `h` hides archived mail · `n` advances the week · `q` logs out.
 
 War Room (`4`): select a friendly unit (cursor or Order of Battle) → `m` → move the cursor → `Enter`
 to issue a move order (`Esc` aborts) · `g` type a grid reference · `x` cancel an order · `s` supply overlay · `t` cycle combat stance (DEFEND / ASSAULT / WITHDRAW), or a warship's mission (PATROL / BLOCKADE / BOMBARD). One map row = 10 miles.
@@ -41,6 +41,12 @@ Classified Dilemmas pop up between weeks: press `1`–`3` (or click) to decide. 
 **The home front:** epidemics and natural disasters raise a red CRITICAL EMERGENCY modal (`1`–`3`): fund
 quarantine or relief, send in the troops, or ignore it and pay in morale. Research Field Medicine against disease;
 send Combat Engineers to rebuild wrecked railways. `python main.py --crisis outbreak` (or `disaster`) forces one.
+
+Diplomacy (`7`): highlight a foreign power → `g` send an envoy (25,000 CR) · `t` sign / cancel a trade agreement ·
+highlight a lend-lease package → `b` buy it (it sails to your first open port; keep the harbours open).
+
+Cities (`8`): highlight a city to see its dashboard and local news → `h` hospital · `b` bunker complex · `i` local
+industry · `x` cancel the last project.
 
 **Save / load:** `ctrl+s` (or `F5`) saves the campaign to `savegame.json`; `python main.py --load` resumes it.
 
