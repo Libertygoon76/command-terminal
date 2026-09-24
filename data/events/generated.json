@@ -1,0 +1,56 @@
+{
+  "_comment": [
+    "Text templates for dispatches the engine generates at runtime.",
+    "SIGINT: segments wrapped in [[double brackets]] may be redacted (shown as [REDACTED]). Placeholders:",
+    "  {net} {freq} {unit_desc} {role_desc} {sector} {x} {y} {eta} {station} {confidence}",
+    "CLASH: {friendly} {friendly_designation} {hostile_desc} {x} {y} {sector} {date}",
+    "ISOLATED: {unit} {designation} {x} {y} {sector} {supply}"
+  ],
+  "sigint": {
+    "sender": "Signals Intelligence Directorate — Station {station}",
+    "classification": "TOP SECRET",
+    "subject_by_role": {
+      "armor": "TOP SECRET: SIGINT — Vosk Heavy Armor Relocating",
+      "hq": "TOP SECRET: SIGINT — Vosk Command Post Moving",
+      "artillery": "TOP SECRET: SIGINT — Vosk Artillery Displacement",
+      "infantry": "TOP SECRET: SIGINT — Vosk Rifle Formation Moving",
+      "militia": "TOP SECRET: SIGINT — Vosk Reserve Movement"
+    },
+    "role_desc": {
+      "armor": "heavy armor",
+      "artillery": "artillery",
+      "hq": "a senior command element",
+      "infantry": "a rifle formation",
+      "militia": "reserve troops"
+    },
+    "stations": [
+      "GREYWATER",
+      "STONEREACH",
+      "HARROW",
+      "LANTERN RELAY"
+    ],
+    "nets": [
+      "command",
+      "logistics",
+      "rail-movement",
+      "divisional radio-relay"
+    ],
+    "bodies": [
+      "HANDLING: EYES ONLY — {confidence} CONFIDENCE\n\nRadio intercept on the Vosk {net} net ({freq} kHz) indicates [[{role_desc}]] of [[{unit_desc}]] relocating toward Sector [[{sector}]], approximately grid X:{x}, Y:{y}.\n\n[[Fuel and rail allocations suggest movement within {eta} days.]] Traffic analysis only; the message content was only partially decrypted.\n\nGrid references derived from direction-finding are accurate to several kilometres at best.",
+      "HANDLING: EYES ONLY — {confidence} CONFIDENCE\n\nDirection-finding on a burst transmission from the {net} net ({freq} kHz) places [[{unit_desc}]] preparing to move. Decrypted fragment:\n\n    \"...[[{role_desc}]] TO CONCENTRATE AT X:{x} Y:{y} SECTOR [[{sector}]]... [[COMPLETE WITHIN {eta} DAYS]]...\"\n\nThe fragment may be deliberate deception. Recommend corroboration by reconnaissance.",
+      "HANDLING: EYES ONLY — {confidence} CONFIDENCE\n\nA spike in {net} net traffic ({freq} kHz), followed by radio silence, matches the pattern of a formation displacing. We assess [[{role_desc}]] moving toward Sector [[{sector}]], vicinity X:{x}, Y:{y}.\n\n[[Unit identity: {unit_desc}.]] Estimated completion: [[{eta} days]]."
+    ]
+  },
+  "clash": {
+    "sender": "Frontier Sector Command — Duty Officer",
+    "classification": "TOP SECRET",
+    "subject": "CRITICAL: BORDER CLASH at Grid {x}-{y}",
+    "body": "FLASH PRECEDENCE.\n\nAt first light this week, {friendly} ({friendly_designation}) made contact with {hostile_desc} at grid X:{x}, Y:{y} ({sector}).\n\nBoth formations are now ENGAGED and have halted. Small-arms and mortar fire is being exchanged along the contact line. Casualty reports are not yet available.\n\nThe engaged formations will not advance further while in contact. To break contact, issue a move order away from the enemy.\n\nNo reply required. Frontier Sector Command awaits the Lord Protector's intentions."
+  },
+  "isolated": {
+    "sender": "Quartermaster-General, Frontier Army",
+    "classification": "SECRET",
+    "subject": "URGENT: {designation} Isolated — Supply Line Cut",
+    "body": "IMMEDIATE.\n\nThe {unit} ({designation}) at grid X:{x}, Y:{y} ({sector}) can no longer be reached by any supply route. Enemy formations sit across every road and track back to our depots.\n\nThe formation holds {supply}% of its weekly needs in hand. When that is gone it will begin to starve: men will fall sick, desert and die, and it will not be able to advance.\n\nRecommend immediate withdrawal toward our lines, or clearing the enemy from the supply route.\n\nNo reply required."
+  }
+}

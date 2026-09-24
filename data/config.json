@@ -42,10 +42,49 @@
     "status_sender": "Ministry of the Treasury — Automated Ledger"
   },
   "map": {
-    "_comment": "War Room rendering. Friendly = player nation; everyone else is hostile.",
+    "_comment": "War Room. Friendly = player nation; everyone else is hostile. column_scale: a column is half as far as a row. transport_cost: multiplier on a step along rail/road/destroyed rail (terrain is ignored there). obstacle_cost: extra multiplier for crossing trench lines. ghost_weeks: how long a lost contact stays plotted. debug_reveal_all: show every enemy (or run main.py --reveal).",
     "friendly_color": "#4fd8ff",
     "hostile_color": "#ff3b3b",
     "mixed_stack_color": "#ffb000",
-    "stack_symbol": "*"
+    "stack_symbol": "*",
+    "column_scale": 0.5,
+    "ghost_weeks": 4,
+    "debug_reveal_all": false,
+    "transport_cost": {
+      "rail": 0.35,
+      "road": 0.55,
+      "destroyed_rail": 0.8
+    },
+    "obstacle_cost": {
+      "trench": 1.8
+    }
+  },
+  "logistics": {
+    "_comment": "Supply is traced each week along the cheapest path (movement costs: roads/rail are cheap) from a source: a friendly city/capital/port, or the nation's home map edge. An in-supply HQ extends the net by hq_range. Paths cannot pass THROUGH enemy zones of control (cells within zoc_radius of an enemy unit). SUPPLIED: within range. OVEREXTENDED: path exists but too long. ISOLATED: no path. In territory owned by another nation, supply cannot use roads/rail and pays terrain cost x hostile_territory_factor.",
+    "source_range": 16,
+    "hq_range": 10,
+    "zoc_radius": 1,
+    "source_features": [
+      "capital",
+      "city",
+      "port"
+    ],
+    "home_edges": {
+      "kestria": "west",
+      "vosk": "east"
+    },
+    "consumption": {
+      "base": 8,
+      "moving": 4,
+      "engaged": 12
+    },
+    "delivery_max": 35,
+    "delivery_min": 15,
+    "low_supply_threshold": 25,
+    "low_supply_speed_factor": 0.5,
+    "attrition_rate": 0.04,
+    "attrition_morale": 5,
+    "min_strength_fraction": 0.1,
+    "hostile_territory_factor": 1.5
   }
 }

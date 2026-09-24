@@ -47,6 +47,17 @@ def build_status_body(state: GameState) -> str:
     lines.append(_stat("Awaiting your reply", f"{len(awaiting)} ({len(expiring)} due this week)"))
     lines.append("")
 
+    units = nation.units
+    lines.append("FRONT SITUATION")
+    lines.append(_stat("Formations moving", str(sum(1 for u in units if u.active_order))))
+    lines.append(_stat("Formations engaged", str(sum(1 for u in units if u.engaged))))
+    visible = sum(1 for c in state.contacts.values() if c.visible)
+    lost = sum(1 for c in state.contacts.values() if not c.visible)
+    lines.append(_stat("Hostile contacts", f"{visible} observed · {lost} lost"))
+    in_supply = sum(1 for u in units if u.supply_state == "supplied")
+    lines.append(_stat("In supply", f"{in_supply} of {len(units)} formations"))
+    lines.append("")
+
     warnings = list(ledger.notes) if ledger else []
     coup_at = float(fail.get("coup_military_morale", 10))
     grace = int(fail.get("bankruptcy_grace_weeks", 8))
@@ -54,6 +65,18 @@ def build_status_body(state: GameState) -> str:
         warnings.append("Civil order is collapsing. Revolution is imminent at 0 morale.")
     if nation.military_morale < coup_at + 10:
         warnings.append(f"Officer corps disloyal. A coup is likely below {coup_at:.0f} military morale.")
+    isolated = [u.designation for u in nation.units if u.supply_state == "isolated"]
+    overextended = [u.designation for u in nation.units if u.supply_state == "overextended"]
+    starving = [u.designation for u in nation.units if u.supply <= 0]
+    if isolated:
+        warnings.append(f"Supply lines cut (ISOLATED): {', '.join(isolated)}.")
+    if overextended:
+        warnings.append(f"Beyond supply range (OVEREXTENDED): {', '.join(overextended)}.")
+    if starving:
+        warnings.append(f"Out of supply, suffering attrition: {', '.join(starving)}.")
+    engaged = [u.designation for u in nation.units if u.engaged]
+    if engaged:
+        warnings.append(f"In contact with the enemy: {', '.join(engaged)}.")
     if state.weeks_insolvent:
         warnings.append(f"Treasury insolvent: week {state.weeks_insolvent} of {grace} before state collapse.")
 

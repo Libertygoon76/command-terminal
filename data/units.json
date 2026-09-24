@@ -1,11 +1,13 @@
 {
-  "_comment": "Unit templates. `symbol` is the terminal NATO-style map glyph, drawn as [symbol]: X infantry, O armor, • artillery, H HQ/logistics, m militia. Stacks draw as [*].",
+  "_comment": "Unit templates. `symbol` is the terminal NATO-style map glyph, drawn as [symbol]: X infantry, O armor, • artillery, H HQ/logistics, m militia. Stacks draw as [*]. move_speed = map rows per week on plains (a column is half a row: 5 km vs 10 km). detection_radius = rows; enemies outside every friendly radius are hidden on the map. loadout: equipment carried at full establishment (ids in equipment.json); seeds each formation's equipment_inventory, scaled by its current strength. PLACEHOLDER until the Unit Loadouts phase.",
   "units": [
     {
       "id": "infantry_division",
       "name": "Infantry Division",
       "symbol": "X",
       "role": "infantry",
+      "move_speed": 4,
+      "detection_radius": 5,
       "manpower": 10000,
       "recruit_cost": 60000,
       "training_weeks": 8,
@@ -24,6 +26,14 @@
         "defense": 6,
         "breakthrough": 2,
         "speed": 1
+      },
+      "loadout": {
+        "rifle_762": 8500,
+        "ammo_762": 2400,
+        "howitzer_152": 18,
+        "shell_152_he": 1800,
+        "truck_4t": 600,
+        "field_ration": 300
       }
     },
     {
@@ -31,6 +41,8 @@
       "name": "Armored Brigade",
       "symbol": "O",
       "role": "armor",
+      "move_speed": 8,
+      "detection_radius": 4,
       "manpower": 3500,
       "recruit_cost": 180000,
       "training_weeks": 14,
@@ -49,6 +61,14 @@
         "defense": 5,
         "breakthrough": 9,
         "speed": 3
+      },
+      "loadout": {
+        "mbt_medium": 0,
+        "rifle_762": 1800,
+        "ammo_762": 500,
+        "shell_120_he": 0,
+        "truck_4t": 350,
+        "field_ration": 110
       }
     },
     {
@@ -56,6 +76,8 @@
       "name": "Artillery Regiment",
       "symbol": "•",
       "role": "artillery",
+      "move_speed": 3,
+      "detection_radius": 7,
       "manpower": 2500,
       "recruit_cost": 95000,
       "training_weeks": 10,
@@ -74,6 +96,14 @@
         "defense": 3,
         "breakthrough": 4,
         "speed": 1
+      },
+      "loadout": {
+        "howitzer_152": 54,
+        "shell_152_he": 6500,
+        "rifle_762": 1500,
+        "ammo_762": 300,
+        "truck_4t": 280,
+        "field_ration": 80
       }
     },
     {
@@ -81,6 +111,8 @@
       "name": "Militia Battalion",
       "symbol": "m",
       "role": "militia",
+      "move_speed": 3,
+      "detection_radius": 3,
       "manpower": 1200,
       "recruit_cost": 8000,
       "training_weeks": 2,
@@ -99,6 +131,11 @@
         "defense": 3,
         "breakthrough": 0,
         "speed": 1
+      },
+      "loadout": {
+        "rifle_762": 1100,
+        "ammo_762": 200,
+        "field_ration": 35
       }
     },
     {
@@ -106,6 +143,8 @@
       "name": "HQ / Logistics Group",
       "symbol": "H",
       "role": "hq",
+      "move_speed": 5,
+      "detection_radius": 9,
       "manpower": 4000,
       "recruit_cost": 70000,
       "training_weeks": 6,
@@ -124,6 +163,12 @@
         "defense": 2,
         "breakthrough": 0,
         "speed": 2
+      },
+      "loadout": {
+        "rifle_762": 1200,
+        "ammo_762": 150,
+        "truck_4t": 900,
+        "field_ration": 500
       }
     }
   ],

@@ -21,13 +21,13 @@ class MilitaryView(VerticalScroll):
         yield Static(Text("DOCTRINE — TACTICAL STANCES", style=f"bold {palette.AMBER}"), classes="section-title")
         yield Static(id="mil-stances")
         yield Static(
-            Text("RECRUITMENT · TRAINING · SUPPLY LINES — MODULE OFFLINE (PHASE 4-5)", style=palette.PHOSPHOR_DIM),
+            Text("RECRUITMENT · TRAINING · PRODUCTION — MODULE OFFLINE (FUTURE PHASES)", style=palette.PHOSPHOR_DIM),
             classes="module-status",
         )
 
     def on_mount(self) -> None:
         self.query_one("#mil-formations", DataTable).add_columns(
-            "ID", "FORMATION", "TYPE", "STRENGTH", "MORALE", "SUPPLY", "STANCE", "GRID"
+            "ID", "FORMATION", "TYPE", "STRENGTH", "MORALE", "SUPPLY", "LINE", "STATUS", "ORDER", "GRID"
         )
         table = self.query_one("#mil-units", DataTable)
         table.add_columns("FORMATION", "MEN", "COST", "TRAIN", "RATIONS/WK", "FUEL/WK", "AMMO/WK", "ATK", "DEF", "BRK")
@@ -77,14 +77,16 @@ class MilitaryView(VerticalScroll):
         summary.append_text(label_value("IN TRAINING       ", "0"))
         summary.append("\n")
         low_supply = sum(1 for u in units if u.supply < 75)
+        cut = sum(1 for u in units if u.supply_state != "supplied")
         supply_text = f"{low_supply} FORMATION(S) BELOW 75%" if low_supply else "ALL FORMATIONS ADEQUATELY SUPPLIED"
+        if cut:
+            supply_text += f" · {cut} OUT OF SUPPLY RANGE"
         summary.append_text(label_value("SUPPLY STATUS     ", supply_text,
                                         palette.AMBER if low_supply else palette.PHOSPHOR_BRIGHT))
         self.query_one("#mil-summary", Static).update(summary)
 
         game = self.app.game
         templates = {t["id"]: t for t in game.catalog["units"]["units"]}
-        stances = {s["id"]: s["name"] for s in game.catalog["units"].get("stances", [])}
         table = self.query_one("#mil-formations", DataTable)
         table.clear()
         for unit in sorted(units, key=lambda u: u.designation):
@@ -96,6 +98,9 @@ class MilitaryView(VerticalScroll):
                 f"{unit.strength:,}",
                 f"{unit.morale:.0f}%",
                 Text(f"{unit.supply:.0f}%", style=palette.PHOSPHOR_BRIGHT if unit.supply >= 75 else palette.AMBER),
-                stances.get(unit.stance, unit.stance).upper(),
+                Text(unit.supply_state.upper(),
+                     style=palette.PHOSPHOR if unit.supply_state == "supplied" else f"bold {palette.RED}"),
+                Text(unit.status.upper(), style=f"bold {palette.RED}" if unit.engaged else palette.PHOSPHOR),
+                (f"MOVE → {unit.active_order.x:03d}-{unit.active_order.y:03d}" if unit.active_order else "HOLD"),
                 f"{unit.x:03d}-{unit.y:03d}",
             )

@@ -1,0 +1,52 @@
+{
+  "_comment": [
+    "AI Director configuration, one block per AI nation. The AI sees everything (no fog of war for it).",
+    "Postures: DEFEND (hold the line, react to incursions, shuffle reserves), PROBE (mass on the trench line around a Schwerpunkt, probe no-man's-land), ASSAULT (armor-led flanking maneuver around the weaker Kestrian flank toward a rear objective, with pinning probes in the center).",
+    "tension 0-100 drifts each week by tension_drift[posture] + noise; inbox replies change it via the `ai_tension` effect.",
+    "DEFEND -> PROBE: tension >= probe_threshold (random). PROBE -> ASSAULT: tension >= assault_threshold after assault_min_probe_weeks (random). ASSAULT -> PROBE: tension < assault_break_threshold or assault_max_weeks elapsed. PROBE -> DEFEND: tension < defend_threshold.",
+    "Any posture -> DEFEND when Kestrian strength at/east of threat_line_x >= threat_ratio x Vosk strength in the front region.",
+    "Every posture first pulls back formations whose supply is below resupply_threshold and not SUPPLIED.",
+    "Coordinates: front_line_x / staging_x are map columns. Flank waypoints are [x, y] cells; the objective is the Kestrian HQ in objective_region if present, else a settlement there."
+  ],
+  "vosk": {
+    "initial_posture": "DEFEND",
+    "initial_tension": 30,
+    "tension_drift": { "DEFEND": 2.5, "PROBE": 1.5, "ASSAULT": -1.0 },
+    "tension_noise": [-2.0, 3.0],
+    "probe_threshold": 40,
+    "probe_chance": 0.6,
+    "defend_threshold": 25,
+    "assault_threshold": 65,
+    "assault_chance": 0.5,
+    "assault_min_probe_weeks": 3,
+    "assault_break_threshold": 48,
+    "assault_max_weeks": 8,
+    "assault_group_size": 3,
+    "front_region": "frontier",
+    "home_regions": ["karzan", "vosk_plains", "tal_varos"],
+    "front_line_x": [77, 80],
+    "staging_x": [83, 94],
+    "threat_line_x": 72,
+    "threat_ratio": 0.35,
+    "resupply_threshold": 25,
+    "reserve_move_chance": 0.35,
+    "max_orders_per_week": { "DEFEND": 3, "PROBE": 3, "ASSAULT": 4 },
+    "probe_chance_per_tension_point": 0.012,
+    "position_jitter": 2,
+    "focus_spread": 4,
+    "focus_shift_weeks": 4,
+    "sidestep_chance": 0.45,
+    "flanks": {
+      "north": { "rows": [5, 11], "waypoints": [[80, 5], [67, 5], [60, 7]], "objective_region": "harrowfen" },
+      "south": { "rows": [22, 30], "waypoints": [[80, 30], [68, 30], [60, 30]], "objective_region": "greywater" }
+    },
+    "sigint": {
+      "chance": 0.25,
+      "flag_bonuses": { "network_lantern": 0.15 },
+      "max_per_week": 2,
+      "major_roles": ["armor", "hq"],
+      "grid_error": 3,
+      "redaction_chance": 0.4
+    }
+  }
+}

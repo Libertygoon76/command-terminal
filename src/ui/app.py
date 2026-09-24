@@ -40,9 +40,11 @@ class CommandTerminalApp(App):
 
     revision: reactive[int] = reactive(0)
 
-    def __init__(self, skip_boot: bool = False, seed: int | None = None) -> None:
+    def __init__(self, skip_boot: bool = False, seed: int | None = None, reveal: bool = False) -> None:
         super().__init__()
         self.game = new_game(seed=seed)
+        if reveal:
+            self.game.config.setdefault("map", {})["debug_reveal_all"] = True
         self.tick_engine = build_default_engine(self.game)
         self._skip_boot = skip_boot
 

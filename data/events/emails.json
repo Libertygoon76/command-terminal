@@ -2,7 +2,7 @@
   "_comment": [
     "Email templates. Scheduled ones have arrives_turn; templates without it only arrive as follow-ups.",
     "classification: UNCLASSIFIED | CONFIDENTIAL | SECRET | TOP SECRET",
-    "effects keys: treasury, manpower, population, morale, military_morale, tax_rate, stockpiles{}, flags{}",
+    "effects keys: treasury, manpower, population, morale, military_morale, tax_rate, stockpiles{}, flags{}, ai_tension (hidden: Vosk hostility)",
     "on_arrival: effects applied when the email is delivered (e.g. a failure report).",
     "follow_ups: [{email, delay_weeks}] or [{delay_weeks, chance, outcomes:[{email, weight}]}]",
     "deadline_weeks + on_expire: if unanswered by then, on_expire is applied automatically.",
@@ -25,30 +25,81 @@
       "classification": "CONFIDENTIAL",
       "body": "At transfer of office the Treasury holds 1,250,000 CR in liquid reserves. Weekly tax receipts roughly cover civil administration and armed forces pay, with a thin margin.\n\nA negative balance incurs 1% weekly interest and leaves the armed forces unpaid. The state cannot survive more than eight consecutive weeks of insolvency.\n\nFrom next week the Treasury will transmit an automated Weekly Status & Financial Report at the start of each week.\n\n— Office of the Chancellor"
     },
-
     {
       "id": "intel_001",
       "arrives_turn": 1,
       "sender": "Directorate of Military Intelligence",
       "subject": "Vosk Troop Concentrations — Frontier Sector",
       "classification": "SECRET",
-      "intel": { "vosk_frontier": { "value": 52000, "accuracy": 0.45 } },
+      "intel": {
+        "vosk_frontier": {
+          "value": 52000,
+          "accuracy": 0.45
+        }
+      },
       "body": "SOURCE RELIABILITY: C (fairly reliable)\n\nAerial reconnaissance and a single human source report Vosk infantry and at least one armored formation within 40 km of the Frontier line.\n\nEstimated Vosk strength in sector: {vosk_frontier} men.\n\nRail traffic into Karzan has doubled in the last fortnight, which is consistent with stockpiling fuel and munitions.\n\nAssessment: an exercise, or preparation for a limited offensive. Our coverage is thin, and these figures should be treated with caution.\n\nWe request authority to expand agent networks inside the Hegemony. Please respond within three weeks.",
       "deadline_weeks": 3,
       "options": [
-        { "id": "fund", "label": "Authorize expansion of agent networks (40,000 CR)",
-          "effects": { "treasury": -40000 },
-          "follow_ups": [ { "delay_weeks": 3, "outcomes": [ { "email": "intel_002_success", "weight": 65 }, { "email": "intel_002_burned", "weight": 35 } ] } ] },
-        { "id": "watch", "label": "Maintain current surveillance posture",
+        {
+          "id": "fund",
+          "label": "Authorize expansion of agent networks (40,000 CR)",
+          "effects": {
+            "treasury": -40000
+          },
+          "follow_ups": [
+            {
+              "delay_weeks": 3,
+              "outcomes": [
+                {
+                  "email": "intel_002_success",
+                  "weight": 65
+                },
+                {
+                  "email": "intel_002_burned",
+                  "weight": 35
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "watch",
+          "label": "Maintain current surveillance posture",
           "effects": {},
-          "follow_ups": [ { "email": "intel_003_incident", "delay_weeks": 4 } ] },
-        { "id": "leak", "label": "Leak the report to the press to rally the public",
-          "effects": { "morale": 4 },
-          "follow_ups": [ { "email": "vosk_protest_001", "delay_weeks": 1 } ] }
+          "follow_ups": [
+            {
+              "email": "intel_003_incident",
+              "delay_weeks": 4
+            }
+          ]
+        },
+        {
+          "id": "leak",
+          "label": "Leak the report to the press to rally the public",
+          "effects": {
+            "morale": 4,
+            "ai_tension": 6
+          },
+          "follow_ups": [
+            {
+              "email": "vosk_protest_001",
+              "delay_weeks": 1
+            }
+          ]
+        }
       ],
-      "on_expire": { "label": "No direction given. The Directorate maintains its current posture.",
-        "effects": { "military_morale": -1 },
-        "follow_ups": [ { "email": "intel_003_incident", "delay_weeks": 2 } ] }
+      "on_expire": {
+        "label": "No direction given. The Directorate maintains its current posture.",
+        "effects": {
+          "military_morale": -1
+        },
+        "follow_ups": [
+          {
+            "email": "intel_003_incident",
+            "delay_weeks": 2
+          }
+        ]
+      }
     },
     {
       "id": "intel_002_success",
@@ -56,10 +107,21 @@
       "subject": "Network LANTERN Operational — Revised Frontier Estimate",
       "classification": "SECRET",
       "intel": {
-        "vosk_frontier": { "value": 52000, "accuracy": 0.8 },
-        "vosk_total": { "nation": "vosk", "stat": "manpower", "accuracy": 0.7 }
+        "vosk_frontier": {
+          "value": 52000,
+          "accuracy": 0.8
+        },
+        "vosk_total": {
+          "nation": "vosk",
+          "stat": "manpower",
+          "accuracy": 0.7
+        }
       },
-      "on_arrival": { "flags": { "network_lantern": true } },
+      "on_arrival": {
+        "flags": {
+          "network_lantern": true
+        }
+      },
       "body": "SOURCE RELIABILITY: B (usually reliable)\n\nThe expanded network, codename LANTERN, is now operational, with three sources inside the Vosk General Staff logistics directorate.\n\nRevised estimate, Vosk strength in the Frontier sector: {vosk_frontier} men.\nEstimated total Vosk mobilizable manpower: {vosk_total}.\n\nLANTERN reports that Vosk fuel depots near the Frontier are only partially stocked. Their formations could not sustain an offensive for more than three to four weeks without resupply.\n\nNo reply required."
     },
     {
@@ -67,26 +129,78 @@
       "sender": "Directorate of Military Intelligence",
       "subject": "URGENT — Karzan Network Compromised",
       "classification": "TOP SECRET",
-      "on_arrival": { "morale": -3, "military_morale": -2 },
+      "on_arrival": {
+        "morale": -3,
+        "military_morale": -2
+      },
       "body": "The expanded network has been rolled up by Vosk state security within days of activation. Three of our officers, operating under diplomatic cover, were arrested in Karzan. Vosk state radio is already announcing a public show trial for 'Kestrian imperialist spies'.\n\nWe have lost the money and the network, and the story is running in our own newspapers.\n\nHow do you wish to proceed?",
       "deadline_weeks": 2,
       "options": [
-        { "id": "deny", "label": "Deny everything. They are private citizens.", "effects": { "morale": -1, "military_morale": -2 } },
-        { "id": "exchange", "label": "Quietly negotiate a prisoner exchange (25,000 CR)",
-          "effects": { "treasury": -25000 },
-          "follow_ups": [ { "delay_weeks": 2, "outcomes": [ { "email": "intel_exchange_ok", "weight": 70 }, { "email": "intel_exchange_failed", "weight": 30 } ] } ] },
-        { "id": "retaliate", "label": "Retaliate: expel the entire Vosk embassy",
-          "effects": { "military_morale": 3, "morale": 2 },
-          "follow_ups": [ { "email": "vosk_protest_001", "delay_weeks": 1 } ] }
+        {
+          "id": "deny",
+          "label": "Deny everything. They are private citizens.",
+          "effects": {
+            "morale": -1,
+            "military_morale": -2,
+            "ai_tension": -2
+          }
+        },
+        {
+          "id": "exchange",
+          "label": "Quietly negotiate a prisoner exchange (25,000 CR)",
+          "effects": {
+            "treasury": -25000
+          },
+          "follow_ups": [
+            {
+              "delay_weeks": 2,
+              "outcomes": [
+                {
+                  "email": "intel_exchange_ok",
+                  "weight": 70
+                },
+                {
+                  "email": "intel_exchange_failed",
+                  "weight": 30
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "retaliate",
+          "label": "Retaliate: expel the entire Vosk embassy",
+          "effects": {
+            "military_morale": 3,
+            "morale": 2,
+            "ai_tension": 10
+          },
+          "follow_ups": [
+            {
+              "email": "vosk_protest_001",
+              "delay_weeks": 1
+            }
+          ]
+        }
       ],
-      "on_expire": { "label": "No response. The officers are tried and executed.", "effects": { "military_morale": -5, "morale": -2 } }
+      "on_expire": {
+        "label": "No response. The officers are tried and executed.",
+        "effects": {
+          "military_morale": -5,
+          "morale": -2
+        }
+      }
     },
     {
       "id": "intel_exchange_ok",
       "sender": "Ministry of Foreign Affairs",
       "subject": "Prisoner Exchange Completed",
       "classification": "CONFIDENTIAL",
-      "on_arrival": { "military_morale": 3, "morale": 1 },
+      "on_arrival": {
+        "military_morale": 3,
+        "morale": 1,
+        "ai_tension": -3
+      },
       "body": "The three officers crossed the bridge at Greywater at dawn, in exchange for two Vosk trade attachés we had been holding on customs charges. The press has been told it was a humanitarian gesture.\n\nNo reply required."
     },
     {
@@ -94,7 +208,10 @@
       "sender": "Ministry of Foreign Affairs",
       "subject": "Exchange Talks Collapsed — Officers Sentenced",
       "classification": "SECRET",
-      "on_arrival": { "military_morale": -4, "morale": -2 },
+      "on_arrival": {
+        "military_morale": -4,
+        "morale": -2
+      },
       "body": "Vosk negotiators took our payment through intermediaries and then broke off contact. All three officers were sentenced to twenty years' hard labour this morning.\n\nThe officer corps is taking this badly.\n\nNo reply required."
     },
     {
@@ -105,31 +222,97 @@
       "body": "The Vosk ambassador delivered a formal note of protest this morning, calling our recent conduct 'a deliberate provocation' and demanding a public apology within the week.\n\nIf we apologize, the matter closes, but the press and the army will call it weakness. If we reject it, we should expect Karzan to escalate on the Frontier.",
       "deadline_weeks": 1,
       "options": [
-        { "id": "apologize", "label": "Issue a carefully worded apology", "effects": { "morale": -2, "military_morale": -2 } },
-        { "id": "reject", "label": "Reject the note publicly",
-          "effects": { "morale": 2, "military_morale": 2 },
-          "follow_ups": [ { "email": "intel_003_incident", "delay_weeks": 2, "chance": 0.6 } ] }
+        {
+          "id": "apologize",
+          "label": "Issue a carefully worded apology",
+          "effects": {
+            "morale": -2,
+            "military_morale": -2,
+            "ai_tension": -10
+          }
+        },
+        {
+          "id": "reject",
+          "label": "Reject the note publicly",
+          "effects": {
+            "morale": 2,
+            "military_morale": 2,
+            "ai_tension": 8
+          },
+          "follow_ups": [
+            {
+              "email": "intel_003_incident",
+              "delay_weeks": 2,
+              "chance": 0.6
+            }
+          ]
+        }
       ],
-      "on_expire": { "label": "The note goes unanswered. Karzan takes this as contempt.",
-        "follow_ups": [ { "email": "intel_003_incident", "delay_weeks": 2, "chance": 0.5 } ] }
+      "on_expire": {
+        "label": "The note goes unanswered. Karzan takes this as contempt.",
+        "follow_ups": [
+          {
+            "email": "intel_003_incident",
+            "delay_weeks": 2,
+            "chance": 0.5
+          }
+        ],
+        "effects": {
+          "ai_tension": 4
+        }
+      }
     },
     {
       "id": "intel_003_incident",
       "sender": "Frontier Sector Command",
       "subject": "FLASH — Exchange of Fire at Frontier Post 14",
       "classification": "SECRET",
-      "intel": { "casualties": { "value": 40, "accuracy": 0.3 } },
-      "on_arrival": { "military_morale": -1 },
+      "intel": {
+        "casualties": {
+          "value": 40,
+          "accuracy": 0.3
+        }
+      },
+      "on_arrival": {
+        "military_morale": -1
+      },
       "body": "At 0215 last night Frontier Post 14 came under small-arms and mortar fire from the Vosk side of the line. Our garrison returned fire.\n\nInitial casualty reports, both sides combined: {casualties}. Communications with the forward posts are intermittent, and these numbers are unreliable.\n\nThe Vosk press is claiming we fired first. We do not yet know whether this was a probe, an accident, or the opening of something larger.",
       "deadline_weeks": 2,
       "options": [
-        { "id": "reinforce", "label": "Reinforce the Frontier garrison (30,000 CR, 2,000 men)", "effects": { "treasury": -30000, "manpower": -2000, "military_morale": 4 } },
-        { "id": "protest", "label": "Lodge a diplomatic protest and hold position", "effects": {} },
-        { "id": "cover_up", "label": "Classify the incident and suppress press coverage", "effects": { "military_morale": -3, "morale": 1 } }
+        {
+          "id": "reinforce",
+          "label": "Reinforce the Frontier garrison (30,000 CR, 2,000 men)",
+          "effects": {
+            "treasury": -30000,
+            "manpower": -2000,
+            "military_morale": 4,
+            "ai_tension": 6
+          }
+        },
+        {
+          "id": "protest",
+          "label": "Lodge a diplomatic protest and hold position",
+          "effects": {
+            "ai_tension": 2
+          }
+        },
+        {
+          "id": "cover_up",
+          "label": "Classify the incident and suppress press coverage",
+          "effects": {
+            "military_morale": -3,
+            "morale": 1,
+            "ai_tension": -3
+          }
+        }
       ],
-      "on_expire": { "label": "No orders issued. Local commanders act on their own initiative.", "effects": { "military_morale": -3 } }
+      "on_expire": {
+        "label": "No orders issued. Local commanders act on their own initiative.",
+        "effects": {
+          "military_morale": -3
+        }
+      }
     },
-
     {
       "id": "strike_001",
       "arrives_turn": 2,
@@ -139,23 +322,69 @@
       "body": "The Port Cassel Dockworkers' Union has issued an ultimatum: a 12% wage increase within two weeks or a general walkout.\n\nPort Cassel handles most of our crude oil imports. A prolonged strike would choke fuel production within a month.\n\nAwaiting your direction. The union's deadline is firm.",
       "deadline_weeks": 2,
       "options": [
-        { "id": "concede", "label": "Meet their demands in full (60,000 CR)", "effects": { "treasury": -60000, "morale": 3 } },
-        { "id": "negotiate", "label": "Open negotiations and offer 5% (25,000 CR)",
-          "effects": { "treasury": -25000 },
-          "follow_ups": [ { "delay_weeks": 2, "outcomes": [ { "email": "strike_settled", "weight": 60 }, { "email": "strike_walkout", "weight": 40 } ] } ] },
-        { "id": "suppress", "label": "Declare the strike illegal and deploy the gendarmerie",
-          "effects": { "morale": -6, "military_morale": -2 },
-          "follow_ups": [ { "email": "strike_riots", "delay_weeks": 1 } ] }
+        {
+          "id": "concede",
+          "label": "Meet their demands in full (60,000 CR)",
+          "effects": {
+            "treasury": -60000,
+            "morale": 3
+          }
+        },
+        {
+          "id": "negotiate",
+          "label": "Open negotiations and offer 5% (25,000 CR)",
+          "effects": {
+            "treasury": -25000
+          },
+          "follow_ups": [
+            {
+              "delay_weeks": 2,
+              "outcomes": [
+                {
+                  "email": "strike_settled",
+                  "weight": 60
+                },
+                {
+                  "email": "strike_walkout",
+                  "weight": 40
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "suppress",
+          "label": "Declare the strike illegal and deploy the gendarmerie",
+          "effects": {
+            "morale": -6,
+            "military_morale": -2
+          },
+          "follow_ups": [
+            {
+              "email": "strike_riots",
+              "delay_weeks": 1
+            }
+          ]
+        }
       ],
-      "on_expire": { "label": "The ultimatum is ignored. The dockworkers walk out.",
-        "follow_ups": [ { "email": "strike_walkout", "delay_weeks": 1 } ] }
+      "on_expire": {
+        "label": "The ultimatum is ignored. The dockworkers walk out.",
+        "follow_ups": [
+          {
+            "email": "strike_walkout",
+            "delay_weeks": 1
+          }
+        ]
+      }
     },
     {
       "id": "strike_settled",
       "sender": "Ministry of the Interior",
       "subject": "Port Cassel Agreement Signed",
       "classification": "UNCLASSIFIED",
-      "on_arrival": { "morale": 2 },
+      "on_arrival": {
+        "morale": 2
+      },
       "body": "After two weeks of talks the union has accepted a compromise. The docks are working normally.\n\nNo reply required."
     },
     {
@@ -163,59 +392,205 @@
       "sender": "Ministry of the Interior",
       "subject": "General Walkout at Port Cassel",
       "classification": "CONFIDENTIAL",
-      "on_arrival": { "stockpiles": { "crude_oil": -2500 }, "treasury": -30000, "morale": -3 },
+      "on_arrival": {
+        "stockpiles": {
+          "crude_oil": -2500
+        },
+        "treasury": -30000,
+        "morale": -3
+      },
       "body": "The dockworkers have walked out. Tankers are anchored in the roads, unable to unload, and we have already lost one crude shipment to demurrage and spoilage.\n\nThe strike committee says it will hold out 'as long as it takes'.",
       "deadline_weeks": 2,
       "options": [
-        { "id": "concede", "label": "Concede now, at a worse price (80,000 CR)", "effects": { "treasury": -80000, "morale": 2 } },
-        { "id": "troops", "label": "Send army engineers to work the docks", "effects": { "military_morale": -4, "morale": -4, "manpower": -1500 } },
-        { "id": "wait", "label": "Wait them out", "effects": { "stockpiles": { "crude_oil": -2000 }, "morale": -2 } }
+        {
+          "id": "concede",
+          "label": "Concede now, at a worse price (80,000 CR)",
+          "effects": {
+            "treasury": -80000,
+            "morale": 2
+          }
+        },
+        {
+          "id": "troops",
+          "label": "Send army engineers to work the docks",
+          "effects": {
+            "military_morale": -4,
+            "morale": -4,
+            "manpower": -1500
+          }
+        },
+        {
+          "id": "wait",
+          "label": "Wait them out",
+          "effects": {
+            "stockpiles": {
+              "crude_oil": -2000
+            },
+            "morale": -2
+          }
+        }
       ],
-      "on_expire": { "label": "The strike drags on unmanaged.", "effects": { "stockpiles": { "crude_oil": -3000 }, "morale": -3, "treasury": -40000 } }
+      "on_expire": {
+        "label": "The strike drags on unmanaged.",
+        "effects": {
+          "stockpiles": {
+            "crude_oil": -3000
+          },
+          "morale": -3,
+          "treasury": -40000
+        }
+      }
     },
     {
       "id": "strike_riots",
       "sender": "Gendarmerie Headquarters, Port Cassel",
       "subject": "Casualties During Dockyard Clearance",
       "classification": "SECRET",
-      "intel": { "dead": { "value": 11, "accuracy": 0.6 } },
-      "on_arrival": { "morale": -5 },
+      "intel": {
+        "dead": {
+          "value": 11,
+          "accuracy": 0.6
+        }
+      },
+      "on_arrival": {
+        "morale": -5
+      },
       "body": "Clearance of the Port Cassel dockyard met organized resistance. Gendarmes opened fire after being attacked with iron bars and petrol bombs.\n\nConfirmed civilian dead: {dead}. Rioting has spread to the old town. Foreign journalists were present.",
       "deadline_weeks": 1,
       "options": [
-        { "id": "martial_law", "label": "Declare martial law in Port Cassel", "effects": { "morale": -4, "military_morale": 2 } },
-        { "id": "withdraw", "label": "Withdraw the gendarmerie and reopen talks (60,000 CR)", "effects": { "treasury": -60000, "military_morale": -3, "morale": 2 } },
-        { "id": "inquiry", "label": "Announce an independent inquiry (10,000 CR)", "effects": { "treasury": -10000, "morale": 1 } }
+        {
+          "id": "martial_law",
+          "label": "Declare martial law in Port Cassel",
+          "effects": {
+            "morale": -4,
+            "military_morale": 2
+          }
+        },
+        {
+          "id": "withdraw",
+          "label": "Withdraw the gendarmerie and reopen talks (60,000 CR)",
+          "effects": {
+            "treasury": -60000,
+            "military_morale": -3,
+            "morale": 2
+          }
+        },
+        {
+          "id": "inquiry",
+          "label": "Announce an independent inquiry (10,000 CR)",
+          "effects": {
+            "treasury": -10000,
+            "morale": 1
+          }
+        }
       ],
-      "on_expire": { "label": "No orders. The rioting burns itself out after three nights.", "effects": { "morale": -4, "treasury": -25000 } }
+      "on_expire": {
+        "label": "No orders. The rioting burns itself out after three nights.",
+        "effects": {
+          "morale": -4,
+          "treasury": -25000
+        }
+      }
     },
-
     {
       "id": "harvest_001",
       "arrives_turn": 3,
       "sender": "Ministry of Agriculture",
       "subject": "Blight Reported in Harrowfen Grain Belt",
       "classification": "UNCLASSIFIED",
-      "intel": { "loss": { "value": 30, "accuracy": 0.5 } },
+      "intel": {
+        "loss": {
+          "value": 30,
+          "accuracy": 0.5
+        }
+      },
       "body": "Agronomists report a fungal blight spreading through the Harrowfen lowlands. If unchecked, the projected fall in grain output for the season is {loss} percent.\n\nGrain is the base input for military rations.",
       "deadline_weeks": 2,
       "options": [
-        { "id": "treat", "label": "Fund emergency crop treatment (35,000 CR)", "effects": { "treasury": -35000 },
-          "follow_ups": [ { "delay_weeks": 3, "outcomes": [ { "email": "harvest_saved", "weight": 80 }, { "email": "harvest_partial", "weight": 20 } ] } ] },
-        { "id": "ration", "label": "Begin civilian rationing to protect reserves", "effects": { "morale": -4 },
-          "follow_ups": [ { "email": "harvest_partial", "delay_weeks": 3 } ] },
-        { "id": "ignore", "label": "Take no action",
-          "follow_ups": [ { "delay_weeks": 3, "outcomes": [ { "email": "harvest_failure", "weight": 70 }, { "email": "harvest_saved", "weight": 30 } ] } ] }
+        {
+          "id": "treat",
+          "label": "Fund emergency crop treatment (35,000 CR)",
+          "effects": {
+            "treasury": -35000
+          },
+          "follow_ups": [
+            {
+              "delay_weeks": 3,
+              "outcomes": [
+                {
+                  "email": "harvest_saved",
+                  "weight": 80
+                },
+                {
+                  "email": "harvest_partial",
+                  "weight": 20
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "ration",
+          "label": "Begin civilian rationing to protect reserves",
+          "effects": {
+            "morale": -4
+          },
+          "follow_ups": [
+            {
+              "email": "harvest_partial",
+              "delay_weeks": 3
+            }
+          ]
+        },
+        {
+          "id": "ignore",
+          "label": "Take no action",
+          "follow_ups": [
+            {
+              "delay_weeks": 3,
+              "outcomes": [
+                {
+                  "email": "harvest_failure",
+                  "weight": 70
+                },
+                {
+                  "email": "harvest_saved",
+                  "weight": 30
+                }
+              ]
+            }
+          ]
+        }
       ],
-      "on_expire": { "label": "No action taken.",
-        "follow_ups": [ { "delay_weeks": 3, "outcomes": [ { "email": "harvest_failure", "weight": 70 }, { "email": "harvest_saved", "weight": 30 } ] } ] }
+      "on_expire": {
+        "label": "No action taken.",
+        "follow_ups": [
+          {
+            "delay_weeks": 3,
+            "outcomes": [
+              {
+                "email": "harvest_failure",
+                "weight": 70
+              },
+              {
+                "email": "harvest_saved",
+                "weight": 30
+              }
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "harvest_saved",
       "sender": "Ministry of Agriculture",
       "subject": "Harrowfen Blight Contained",
       "classification": "UNCLASSIFIED",
-      "on_arrival": { "stockpiles": { "grain": 3000 } },
+      "on_arrival": {
+        "stockpiles": {
+          "grain": 3000
+        }
+      },
       "body": "The blight has been contained. Yields are close to forecast, and early harvest receipts are above expectations.\n\nNo reply required."
     },
     {
@@ -223,7 +598,11 @@
       "sender": "Ministry of Agriculture",
       "subject": "Harrowfen Harvest Below Forecast",
       "classification": "UNCLASSIFIED",
-      "on_arrival": { "stockpiles": { "grain": -4000 } },
+      "on_arrival": {
+        "stockpiles": {
+          "grain": -4000
+        }
+      },
       "body": "The blight was slowed but not stopped. Harrowfen output is down about ten percent. Reserves have been drawn on to cover the gap.\n\nNo reply required."
     },
     {
@@ -231,17 +610,51 @@
       "sender": "Ministry of Agriculture",
       "subject": "Harvest Failure in Harrowfen",
       "classification": "CONFIDENTIAL",
-      "on_arrival": { "stockpiles": { "grain": -14000 }, "morale": -6 },
+      "on_arrival": {
+        "stockpiles": {
+          "grain": -14000
+        },
+        "morale": -6
+      },
       "body": "The blight has destroyed most of the Harrowfen crop. Bread prices in {capital} rose 40% this week. There have been queues and scuffles outside bakeries.\n\nWithout intervention, reserves will not last the winter.",
       "deadline_weeks": 2,
       "options": [
-        { "id": "import", "label": "Import grain from abroad (90,000 CR)", "effects": { "treasury": -90000, "stockpiles": { "grain": 10000 }, "morale": 2 } },
-        { "id": "requisition", "label": "Requisition grain from farmers", "effects": { "stockpiles": { "grain": 6000 }, "morale": -5 } },
-        { "id": "nothing", "label": "Let the market settle it", "effects": { "morale": -3 } }
+        {
+          "id": "import",
+          "label": "Import grain from abroad (90,000 CR)",
+          "effects": {
+            "treasury": -90000,
+            "stockpiles": {
+              "grain": 10000
+            },
+            "morale": 2
+          }
+        },
+        {
+          "id": "requisition",
+          "label": "Requisition grain from farmers",
+          "effects": {
+            "stockpiles": {
+              "grain": 6000
+            },
+            "morale": -5
+          }
+        },
+        {
+          "id": "nothing",
+          "label": "Let the market settle it",
+          "effects": {
+            "morale": -3
+          }
+        }
       ],
-      "on_expire": { "label": "No intervention. Bread riots in the capital.", "effects": { "morale": -7 } }
+      "on_expire": {
+        "label": "No intervention. Bread riots in the capital.",
+        "effects": {
+          "morale": -7
+        }
+      }
     },
-
     {
       "id": "officers_001",
       "arrives_turn": 4,
@@ -251,39 +664,127 @@
       "body": "{leader_title},\n\nI must be frank. Junior and field-grade officers have not had a pay rise in six years, and several regimental messes have been openly critical of the government. I have heard the word 'Council' used in ways I do not like.\n\nI recommend visible action. Loyalty is cheaper to buy now than to restore later.\n\n— A. VANCE",
       "deadline_weeks": 3,
       "options": [
-        { "id": "raise_pay", "label": "Grant a 15% officer pay rise (50,000 CR)", "effects": { "treasury": -50000, "military_morale": 8 } },
-        { "id": "parade", "label": "Medals, a victory parade, and speeches (8,000 CR)", "effects": { "treasury": -8000, "military_morale": 2, "morale": 1 } },
-        { "id": "purge", "label": "Retire the loudest critics", "effects": { "military_morale": -8, "morale": 1 } }
+        {
+          "id": "raise_pay",
+          "label": "Grant a 15% officer pay rise (50,000 CR)",
+          "effects": {
+            "treasury": -50000,
+            "military_morale": 8
+          }
+        },
+        {
+          "id": "parade",
+          "label": "Medals, a victory parade, and speeches (8,000 CR)",
+          "effects": {
+            "treasury": -8000,
+            "military_morale": 2,
+            "morale": 1
+          }
+        },
+        {
+          "id": "purge",
+          "label": "Retire the loudest critics",
+          "effects": {
+            "military_morale": -8,
+            "morale": 1
+          }
+        }
       ],
-      "on_expire": { "label": "The grievances are ignored.", "effects": { "military_morale": -5 } }
+      "on_expire": {
+        "label": "The grievances are ignored.",
+        "effects": {
+          "military_morale": -5
+        }
+      }
     },
-
     {
       "id": "vosk_ultimatum_001",
       "arrives_turn": 6,
       "sender": "Ministry of Foreign Affairs",
       "subject": "Vosk Note Demanding Withdrawal from the Frontier",
       "classification": "TOP SECRET",
-      "intel": { "vosk_massing": { "value": 88000, "accuracy": 0.5 } },
+      "intel": {
+        "vosk_massing": {
+          "value": 88000,
+          "accuracy": 0.5
+        }
+      },
       "body": "The Vosk Supreme Chairman has sent a note demanding that the Commonwealth withdraw all military personnel from the Frontier province within fourteen days and recognise it as 'a demilitarized zone under Vosk supervision'.\n\nThe Directorate of Military Intelligence estimates Vosk forces now massed opposite the Frontier at {vosk_massing} men. It adds that its own estimates have been wrong before.\n\nThis is the most serious crisis since the last war. Your answer will be read in Karzan and in every officers' mess in the Commonwealth.",
       "deadline_weeks": 2,
       "options": [
-        { "id": "mobilize", "label": "Partial mobilization of reserves (120,000 CR, 8,000 men)", "effects": { "treasury": -120000, "manpower": -8000, "military_morale": 6, "morale": -3 } },
-        { "id": "negotiate", "label": "Propose talks in a neutral capital",
-          "follow_ups": [ { "delay_weeks": 2, "outcomes": [ { "email": "vosk_talks_ok", "weight": 50 }, { "email": "vosk_talks_failed", "weight": 50 } ] } ] },
-        { "id": "defy", "label": "Publicly reject the note", "effects": { "morale": 5, "military_morale": 3 },
-          "follow_ups": [ { "email": "intel_003_incident", "delay_weeks": 2 } ] }
+        {
+          "id": "mobilize",
+          "label": "Partial mobilization of reserves (120,000 CR, 8,000 men)",
+          "effects": {
+            "treasury": -120000,
+            "manpower": -8000,
+            "military_morale": 6,
+            "morale": -3,
+            "ai_tension": 12
+          }
+        },
+        {
+          "id": "negotiate",
+          "label": "Propose talks in a neutral capital",
+          "follow_ups": [
+            {
+              "delay_weeks": 2,
+              "outcomes": [
+                {
+                  "email": "vosk_talks_ok",
+                  "weight": 50
+                },
+                {
+                  "email": "vosk_talks_failed",
+                  "weight": 50
+                }
+              ]
+            }
+          ],
+          "effects": {
+            "ai_tension": -6
+          }
+        },
+        {
+          "id": "defy",
+          "label": "Publicly reject the note",
+          "effects": {
+            "morale": 5,
+            "military_morale": 3,
+            "ai_tension": 15
+          },
+          "follow_ups": [
+            {
+              "email": "intel_003_incident",
+              "delay_weeks": 2
+            }
+          ]
+        }
       ],
-      "on_expire": { "label": "No reply sent. Karzan reads silence as weakness.",
-        "effects": { "morale": -4, "military_morale": -4 },
-        "follow_ups": [ { "email": "intel_003_incident", "delay_weeks": 1 } ] }
+      "on_expire": {
+        "label": "No reply sent. Karzan reads silence as weakness.",
+        "effects": {
+          "morale": -4,
+          "military_morale": -4,
+          "ai_tension": 8
+        },
+        "follow_ups": [
+          {
+            "email": "intel_003_incident",
+            "delay_weeks": 1
+          }
+        ]
+      }
     },
     {
       "id": "vosk_talks_ok",
       "sender": "Ministry of Foreign Affairs",
       "subject": "Talks in Iren Produce a Framework",
       "classification": "SECRET",
-      "on_arrival": { "morale": 2 },
+      "on_arrival": {
+        "morale": 2,
+        "ai_tension": -15
+      },
       "body": "Talks in the Iren Straits have produced a framework: both sides will pull back heavy weapons 20 km from the Frontier line, with neutral observers. Nobody believes it will last, but it buys time.\n\nNo reply required."
     },
     {
@@ -291,7 +792,11 @@
       "sender": "Ministry of Foreign Affairs",
       "subject": "Vosk Delegation Walks Out",
       "classification": "SECRET",
-      "on_arrival": { "morale": -2, "military_morale": -2 },
+      "on_arrival": {
+        "morale": -2,
+        "military_morale": -2,
+        "ai_tension": 10
+      },
       "body": "The Vosk delegation walked out of the Iren talks on the second day, citing 'Kestrian bad faith'. The army sees the talks as a humiliation.\n\nNo reply required."
     }
   ]

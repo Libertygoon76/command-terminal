@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from src.engine.effects import validate_effects
-from src.models import Email, GameClock, GameState, Nation, ScheduledEmail, Unit, WorldMap
+from src.models import AIState, Email, GameClock, GameState, Nation, ScheduledEmail, Unit, WorldMap
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
@@ -55,9 +55,15 @@ def validate_email_library(library: dict[str, Email], resource_ids: set[str]) ->
 
 
 def load_orbat(nations: dict[str, Nation], world: WorldMap, units_catalog: dict[str, Any],
-               data_dir: Path = DATA_DIR) -> None:
-    """Load starting formations onto their nations, validating every map coordinate."""
-    templates = {u["id"] for u in units_catalog["units"]}
+               data_dir: Path = DATA_DIR, equipment_ids: set[str] | None = None) -> None:
+    """Load starting formations onto their nations, validating every map coordinate, and seed
+    each formation's equipment_inventory from its template loadout (scaled to current strength)."""
+    template_by_id = {u["id"]: u for u in units_catalog["units"]}
+    templates = set(template_by_id)
+    for template in units_catalog["units"]:
+        unknown = set(template.get("loadout", {})) - (equipment_ids or set())
+        if equipment_ids is not None and unknown:
+            raise ValueError(f"units.json [{template['id']}]: unknown equipment in loadout: {sorted(unknown)}")
     stances = {s["id"] for s in units_catalog.get("stances", [])}
     seen: set[str] = set()
     for raw in load_json("orbat.json", data_dir)["units"]:
@@ -77,7 +83,26 @@ def load_orbat(nations: dict[str, Nation], world: WorldMap, units_catalog: dict[
             raise ValueError(f"{where}: location {unit.location} is off the map (symbol needs x-1..x+1)")
         if world.is_sea(x, y):
             raise ValueError(f"{where}: location {unit.location} is at sea")
+        if not unit.equipment_inventory:
+            template = template_by_id[unit.unit_type]
+            share = unit.strength / max(1, template["manpower"])
+            unit.equipment_inventory = {k: round(v * share) for k, v in template.get("loadout", {}).items()}
         nations[unit.nation_id].units.append(unit)
+
+
+def load_ai_states(nations: dict[str, Nation], player_id: str, world: WorldMap,
+                   data_dir: Path = DATA_DIR) -> dict[str, AIState]:
+    states = {}
+    for nation_id, cfg in load_json("ai.json", data_dir).items():
+        if nation_id.startswith("_"):
+            continue
+        if nation_id not in nations or nation_id == player_id:
+            raise ValueError(f"ai.json: {nation_id!r} is not an AI nation")
+        for region_id in [cfg["front_region"], *cfg["home_regions"]]:
+            if region_id not in world.regions:
+                raise ValueError(f"ai.json [{nation_id}]: unknown region {region_id!r}")
+        states[nation_id] = AIState(nation_id, cfg["initial_posture"], cfg["initial_tension"], config=cfg)
+    return states
 
 
 def new_game(data_dir: Path = DATA_DIR, seed: int | None = None) -> GameState:
@@ -105,9 +130,12 @@ def new_game(data_dir: Path = DATA_DIR, seed: int | None = None) -> GameState:
         "resources": load_json("resources.json", data_dir)["resources"],
         "units": load_json("units.json", data_dir),
         "alerts": alerts,
+        "generated": load_json("events/generated.json", data_dir),
     }
     world = WorldMap.from_dict(load_json("map/world.json", data_dir))
-    load_orbat(nations, world, catalog["units"], data_dir)
+    catalog["equipment"] = load_json("equipment.json", data_dir)["equipment"]
+    catalog["tech_tree"] = load_json("tech_tree.json", data_dir)
+    load_orbat(nations, world, catalog["units"], data_dir, {e["id"] for e in catalog["equipment"]})
 
     library = load_email_library(data_dir)
     validate_email_library(library, {r["id"] for r in catalog["resources"]})
@@ -131,6 +159,15 @@ def new_game(data_dir: Path = DATA_DIR, seed: int | None = None) -> GameState:
         rng=rng,
         world_map=world,
         intel_seed=rng.getrandbits(32),
+        ai_states=load_ai_states(nations, player_id, world, data_dir),
     )
+    from src.engine.logistics_engine import compute_network, supply_status
+    from src.engine.recon import update_contacts
+
+    update_contacts(state)  # what the front line can see on day one
+    for nation_id, nation in nations.items():  # trace day-one supply lines (no consumption yet)
+        info = compute_network(state, nation_id)
+        for unit in nation.units:
+            unit.supply_state = supply_status(state, unit, info)[0]
     deliver_due_emails(state)
     return state

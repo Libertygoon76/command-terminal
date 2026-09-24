@@ -189,6 +189,12 @@ MapView {
     background-tint: $ct-amber 3%;
 }
 
+#order-bar {
+    height: 1;
+    padding: 0 1;
+    background: #02070c;
+}
+
 #map-legend {
     height: 4;
     padding: 0 1;
@@ -339,6 +345,38 @@ ConfirmReplyScreen {
 #confirm-buttons Button:focus {
     border: tall $ct-amber;
     color: $ct-amber;
+}
+
+/* ---------- coordinates dialog ---------- */
+
+CoordinatesScreen {
+    align: center middle;
+    background: #000000 70%;
+}
+
+#coords-dialog {
+    width: 72;
+    height: auto;
+    padding: 1 2;
+    background: $ct-surface;
+    border: heavy #4fd8ff;
+    border-title-color: #4fd8ff;
+    border-title-style: bold;
+}
+
+#coords-input {
+    margin-top: 1;
+    background: $ct-panel;
+    color: $ct-phosphor-bright;
+    border: tall $ct-phosphor-dim;
+}
+
+#coords-input:focus {
+    border: tall #4fd8ff;
+}
+
+#coords-error {
+    height: 1;
 }
 
 /* ---------- toasts ---------- */

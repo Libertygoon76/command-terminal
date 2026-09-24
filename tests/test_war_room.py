@@ -168,9 +168,11 @@ def test_war_room_renders_overlay_and_readouts():
             # Order-of-battle list: highlighting a hostile contact jumps the cursor to it.
             orbat = app.screen.query_one("#orbat-list", OptionList)
             orbat.focus()
-            orbat.highlighted = orbat.get_option_index("vosk_3_gtank")
+            orbat.highlighted = orbat.get_option_index("vosk_9_rifle")
             await pilot.pause()
-            assert canvas.cursor == (101, 27)
+            assert canvas.cursor == (78, 13)
+            # Deep reserves are beyond detection range: not listed, not drawn.
+            assert "vosk_3_gtank" not in {o.id for o in orbat.options}
 
             # Advancing the week keeps the War Room consistent (intel re-rolled, no crash).
             await pilot.press("n")

@@ -6,7 +6,8 @@ from datetime import date, timedelta
 from typing import Any
 
 from src.models.inbox import Email, Inbox
-from src.models.military import Unit
+from src.models.ai import AIState
+from src.models.military import Contact, Unit
 from src.models.nation import Nation
 from src.models.world_map import WorldMap
 
@@ -87,6 +88,11 @@ class GameState:
     world_map: WorldMap | None = None
     unit_intel: dict[str, Any] = field(default_factory=dict)  # unit id -> cached fog-of-war report
     intel_seed: int = 0  # seeds per-unit weekly intel rolls independently of `rng`
+    ai_states: dict[str, AIState] = field(default_factory=dict)  # nation id -> hidden AI state
+    contacts: dict[str, Contact] = field(default_factory=dict)  # hostile unit id -> what we know of it
+    engagements: set[frozenset[str]] = field(default_factory=set)  # unit-id pairs currently in contact
+    supply_networks: dict[str, dict[str, Any]] = field(default_factory=dict)  # nation id -> last traced supply net
+    cost_cache: dict[Any, Any] = field(default_factory=dict, repr=False)  # derived static data (e.g. supply costs)
 
     def all_units(self) -> list[Unit]:
         return [unit for nation in self.nations.values() for unit in nation.units]
@@ -96,6 +102,15 @@ class GameState:
 
     def is_friendly(self, nation_id: str) -> bool:
         return nation_id == self.player.id
+
+    def hostile_units(self) -> list[Unit]:
+        return [u for u in self.all_units() if not self.is_friendly(u.nation_id)]
+
+    def visible_hostiles(self) -> list[Unit]:
+        """Hostile formations currently observed by Kestrian forces (or all, in reveal/debug mode)."""
+        if self.config.get("map", {}).get("debug_reveal_all"):
+            return self.hostile_units()
+        return [u for u in self.hostile_units() if (c := self.contacts.get(u.id)) is not None and c.visible]
 
     @property
     def currency(self) -> str:

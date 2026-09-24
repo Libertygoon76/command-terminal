@@ -1,20 +1,40 @@
-"""The War Room: pannable situation map (left) + sector readout / intelligence panel (right)."""
+"""The War Room: pannable situation map (left) + sector readout / intelligence panel (right).
+
+Orders: select a friendly formation (cursor or Order of Battle list), press M to enter
+targeting mode, move the cursor to the destination (the route and ETA preview live), and press
+ENTER to issue. G types an exact grid reference instead. X cancels a standing order.
+"""
 
 from __future__ import annotations
 
 from rich.text import Text
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.widgets import OptionList, Static
-from textual.widgets.option_list import Option
+from textual.widgets.option_list import Option, OptionDoesNotExist
 
+from src.engine.event_manager import GameOverError
 from src.engine.intel import unit_report
-from src.engine.map_overlay import Marker, displayed_type, grid_ref, marker_for_unit, units_in_region
-from src.models import GameState, Unit
+from src.engine.map_overlay import (
+    Marker,
+    contact_code,
+    displayed_type,
+    grid_ref,
+    marker_for_unit,
+    units_in_region,
+)
+from src.engine.movement import OrderError, cancel_order, issue_move_order, plan_route
+from src.engine.recon import ghost_contacts
+from src.models import Contact, GameState, Unit
+from src.models.nation import morale_band
 from src.ui import palette
+from src.ui.screens.coordinates import CoordinatesScreen
 from src.ui.widgets.map_canvas import MapCanvas
 
 RULE = "─" * 34
+STATUS_STYLE = {"holding": palette.PHOSPHOR, "moving": "#4fd8ff", "engaged": f"bold {palette.RED}"}
+SUPPLY_STATE_STYLE = {"supplied": palette.PHOSPHOR_BRIGHT, "overextended": palette.AMBER, "isolated": f"bold {palette.RED}"}
 
 
 def _templates(game: GameState) -> dict[str, dict]:
@@ -30,12 +50,6 @@ def _colors(game: GameState) -> tuple[str, str]:
     return cfg.get("friendly_color", "#4fd8ff"), cfg.get("hostile_color", "#ff3b3b")
 
 
-def contact_code(game: GameState, unit: Unit) -> str:
-    """Stable anonymous code for a hostile formation whose designation is unknown."""
-    hostiles = sorted(u.id for u in game.all_units() if not game.is_friendly(u.nation_id))
-    return f"CONTACT H-{hostiles.index(unit.id) + 1:02d}"
-
-
 def _row(text: Text, label: str, value: str, style: str = palette.PHOSPHOR_BRIGHT) -> None:
     text.append(f"{label:<17}", style=palette.PHOSPHOR_DIM)
     text.append(value + "\n", style=style)
@@ -43,6 +57,15 @@ def _row(text: Text, label: str, value: str, style: str = palette.PHOSPHOR_BRIGH
 
 def _bar(value: float) -> str:
     return f"{value:.0f}%  {palette.meter(value)}"
+
+
+def _order_text(game: GameState, unit: Unit) -> str:
+    order = unit.active_order
+    if order is None:
+        return "NONE — HOLDING POSITION"
+    route = plan_route(game, unit, order.target)
+    eta = f" · ETA {route.eta_weeks} WK" if route else " · NO ROUTE"
+    return f"MOVE → {grid_ref(order.x, order.y)}{eta}"
 
 
 def friendly_block(game: GameState, unit: Unit) -> Text:
@@ -54,11 +77,16 @@ def friendly_block(game: GameState, unit: Unit) -> Text:
     text = Text()
     text.append(f"■ FRIENDLY FORMATION  {unit.designation}\n", style=f"bold {friendly}")
     text.append(f"{unit.name.upper()}\n", style=f"bold {palette.PHOSPHOR_BRIGHT}")
+    _row(text, "STATUS", unit.status.upper(), STATUS_STYLE.get(unit.status, palette.PHOSPHOR))
+    _row(text, "ORDER", _order_text(game, unit), "#4fd8ff" if unit.active_order else palette.PHOSPHOR)
     _row(text, "TYPE", f"{template['name'].upper()}  [{template['symbol']}]")
     _row(text, "STRENGTH", f"{unit.strength:,} / {full:,}  ({unit.strength / full:.0%})")
-    _row(text, "MORALE", _bar(unit.morale), palette.MORALE_STYLE.get(_band(unit.morale), palette.PHOSPHOR))
+    _row(text, "MORALE", _bar(unit.morale), palette.MORALE_STYLE.get(morale_band(unit.morale), palette.PHOSPHOR))
     supply_style = palette.PHOSPHOR_BRIGHT if unit.supply >= 75 else (palette.AMBER if unit.supply >= 40 else palette.RED)
     _row(text, "SUPPLY", _bar(unit.supply), supply_style)
+    line = unit.supply_state.upper() + (" · NO SUPPLY: ATTRITION, CANNOT ADVANCE" if unit.supply <= 0 else "")
+    _row(text, "SUPPLY LINE", line, SUPPLY_STATE_STYLE.get(unit.supply_state, palette.PHOSPHOR))
+    _row(text, "SPEED / RECON", f"{template.get('move_speed', 4)} ROWS/WK · {template.get('detection_radius', 5)} ROWS")
     _row(text, "STANCE", stance.upper())
     _row(text, "COMMANDER", unit.commander or "—")
     _row(text, "POSITION", f"GRID {grid_ref(unit.x, unit.y)} · {region.name.upper() if region else 'AT SEA'}")
@@ -74,21 +102,34 @@ def hostile_block(game: GameState, unit: Unit) -> Text:
     title = f"{unit.designation} {unit.name.upper()} (PROBABLE)" if report.identified else "UNIDENTIFIED FORMATION"
     text.append(f"◆ HOSTILE {contact_code(game, unit)}\n", style=f"bold {hostile}")
     text.append(f"{title}\n", style=f"bold {palette.PHOSPHOR_BRIGHT}")
+    if unit.engaged:
+        _row(text, "STATUS", "ENGAGED WITH OUR FORCES", f"bold {palette.RED}")
     _row(text, "TYPE (REPORTED)", f"{template.get('name', '?').upper()}  [{template.get('symbol', '?')}]")
     _row(text, "EST. STRENGTH", f"{report.strength.low:,} – {report.strength.high:,}", palette.AMBER)
     _row(text, "CERTAINTY", f"{report.accuracy:.0%}  {palette.meter(report.accuracy * 100)}", palette.AMBER)
     _row(text, "MORALE", "UNKNOWN", palette.PHOSPHOR_DIM)
     _row(text, "SUPPLY", "UNKNOWN", palette.PHOSPHOR_DIM)
-    _row(text, "COMMANDER", "UNKNOWN", palette.PHOSPHOR_DIM)
+    _row(text, "INTENTIONS", "UNKNOWN", palette.PHOSPHOR_DIM)
     _row(text, "POSITION", f"GRID {grid_ref(unit.x, unit.y)} · {region.name.upper() if region else 'AT SEA'}")
     _row(text, "ASSESSED", f"WK {report.turn:03d} · REVISED WEEKLY", palette.PHOSPHOR_DIM)
     return text
 
 
-def _band(value: float) -> str:
-    from src.models.nation import morale_band
-
-    return morale_band(value)
+def ghost_block(game: GameState, contact: Contact) -> Text:
+    _, hostile = _colors(game)
+    unit = game.unit(contact.unit_id)
+    text = Text()
+    text.append(f"? LOST CONTACT {contact.code}\n", style=f"bold {hostile}")
+    text.append("POSITION UNKNOWN — LAST KNOWN SHOWN\n", style=f"bold {palette.PHOSPHOR_BRIGHT}")
+    _row(text, "LAST SEEN", f"WK {contact.last_seen_turn:03d} · GRID {grid_ref(contact.last_x, contact.last_y)}")
+    if unit is not None:
+        report = unit_report(game, unit)
+        template = _templates(game).get(report.reported_type, {})
+        _row(text, "LAST REPORTED", f"{template.get('name', '?').upper()}  [{template.get('symbol', '?')}]")
+    weeks = game.clock.turn - contact.last_seen_turn
+    _row(text, "TRAIL", f"{weeks} WEEK(S) COLD", palette.AMBER)
+    text.append("Formation may have moved in any direction.\n", style=palette.PHOSPHOR_DIM)
+    return text
 
 
 def sector_block(game: GameState, x: int, y: int) -> Text:
@@ -116,13 +157,16 @@ def sector_block(game: GameState, x: int, y: int) -> Text:
         text.append(f"{terrain['description']}\n", style=palette.PHOSPHOR_DIM)
     units = units_in_region(game, region.id)
     friendly = sum(1 for u in units if game.is_friendly(u.nation_id))
-    _row(text, "FORCES", f"{friendly} FRIENDLY · {len(units) - friendly} HOSTILE CONTACT(S)")
+    _row(text, "FORCES", f"{friendly} FRIENDLY · {len(units) - friendly} HOSTILE OBSERVED")
     return text
 
 
 def readout(game: GameState, x: int, y: int, marker: Marker | None) -> Text:
     text = Text()
-    if marker is not None:
+    if marker is not None and marker.ghost is not None:
+        text.append_text(ghost_block(game, marker.ghost))
+        text.append(f"{RULE}\n\n", style=palette.PHOSPHOR_DIM)
+    elif marker is not None:
         if marker.is_stack:
             text.append(f"[*] STACK — {len(marker.units)} FORMATIONS\n", style=f"bold {palette.AMBER}")
             text.append(f"{RULE}\n", style=palette.PHOSPHOR_DIM)
@@ -132,15 +176,35 @@ def readout(game: GameState, x: int, y: int, marker: Marker | None) -> Text:
             text.append(f"{RULE}\n", style=palette.PHOSPHOR_DIM)
         text.append("\n")
     text.append_text(sector_block(game, x, y))
+    if game.config.get("map", {}).get("debug_reveal_all"):  # main.py --reveal
+        text.append("\nAI DEBUG (--reveal)\n", style=f"bold {palette.RED}")
+        for ai in game.ai_states.values():
+            _row(text, ai.nation_id.upper(), f"{ai.posture} · TENSION {ai.tension:.0f} · FOCUS ROW {ai.focus_y}",
+                 palette.RED)
     return text
 
 
 class MapView(Horizontal):
     """Left 70%: the pannable map. Right 30%: sector readout + order-of-battle list."""
 
+    BINDINGS = [
+        Binding("m,o", "move_order", "Move Order"),
+        Binding("g", "grid_order", "Order to Grid"),
+        Binding("x", "cancel_order", "Cancel Order"),
+        Binding("s", "toggle_supply", "Supply Overlay"),
+        Binding("enter", "confirm_order", "Confirm", show=False),
+        Binding("escape", "abort_targeting", "Abort", show=False),
+    ]
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.selected_unit_id: str | None = None
+        self.targeting_unit_id: str | None = None
+
     def compose(self) -> ComposeResult:
         with Vertical(id="map-pane"):
             yield MapCanvas(id="map-canvas", classes="primary-focus")
+            yield Static(id="order-bar")
             yield Static(self._legend(), id="map-legend")
         with Vertical(id="intel-pane"):
             with VerticalScroll(id="intel-scroll"):
@@ -151,16 +215,26 @@ class MapView(Horizontal):
         self.query_one("#intel-pane").border_title = "SECTOR READOUT // INTEL"
         self.query_one("#orbat-list").border_title = "ORDER OF BATTLE"
         self._rebuild_orbat()
+        self._update_order_bar()
         self.watch(self.app, "revision", self._on_revision, init=False)
 
     def _on_revision(self, _revision: int) -> None:
         self._rebuild_orbat()
+        if self.targeting_unit_id and self.app.game.game_over:
+            self.action_abort_targeting()
+        self._update_route_preview()
+        self._update_order_bar()
+
+    @property
+    def canvas(self) -> MapCanvas:
+        return self.query_one(MapCanvas)
 
     def _legend(self) -> Text:
         game = self.app.game
         friendly, hostile = _colors(game)
         text = Text()
-        for symbol, label in (("X", "INF"), ("O", "ARMOR"), ("•", "ARTY"), ("H", "HQ/LOG"), ("m", "MILITIA"), ("*", "STACK")):
+        for symbol, label in (("X", "INF"), ("O", "ARMOR"), ("•", "ARTY"), ("H", "HQ/LOG"), ("m", "MILITIA"),
+                              ("*", "STACK"), ("?", "LOST")):
             text.append(f"[{symbol}]", style=f"bold {palette.PHOSPHOR_BRIGHT}")
             text.append(f" {label}  ", style=palette.PHOSPHOR_DIM)
         text.append("■", style=f"bold {friendly}")
@@ -168,13 +242,152 @@ class MapView(Horizontal):
         text.append("■", style=f"bold {hostile}")
         text.append(" HOSTILE\n", style=palette.PHOSPHOR_DIM)
         for glyph, label, style in (("★", "CAPITAL", "#ffd24a"), ("◉", "CITY", "#e8e8e8"), ("⊕", "PORT", "#e8e8e8"),
-                                    ("═", "RAIL", "#9a7a3a"), ("┆", "TRENCH", "#6a5a2a"), ("≈", "RIVER/MARSH", "#2aa0a0"),
-                                    ("^", "MOUNT", "#8a8f86"), ("│", "NATL BORDER", "#c08a10")):
+                                    ("═", "RAIL", "#9a7a3a"), ("┈", "ROAD", "#7a6a48"), ("┆", "TRENCH", "#6a5a2a"),
+                                    ("≈", "MARSH", "#2aa0a0"), ("^", "MOUNT", "#8a8f86"), ("◇", "ORDER", friendly)):
             text.append(glyph, style=f"bold {style}")
             text.append(f" {label}  ", style=palette.PHOSPHOR_DIM)
-        text.append("\nARROWS move · SHIFT+ARROWS ×5 · [ ] cycle units · C center · CLICK select · WHEEL pan",
+        text.append("\nARROWS · SHIFT ×5 · [ ] cycle · C center · CLICK · M/O move · G grid · X cancel · S supply",
                     style=palette.PHOSPHOR_DIM)
         return text
+
+    # --- selection -----------------------------------------------------------
+
+    def _selected_friendly(self) -> Unit | None:
+        game = self.app.game
+        unit = game.unit(self.selected_unit_id) if self.selected_unit_id else None
+        return unit if unit is not None and game.is_friendly(unit.nation_id) else None
+
+    def _update_order_bar(self) -> None:
+        game = self.app.game
+        bar = Text()
+        if self.targeting_unit_id:
+            unit = game.unit(self.targeting_unit_id)
+            x, y = self.canvas.cursor
+            route = plan_route(game, unit, (x, y)) if unit else None
+            bar.append(" TARGETING ", style=f"bold #000000 on #4fd8ff")
+            bar.append(f" {unit.designation} → GRID {grid_ref(x, y)}  ", style=f"bold {palette.PHOSPHOR_BRIGHT}")
+            if route is None:
+                bar.append("NO LAND ROUTE", style=f"bold {palette.RED}")
+            elif not route.path:
+                bar.append("ALREADY THERE", style=palette.AMBER)
+            else:
+                bar.append(f"ETA {route.eta_weeks} WK · {len(route.path)} CELLS", style="#4fd8ff")
+            bar.append("   ENTER issue · G type grid · ESC abort", style=palette.PHOSPHOR_DIM)
+        else:
+            unit = self._selected_friendly()
+            if unit is not None:
+                bar.append(" SELECTED ", style=f"bold #000000 on {palette.PHOSPHOR_DIM}")
+                bar.append(f" {unit.designation} {unit.name.upper()}  ", style=palette.PHOSPHOR_BRIGHT)
+                bar.append(_order_text(game, unit), style="#4fd8ff" if unit.active_order else palette.PHOSPHOR_DIM)
+                bar.append("   M move · G grid · X cancel", style=palette.PHOSPHOR_DIM)
+            else:
+                bar.append(" NO FORMATION SELECTED ", style=f"{palette.PHOSPHOR_DIM}")
+                bar.append("  place the cursor on a friendly [symbol] or pick one in the Order of Battle",
+                           style=palette.PHOSPHOR_DIM)
+        self.query_one("#order-bar", Static).update(bar)
+
+    def _update_route_preview(self) -> None:
+        game = self.app.game
+        canvas = self.canvas
+        if self.targeting_unit_id:
+            unit = game.unit(self.targeting_unit_id)
+            route = plan_route(game, unit, canvas.cursor) if unit else None
+            canvas.show_route(route.path if route else [])
+            return
+        unit = self._selected_friendly()
+        if unit is not None and unit.active_order:
+            route = plan_route(game, unit, unit.active_order.target)
+            canvas.show_route(route.path if route else [])
+        else:
+            canvas.show_route([])
+
+    # --- orders --------------------------------------------------------------
+
+    def _order_guard(self) -> Unit | None:
+        game = self.app.game
+        if game.game_over:
+            self.notify("The terminal is locked.", severity="error")
+            return None
+        unit = self._selected_friendly()
+        if unit is None:
+            self.notify("Select a friendly formation first.", severity="warning")
+        return unit
+
+    def action_move_order(self) -> None:
+        if self.targeting_unit_id:
+            return
+        unit = self._order_guard()
+        if unit is None:
+            return
+        self.targeting_unit_id = unit.id
+        self.canvas.targeting = True
+        self.canvas.focus()
+        self._update_route_preview()
+        self._update_order_bar()
+
+    def action_grid_order(self) -> None:
+        unit = self.app.game.unit(self.targeting_unit_id) if self.targeting_unit_id else self._order_guard()
+        if unit is None:
+            return
+        world = self.app.game.world_map
+
+        def on_coords(coords: tuple[int, int] | None) -> None:
+            if coords is None:
+                return
+            if not self.targeting_unit_id:
+                self.targeting_unit_id = unit.id
+                self.canvas.targeting = True
+            self.canvas.focus()
+            self.canvas.jump_to(*coords)  # preview; ENTER confirms
+
+        label = f"{unit.designation} {unit.name}"
+        self.app.push_screen(CoordinatesScreen(label, world.width, world.height, self.canvas.cursor), on_coords)
+
+    def action_confirm_order(self) -> None:
+        if not self.targeting_unit_id:
+            return
+        game = self.app.game
+        unit_id = self.targeting_unit_id
+        target = self.canvas.cursor
+        try:
+            route = issue_move_order(game, unit_id, target)
+        except (OrderError, GameOverError) as error:
+            self.notify(str(error), title="ORDER REJECTED", severity="error")
+            return
+        unit = game.unit(unit_id)
+        self.action_abort_targeting()
+        self.selected_unit_id = unit_id
+        self.app.state_changed()
+        if route.path:
+            self.notify(f"{unit.designation} → GRID {grid_ref(*target)} · ETA {route.eta_weeks} WK",
+                        title="MOVE ORDER ISSUED")
+        else:
+            self.notify(f"{unit.designation} will hold position.", title="ORDER UPDATED")
+
+    def action_cancel_order(self) -> None:
+        unit = self._order_guard()
+        if unit is None:
+            return
+        if unit.active_order is None:
+            self.notify(f"{unit.designation} has no standing order.", severity="warning")
+            return
+        cancel_order(self.app.game, unit.id)
+        self.app.state_changed()
+        self.notify(f"{unit.designation} will hold position.", title="ORDER CANCELLED")
+
+    def action_toggle_supply(self) -> None:
+        canvas = self.canvas
+        canvas.supply_overlay = not canvas.supply_overlay
+        state = "ON — blue: our supply net · red: enemy zones of control" if canvas.supply_overlay else "OFF"
+        self.notify(f"Supply overlay {state}", title="LOGISTICS")
+
+    def action_abort_targeting(self) -> None:
+        if not self.targeting_unit_id:
+            return
+        self.targeting_unit_id = None
+        self.canvas.targeting = False
+        self._update_route_preview()
+        self._update_order_bar()
 
     # --- order of battle list ------------------------------------------------
 
@@ -183,52 +396,97 @@ class MapView(Horizontal):
         friendly_color, hostile_color = _colors(game)
         templates = _templates(game)
         options: list[Option] = [Option(Text("FRIENDLY FORMATIONS", style=f"bold {friendly_color}"), disabled=True)]
-        hostiles = []
-        for unit in sorted(game.all_units(), key=lambda u: u.designation):
-            if not game.is_friendly(unit.nation_id):
-                hostiles.append(unit)
-                continue
+        for unit in sorted(game.player.units, key=lambda u: u.designation):
             prompt = Text()
             prompt.append(f"[{templates[unit.unit_type]['symbol']}] ", style=f"bold {friendly_color}")
             prompt.append(f"{unit.designation} ", style=palette.PHOSPHOR_BRIGHT)
             prompt.append(unit.name, style=palette.PHOSPHOR)
+            if unit.supply_state != "supplied":
+                prompt.append(f"  {unit.supply_state.upper()}", style=SUPPLY_STATE_STYLE[unit.supply_state])
+            if unit.engaged:
+                prompt.append("  ENGAGED", style=f"bold {palette.RED}")
+            elif unit.active_order:
+                prompt.append(f"  → {grid_ref(unit.active_order.x, unit.active_order.y)}", style="#4fd8ff")
             options.append(Option(prompt, id=unit.id))
+
         options.append(Option(Text("HOSTILE CONTACTS", style=f"bold {hostile_color}"), disabled=True))
-        for unit in sorted(hostiles, key=lambda u: contact_code(game, u)):
+        visible = sorted(game.visible_hostiles(), key=lambda u: contact_code(game, u))
+        if not visible:
+            options.append(Option(Text("  none observed", style=palette.PHOSPHOR_DIM), disabled=True))
+        for unit in visible:
             report = unit_report(game, unit)
             prompt = Text()
             prompt.append(f"[{templates[displayed_type(game, unit)]['symbol']}] ", style=f"bold {hostile_color}")
             prompt.append(f"{contact_code(game, unit)} ", style=palette.PHOSPHOR_BRIGHT)
             prompt.append(unit.name if report.identified else "unidentified", style=palette.PHOSPHOR_DIM)
+            if unit.engaged:
+                prompt.append("  ENGAGED", style=f"bold {palette.RED}")
             options.append(Option(prompt, id=unit.id))
+        if not game.config.get("map", {}).get("debug_reveal_all"):
+            for contact in sorted(ghost_contacts(game), key=lambda c: c.code):
+                prompt = Text()
+                prompt.append("[?] ", style="#8a3a3a")
+                prompt.append(f"CONTACT {contact.code} ", style=palette.PHOSPHOR_DIM)
+                prompt.append(f"lost · last seen WK {contact.last_seen_turn:03d}", style=palette.PHOSPHOR_DIM)
+                options.append(Option(prompt, id=f"ghost:{contact.unit_id}"))
 
         orbat = self.query_one("#orbat-list", OptionList)
         highlighted = orbat.highlighted_option.id if orbat.highlighted_option else None
         orbat.clear_options()
         orbat.add_options(options)
         if highlighted:
-            orbat.highlighted = orbat.get_option_index(highlighted)
+            try:
+                orbat.highlighted = orbat.get_option_index(highlighted)
+            except OptionDoesNotExist:  # the option vanished (contact lost); leave nothing highlighted
+                pass
 
     def on_option_list_option_highlighted(self, event: OptionList.OptionHighlighted) -> None:
         event.stop()
-        unit = self.app.game.unit(event.option.id) if event.option.id else None
-        if unit is None:
+        option_id = event.option.id
+        if not option_id:
             return
-        canvas = self.query_one(MapCanvas)
-        marker = marker_for_unit(canvas.markers, unit.id)
-        target = (marker.x, marker.y) if marker else unit.location
-        if canvas.cursor != target:
+        game = self.app.game
+        canvas = self.canvas
+        if option_id.startswith("ghost:"):
+            contact = game.contacts.get(option_id.split(":", 1)[1])
+            target = (contact.last_x, contact.last_y) if contact else None
+        else:
+            unit = game.unit(option_id)
+            if unit is None:
+                return
+            if not self.targeting_unit_id:
+                self.selected_unit_id = unit.id
+            marker = marker_for_unit(canvas.markers, unit.id)
+            target = (marker.x, marker.y) if marker else unit.location
+        if target and canvas.cursor != target:
             canvas.jump_to(*target)
+        self._update_route_preview()
+        self._update_order_bar()
 
     # --- readout -------------------------------------------------------------
 
     def on_map_canvas_cursor_moved(self, event: MapCanvas.CursorMoved) -> None:
         event.stop()
         game = self.app.game
-        self.query_one("#intel-readout", Static).update(readout(game, event.x, event.y, event.marker))
-        if event.marker is None:
+        marker = event.marker
+        self.query_one("#intel-readout", Static).update(readout(game, event.x, event.y, marker))
+        if self.targeting_unit_id:
+            self._update_route_preview()
+            self._update_order_bar()
             return
-        orbat = self.query_one("#orbat-list", OptionList)
-        current = orbat.highlighted_option.id if orbat.highlighted_option else None
-        if current not in {u.id for u in event.marker.units}:
-            orbat.highlighted = orbat.get_option_index(event.marker.units[0].id)
+        if marker is not None and marker.units:
+            ids = [u.id for u in marker.units]
+            if self.selected_unit_id not in ids:
+                friendly = [u.id for u in marker.units if game.is_friendly(u.nation_id)]
+                self.selected_unit_id = (friendly or ids)[0]
+            orbat = self.query_one("#orbat-list", OptionList)
+            current = orbat.highlighted_option.id if orbat.highlighted_option else None
+            if current != self.selected_unit_id:
+                try:
+                    orbat.highlighted = orbat.get_option_index(self.selected_unit_id)
+                except OptionDoesNotExist:
+                    pass
+        else:
+            self.selected_unit_id = None
+        self._update_route_preview()
+        self._update_order_bar()

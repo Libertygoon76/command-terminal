@@ -6,6 +6,8 @@ Supported keys (all deltas):
     tax_rate                              float (fraction, 0.02 = +2 percentage points)
     stockpiles                            {resource_id: int}
     flags                                 {flag_name: value}   (set, not added)
+    ai_tension                            float, applied to every AI nation's hidden tension.
+                                          Never shown to the player: they must infer it.
 """
 
 from __future__ import annotations
@@ -23,7 +25,7 @@ NATION_EFFECTS: dict[str, tuple[str, str, str]] = {
     "military_morale": ("MILITARY MORALE", "adjust_military_morale", "points"),
     "tax_rate": ("TAX RATE", "adjust_tax_rate", "rate"),
 }
-SPECIAL_EFFECTS = {"stockpiles", "flags"}
+SPECIAL_EFFECTS = {"stockpiles", "flags", "ai_tension"}
 VALID_EFFECT_KEYS = set(NATION_EFFECTS) | SPECIAL_EFFECTS
 
 
@@ -78,4 +80,7 @@ def apply_effects(state: GameState, effects: dict[str, Any]) -> list[str]:
                 changes.append(describe(res.get("name", rid).upper(), amount, "int", state.currency, res.get("unit", "")))
         elif key == "flags":
             state.flags.update(value)
+        elif key == "ai_tension":
+            for ai in state.ai_states.values():
+                ai.adjust_tension(value)
     return changes

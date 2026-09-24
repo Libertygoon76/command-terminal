@@ -12,12 +12,16 @@ from textual.reactive import var
 from textual.scroll_view import ScrollView
 from textual.strip import Strip
 
+from src.engine.logistics_engine import player_supply_picture
 from src.engine.map_overlay import FRIENDLY, HOSTILE, Marker, build_markers, marker_at
 from src.models import WorldMap
 from src.ui import palette
 
 BORDER_CHARS = set("─│┌┐└┘├┤┬┴┼")
 RAIL_CHARS = set("═║╝")
+ROAD_CHARS = set("┈┊")
+SUPPLY_BG = "#062238"  # cells inside our supply network (overlay)
+ZOC_BG = "#3a0a0a"  # cells under enemy zone of control (overlay)
 FEATURE_STYLES = {
     "★": Style(color="#ffd24a", bold=True),
     "◉": Style(color="#e8e8e8", bold=True),
@@ -48,6 +52,10 @@ OWNER_TERRAIN = {
 }
 CROSSHAIR_BG = "#0f2a18"
 CURSOR = Style(color="#000000", bgcolor=palette.AMBER, bold=True)
+TARGET_CURSOR = Style(color="#000000", bgcolor="#4fd8ff", bold=True)
+GHOST_COLOR = "#8a3a3a"
+DESTINATION_GLYPH = "◇"
+ROUTE_GLYPH = "·"
 
 
 class MapCanvas(ScrollView, can_focus=True):
@@ -79,11 +87,26 @@ class MapCanvas(ScrollView, can_focus=True):
             self.marker = marker
 
     cursor: var[tuple[int, int]] = var((0, 0), init=False)
+    targeting: var[bool] = var(False, init=False)  # choosing a move-order destination
+    supply_overlay: var[bool] = var(False, init=False)  # tint our supply net and enemy ZOC
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self.markers: list[Marker] = []
         self._rows: list[list[tuple[str, Style]]] = []
+        self._occupied: set[tuple[int, int]] = set()  # cells covered by markers
+        self._supply_view: tuple[set, set] = (set(), set())  # (our net, known enemy ZOC) for the overlay
+        self.route_preview: list[tuple[int, int]] = []  # path drawn for the selected/targeting unit
+
+    def show_route(self, path: list[tuple[int, int]]) -> None:
+        self.route_preview = list(path)
+        self.refresh()
+
+    def watch_targeting(self, _old: bool, _new: bool) -> None:
+        self.refresh()
+
+    def watch_supply_overlay(self, _old: bool, _new: bool) -> None:
+        self.refresh()
 
     @property
     def world(self) -> WorldMap:
@@ -122,15 +145,27 @@ class MapCanvas(ScrollView, can_focus=True):
                 row.append((ch, self._terrain_style(world, x, y, ch)))
             rows.append(row)
 
+        occupied: set[tuple[int, int]] = set()
         for marker in self.markers:
-            color = side_colors.get(marker.side, mixed_color)
+            color = GHOST_COLOR if marker.ghost else side_colors.get(marker.side, mixed_color)
             bg = OWNER_BG.get(world.owner_at(marker.x, marker.y), OWNER_BG[None])
-            style = Style(color=color, bgcolor=bg, bold=True)
+            style = Style(color=color, bgcolor=bg, bold=not marker.ghost)
             for i, ch in enumerate(marker.text):
                 x = marker.x - 1 + i
                 if 0 <= x < world.width:
                     rows[marker.y][x] = (ch, style)
+                    occupied.add((x, marker.y))
+
+        # Standing move orders: a destination diamond for every friendly formation on the march.
+        friendly_color = side_colors[FRIENDLY]
+        for unit in game.player.units:
+            order = unit.active_order
+            if order and (order.x, order.y) not in occupied:
+                bg = OWNER_BG.get(world.owner_at(order.x, order.y), OWNER_BG[None])
+                rows[order.y][order.x] = (DESTINATION_GLYPH, Style(color=friendly_color, bgcolor=bg, bold=True))
         self._rows = rows
+        self._occupied = occupied
+        self._supply_view = player_supply_picture(game)
         self.refresh()
 
     @staticmethod
@@ -144,6 +179,8 @@ class MapCanvas(ScrollView, can_focus=True):
             return Style(color=color, bgcolor=bg)
         if ch in RAIL_CHARS:
             return Style(color="#9a7a3a", bgcolor=bg)
+        if ch in ROAD_CHARS:
+            return Style(color="#7a6a48", bgcolor=bg)
         if ch == "╌":
             return Style(color="#7a2a2a", bgcolor=bg)  # destroyed rail in no-man's-land
         if ch == "┆":
@@ -169,12 +206,25 @@ class MapCanvas(ScrollView, can_focus=True):
             return Strip.blank(width, blank)
 
         cx, cy = self.cursor
-        on_cursor_marker = marker_at(self.markers, cx, cy)
+        on_cursor_marker = None if self.targeting else marker_at(self.markers, cx, cy)
+        cursor_style = TARGET_CURSOR if self.targeting else CURSOR
+        route_color = self.app.game.config.get("map", {}).get("friendly_color", "#4fd8ff")
+        route_cells = {c for c in self.route_preview if c[1] == map_y and c not in self._occupied}
+        network, zoc = self._supply_view if self.supply_overlay else (frozenset(), frozenset())
         row = self._rows[map_y]
         segments: list[Segment] = []
         for x, (ch, style) in enumerate(row):
+            if self.supply_overlay:
+                if (x, map_y) in zoc:
+                    style = style + Style(bgcolor=ZOC_BG)
+                elif (x, map_y) in network:
+                    style = style + Style(bgcolor=SUPPLY_BG)
+            if (x, map_y) in route_cells:
+                is_end = (x, map_y) == self.route_preview[-1]
+                ch = DESTINATION_GLYPH if is_end else ROUTE_GLYPH
+                style = style + Style(color=route_color, bold=is_end)
             if map_y == cy and (x == cx or (on_cursor_marker and on_cursor_marker.covers(x, map_y))):
-                style = CURSOR
+                style = cursor_style
             elif (map_y == cy or x == cx) and self.has_focus:
                 style = style + Style(bgcolor=CROSSHAIR_BG)
             if segments and segments[-1].style == style:

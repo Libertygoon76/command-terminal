@@ -38,6 +38,8 @@ class WorldMap:
     regions: dict[str, MapRegion]
     features: list[MapFeature] = field(default_factory=list)
     terrain_types: dict[str, dict[str, Any]] = field(default_factory=dict)
+    # Transport/obstacle layer: cell -> "rail" | "road" | "destroyed_rail" | "trench" (rail wins over road).
+    transport: dict[tuple[int, int], str] = field(default_factory=dict)
     _cells: list[list[str | None]] = field(default_factory=list, repr=False)
 
     def __post_init__(self) -> None:
@@ -80,6 +82,9 @@ class WorldMap:
                 return True
         return False
 
+    def transport_at(self, x: int, y: int) -> str | None:
+        return self.transport.get((x, y))
+
     def terrain_info(self, terrain: str) -> dict[str, Any]:
         return self.terrain_types.get(terrain, {})
 
@@ -96,6 +101,11 @@ class WorldMap:
                 label=tuple(raw.get("label", raw["rects"][0][:2])),
                 capital=bool(raw.get("capital", False)),
             )
+        transport: dict[tuple[int, int], str] = {}
+        precedence = ("trench", "road", "destroyed_rail", "rail")  # later kinds override earlier ones
+        for kind in precedence:
+            for x, y in data.get("transport", {}).get(kind, []):
+                transport[(int(x), int(y))] = kind
         return cls(
             width=int(data["width"]),
             height=int(data["height"]),
@@ -103,4 +113,5 @@ class WorldMap:
             regions=regions,
             features=[MapFeature(f["type"], f["name"], int(f["x"]), int(f["y"])) for f in data.get("features", [])],
             terrain_types=dict(data.get("terrain_types", {})),
+            transport=transport,
         )

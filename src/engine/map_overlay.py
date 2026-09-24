@@ -9,7 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from src.engine.intel import unit_report
-from src.models import GameState, Unit
+from src.engine.recon import ghost_contacts
+from src.models import Contact, GameState, Unit
 
 FRIENDLY = "friendly"
 HOSTILE = "hostile"
@@ -25,6 +26,7 @@ class Marker:
     units: list[Unit] = field(default_factory=list)
     glyph: str = "?"
     side: str = FRIENDLY
+    ghost: Contact | None = None  # set for a lost contact's last-known-position marker
 
     @property
     def is_stack(self) -> bool:
@@ -55,11 +57,16 @@ def unit_glyph(state: GameState, unit: Unit) -> str:
 
 
 def build_markers(state: GameState) -> list[Marker]:
-    """Place every unit on the map. Units whose symbols would overlap merge into one stack."""
+    """Place every unit the player can see. Overlapping symbols merge into one stack.
+
+    Hostile units outside detection range are omitted; lost contacts get a dim `[?]` ghost at
+    their last known position (unless something real is drawn there).
+    """
     stack_glyph = state.config.get("map", {}).get("stack_symbol", "*")
     markers: list[Marker] = []
+    shown = state.player.units + state.visible_hostiles()
     # Deterministic order: friendly first, then by position.
-    units = sorted(state.all_units(), key=lambda u: (not state.is_friendly(u.nation_id), u.y, u.x, u.id))
+    units = sorted(shown, key=lambda u: (not state.is_friendly(u.nation_id), u.y, u.x, u.id))
     for unit in units:
         side = FRIENDLY if state.is_friendly(unit.nation_id) else HOSTILE
         host = next((m for m in markers if m.overlaps(unit.x, unit.y)), None)
@@ -70,6 +77,10 @@ def build_markers(state: GameState) -> list[Marker]:
         host.glyph = stack_glyph
         if host.side != side:
             host.side = MIXED
+    if not state.config.get("map", {}).get("debug_reveal_all"):
+        for contact in sorted(ghost_contacts(state), key=lambda c: c.code):
+            if not any(m.overlaps(contact.last_x, contact.last_y) for m in markers):
+                markers.append(Marker(contact.last_x, contact.last_y, [], "?", HOSTILE, ghost=contact))
     return markers
 
 
@@ -82,8 +93,27 @@ def marker_for_unit(markers: list[Marker], unit_id: str) -> Marker | None:
 
 
 def units_in_region(state: GameState, region_id: str) -> list[Unit]:
+    """Units the player knows are in a region: all friendlies, visible hostiles only."""
     world = state.world_map
-    return [u for u in state.all_units() if (r := world.region_at(u.x, u.y)) is not None and r.id == region_id]
+    known = state.player.units + state.visible_hostiles()
+    return [u for u in known if (r := world.region_at(u.x, u.y)) is not None and r.id == region_id]
+
+
+def contact_code(state: GameState, unit: Unit) -> str:
+    contact = state.contacts.get(unit.id)
+    return f"CONTACT {contact.code}" if contact else "UNTRACKED CONTACT"
+
+
+def hostile_label(state: GameState, unit: Unit, for_intercept: bool = False) -> str:
+    """How Kestrian reports refer to a hostile formation."""
+    if for_intercept:  # SIGINT reads call signs: it names the unit (the text may still be redacted)
+        return f"{unit.designation} {unit.name}"
+    report = unit_report(state, unit)
+    templates = {t["id"]: t for t in state.catalog["units"]["units"]}
+    if report.identified:
+        return f"the Vosk {unit.name} (probable)"
+    kind = templates.get(report.reported_type, {}).get("name", "formation").lower()
+    return f"an unidentified Vosk {kind} ({contact_code(state, unit)})"
 
 
 def grid_ref(x: int, y: int) -> str:
