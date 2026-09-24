@@ -1,7 +1,7 @@
 # COMMAND TERMINAL — Game Design Document
 
 > Living document. Update it whenever a system is designed, changed, or cut.
-> Last major revision: Phase 5 (war production, resupply pipeline, tactical combat, routs, battle reports), 2026-09-24.
+> Last major revision: Phase 6 (taxation & bankruptcy, recruitment & training, research & development, purge lock), 2026-09-24.
 
 ---
 
@@ -60,7 +60,9 @@ Confirmed with the project owner after Phase 1. Do not change without asking.
 | **State collapse** | Treasury negative for `bankruptcy_grace_weeks` (8) consecutive weeks, **or** treasury ≤ `collapse_debt_limit` (−1,500,000) |
 
 On failure the engine pushes a pinned, undeletable **"CRITICAL ALERT: SYSTEM PURGE"** dispatch
-(`data/events/system_alerts.json`), and the terminal locks: no replies, no advancing the week.
+(`data/events/system_alerts.json`), and the terminal locks. A non-dismissable **PROTOCOL ZERO**
+screen shows the purge text, and the only commands left are **[R] Restart campaign** (a fresh
+government on a fresh desktop) or **[Q] Exit**. `[P6]`
 
 ---
 
@@ -92,22 +94,36 @@ Status legend: `[P1]`/`[P2]` built in that phase · `[STUB]` placeholder · `[PL
   for a reproducible campaign.
 - After a fall, `advance()` raises `GameOverError`.
 
-### 4.2 Nation Management `[P2 partial]`
-- **Treasury**: can go negative. Debt pays 1%/week interest, and while it is negative the army is
-  unpaid (−3 military morale per week).
-- **Tax rate**: drives revenue. Above 25% it erodes civil morale every week.
-- **Population**, **Manpower** (the recruitable pool).
-- **Civil morale** 0–100, with bands COLLAPSING (<20), UNREST (<40), STEADY (<70), HIGH.
-  It sets productivity (75% at 0 → 100% at 100), and at 0 there is a revolution.
+### 4.2 Nation Management `[P2 · P6]`
+- **Treasury**: can go negative. Debt pays 1% interest per week.
+- **Taxation** `[P6]` (`config.json → economy.tax_policies`; `[` / `]` on the Economy screen):
+
+| Policy | Rate | Civil morale per week |
+|--------|------|-----------------------|
+| Low | 12% | +0.6 |
+| Normal | 18% | 0 |
+| High | 26% | −0.9 |
+| Oppressive | 36% | −2.2 |
+
+  Survey of 40-week campaigns: Normal survives with a growing treasury; High doubles the treasury
+  but leaves civil morale near 3 (one bad week from revolution); Oppressive ends in revolution every
+  time. Inbox effects can still nudge the rate within a policy.
+- **Bankruptcy** `[P6]`: whenever the treasury is **at or below 0**, salaries go unpaid. Civil morale
+  falls 4 and military morale 6 every week (`economy.bankruptcy`), research halts, and the status bar
+  flashes **⚠ STATE BANKRUPT**. After 8 consecutive weeks the state collapses.
+- **Population** and **Manpower** (the recruitable pool; spent on recruitment and replacements).
+- **Civil morale** 0–100: sets productivity (75% at 0 → 100% at 100). **At 0 there is an armed revolution.**
 - **Military morale** 0–100: loyalty of the armed forces. At 10 or below there is a coup.
-- `[PLANNED]` Construction queues, edicts, stability, corruption, war support, factions.
+- `[PLANNED]` Edicts, rationing, conscription laws, factions (§7.4).
 
 ### 4.3 Economy & the Military Industrial Complex `[P2 ledger · P5 war production]`
-- **Weekly ledger** (`economy_engine.compute_ledger`):
-  `tax = population × tax_rate × tax_revenue_per_capita_weekly × productivity(morale)`,
-  minus civil administration, armed forces pay, **military production (1,100 CR per assigned factory
-  per week)**, and debt interest. The war economy costs money: the default allocation of 15
-  factories runs about −13,000 CR/week.
+- **Weekly ledger** (`economy_engine.compute_ledger`, run for **every** nation, so the AI pays its own way):
+  - income: `tax = population × tax_rate × 0.042 × productivity(morale)`, plus **trade & industry**
+    (`nations.json → trade_income` × productivity; Kestria 24,000/week) `[P6]`;
+  - expenses: civil administration, armed forces pay, military production (1,100 CR per assigned
+    factory), the **active research project** `[P6]`, and debt interest.
+  - At Normal taxes with the default 13 factories, Kestria nets about +10,900 CR/week. Every extra
+    factory or research project eats into that.
 - **Domestic resource output** (`nations.json → resource_output`, placeholder): steel, munitions,
   fuel, coal, and so on, added to resource stockpiles every week. Factories consume these as inputs.
 - **Military factories** (`src/engine/production.py`): each nation owns `military_factories`
@@ -273,7 +289,40 @@ Module: `src/engine/combat_engine.py`, config `config.json → combat`.
   total casualties (ours confirmed, theirs estimated), our equipment lost and ammunition expended,
   and the fate of each of our formations. Victory gives +3 national military morale; defeat −4.
 
-### 4.12 Classified Inbox & Event System `[P2]`
+### 4.12 Recruitment & Training `[P6]`
+Module: `src/engine/recruitment.py`, config `config.json → recruitment`, UI on the **Military** screen.
+- **Raise** any formation type (`r` on the RECRUITMENT table). Its `recruit_cost` (CR) and `manpower`
+  are paid **up front**, then it trains for `training_weeks` (infantry 8, armor 14, artillery 10,
+  militia 2, HQ 6). Names follow the template's `name_pattern` ("4th Kestrian Infantry Division") and
+  designations continue the series (K-08, K-09 ...).
+- **Musters** at the capital (Aldmark, grid 014-022), or `nations.json → muster_point`, with full
+  manpower, green morale (60), and only **25% of its establishment**, issued from the national
+  stockpile. The logistics pipeline fills the rest: ammunition within a week or two, **weapons at 12%
+  per week**. The Military screen's READY column (the worse of weapons and ammunition fill) shows
+  when it is fit for the line. The player receives a "New Formation Ready" dispatch.
+- **Cancel** a formation in training (`x` on the IN TRAINING table): all manpower is returned, plus half
+  the cost.
+- **The AI** raises replacements (infantry, sometimes armor) whenever its army falls below 95% of its
+  starting strength and it holds twice the cost in reserve.
+
+### 4.13 Research & Development `[P6]`
+Module: `src/engine/research.py`, data `tech_tree.json`, UI on the **Research** tab (`5`).
+- **One project at a time.** Highlight an AVAILABLE tech and press Enter (or `r`); `x` stops it. The
+  project costs its `weekly_cost` every week (it appears on the ledger) and completes after `weeks` weeks.
+  **Progress is kept** when you switch. **No progress while bankrupt.**
+- **On completion:** a SECRET **"R&D BREAKTHROUGH: <tech>"** dispatch arrives, and:
+  - its `unlocks` become producible (the Economy screen's LOCKED lines open);
+  - unit templates with `upgrades` for the tech grow their establishment (Kevlar vests for every man,
+    medium tanks and 120mm shells for armored brigades, APFSDS rounds, night vision), so the resupply
+    pipeline starts delivering the new kit, once factories build it;
+  - `effects` apply: Assembly-Line Retooling gives +10% output on all factories; Defense-in-Depth
+    Doctrine gives +10% defense in DEFEND stance.
+- **Equipment effects in combat:** Kevlar reduces casualties by 15% when every man has a vest; carrying
+  at least half the establishment of APFSDS rounds gives +35% hard attack; night vision gives +10% to
+  all fire.
+- **The AI** researches too (cheapest available first), which changes what its factories can build.
+
+### 4.14 Classified Inbox & Event System `[P2]`
 The inbox is the heart of the game. Module: `src/engine/event_manager.py`.
 
 **Email template schema** (`data/events/emails.json`):
@@ -285,7 +334,7 @@ The inbox is the heart of the game. Module: `src/engine/event_manager.py`.
 | `on_arrival` | Effects applied the moment the email is delivered (e.g. a failed op's fallout). |
 | `options[]` | Replies: `{id, label, effects, follow_ups}`. |
 | `deadline_weeks` + `on_expire` | If unanswered by then, `on_expire` (same shape as an option) is applied automatically. **Silence is a decision.** |
-| `intel` | Fog-of-war estimates rendered into the body (see 4.13). |
+| `intel` | Fog-of-war estimates rendered into the body (see 4.15). |
 | `pinned` | Always on top and never archived (used by SYSTEM PURGE). |
 
 **Effects** (`src/engine/effects.py`, all deltas): `treasury`, `manpower`, `population`,
@@ -306,7 +355,7 @@ and cannot be sent twice. Replies with a deadline show "REPLY BY WK n", or "DUE 
   income, expenses, net, treasury, civil/military morale, pending replies, and warnings.
 - *CRITICAL ALERT: SYSTEM PURGE* (`fail_states.py`) on a fall.
 
-### 4.13 Fog of War `[P2 estimates · P3 units · P4 active]`
+### 4.15 Fog of War `[P2 estimates · P3 units · P4 active]`
 - `src/engine/intel.py`. A spec is `{"value": n}` or `{"nation": "vosk", "stat": "manpower", "fraction": f}`,
   plus `accuracy` (0–1).
 - Rendered as `LOW – HIGH (CERTAINTY xx%)`. The range width scales with (1 − accuracy), and honest
@@ -316,7 +365,7 @@ and cannot be sent twice. Replies with a deadline show "REPLY BY WK n", or "DUE 
   **while still claiming the same certainty**. The truth is stored hidden in `email.intel_truth`,
   for later "the report was wrong" reveals.
 
-### 4.14 War Room — Tactical Situation Map `[P3 · P4 orders · P5 stances]`
+### 4.16 War Room — Tactical Situation Map `[P3 · P4 orders · P5 stances]`
 A digitized staff situation map in the style of WWII Eastern Front and Desert Storm operational
 maps: terrain, national territory washes, trench lines, rail, and NATO-style unit symbols.
 
@@ -448,6 +497,8 @@ command-terminal/
 │   │   ├── movement.py      # A* routes, orders, simultaneous movement, skirmish detection
 │   │   ├── logistics_engine.py  # supply tracing, ZOC, attrition, fuel burn, resupply, replacements
 │   │   ├── production.py    # military factories, production lines, national stockpile, AI allocation
+│   │   ├── recruitment.py   # raising and training new formations, mustering, AI replacements
+│   │   ├── research.py      # R&D projects, breakthroughs, unlocks, tech effects
 │   │   ├── combat_engine.py # battles, firepower from inventory, stances, routs, SITREP / AAR
 │   │   ├── recon.py         # detection radius, contacts, ghosts (active fog of war)
 │   │   ├── ai_director.py   # Vosk DEFEND / PROBE / ASSAULT state machine
@@ -460,11 +511,11 @@ command-terminal/
 │   │   └── (combat_engine.py is listed above)
 │   └── ui/
 │       ├── app.py           # owns GameState + TickEngine, `revision` reactive
-│       ├── screens/         # boot.py, terminal.py, confirm.py (reply modal), coordinates.py (grid prompt)
+│       ├── screens/         # boot, terminal, confirm (reply), coordinates (grid prompt), game_over (purge lock)
 │       ├── widgets/         # status_bar.py (reactive), sidebar.py (nav + ADVANCE WEEK), map_canvas.py (War Room)
-│       └── views/           # inbox.py, economy.py, military.py, map.py (War Room + intel panel)
+│       └── views/           # inbox, economy (taxes + factories), military (recruitment), map (War Room), research
 ├── tools/generate_world_map.py  # optional: regenerate world.json (overwrites it)
-└── tests/                   # test_engine, test_ui, test_war_room, test_phase4, test_phase5 (fuzzed + headless)
+└── tests/                   # test_engine, test_ui, test_war_room, test_phase4, test_phase5, test_phase6
 ```
 
 ### 5.3 Tick order
@@ -473,17 +524,19 @@ command-terminal/
 3. **Movement**: both sides march simultaneously; border clashes detected → ENGAGED + dispatch
 4. **Combat**: routed units tick toward rallying; every engaged group fights a round; routs, withdrawals, destruction; SITREP / AAR
 5. **Recon**: detection, contacts acquired/lost, ghosts
-6. **Production**: domestic resource output; factories produce into the national stockpile (AI rebalances first)
-7. **Logistics**: trace supply nets, fuel burn, consume/deliver supply, attrition, resupply from the stockpile, replacements
-8. **Economy**: ledger (incl. factory upkeep), treasury, tax discontent, insolvency, pay arrears
-9. **Events**: expire overdue dispatches (apply `on_expire`), deliver due emails (apply `on_arrival`)
-10. **Status report**: this week's Weekly Status & Financial Report (front, supply, battles, war industry)
-11. **Fail states**: revolution / coup / collapse → SYSTEM PURGE + lock
+6. **Research**: labs progress (unless bankrupt); breakthroughs unlock lines and upgrade establishments
+7. **Recruitment**: training advances; completed formations muster at the capital (AI queues replacements)
+8. **Production**: domestic resource output; factories produce into the national stockpile (AI rebalances first)
+9. **Logistics**: trace supply nets, fuel burn, consume/deliver supply, attrition, resupply from the stockpile, replacements
+10. **Economy**: ledger for every nation (taxes, trade, factories, research), tax-policy morale drift, bankruptcy
+11. **Events**: expire overdue dispatches (apply `on_expire`), deliver due emails (apply `on_arrival`)
+12. **Status report**: this week's Weekly Status & Financial Report (front, supply, battles, war industry)
+13. **Fail states**: revolution / coup / collapse → SYSTEM PURGE + Protocol Zero lock (restart or exit)
 
 ### 5.4 Controls
 | Key | Action |
 |-----|--------|
-| `1`–`4` | Inbox / Economy / Military / Map |
+| `1`–`5` | Inbox / Economy / Military / Map / Research |
 | `↑ ↓ Enter`, `Tab` | Navigate lists / move focus |
 | `a`–`d` | Reply to the open dispatch with option A–D (asks to confirm: `y` / `n`) |
 | `h` | Hide / show archived dispatches |
@@ -496,11 +549,15 @@ command-terminal/
 | Map: `s` | Toggle the supply overlay |
 | Map: `t` | Cycle the selected formation's stance: DEFEND → ASSAULT → WITHDRAW |
 | Economy: `+` / `-` / `0` | Assign / remove a factory on the highlighted production line / close the line |
+| Economy: `[` / `]` | Lower / raise the tax policy (Low · Normal · High · Oppressive) |
+| Military: `r` / `x` | Raise the highlighted formation type / cancel the highlighted formation in training |
+| Research: `Enter` or `r` / `x` | Start (or switch to) the highlighted project / stop research |
+| Game over: `r` / `q` | Restart the campaign / exit |
 | `n` or **▶ ADVANCE WEEK** | Advance one week |
 | `q` | Log out |
 
 ### 5.5 Testing
-`python -m pytest` (about 128 tests, 3–4 min) runs engine tests, fuzzed campaigns (random replies and random
+`python -m pytest` (about 143 tests, 2–3 min) runs engine tests, fuzzed campaigns (random replies and random
 move orders, with invariants checked every week) and headless Textual tests that drive the real UI:
 replies, advance week, the War Room overlay at several terminal sizes, issuing and cancelling orders,
 a live seeded campaign until SIGINT and a border clash arrive, factory assignment on the Economy
@@ -521,9 +578,9 @@ SVG screenshots from the UI tests.
 | **3** | **War Room**: X/Y grid map, NATO-style symbology, overlay and stacking, pannable Line-API map, sector/intel readout, fog of war on units, and misidentification. ✅ |
 | **4** | **Living front**: move orders and A* over a road/rail/trench layer, simultaneous movement, skirmish detection, supply-line logistics (ZOC, isolation, attrition), the Vosk AI Director (DEFEND/PROBE/ASSAULT), active fog of war, SIGINT intercepts. ✅ |
 | **5** | **Meatgrinder**: military factories and production lines, national stockpile, physical resupply pipeline, combat driven by inventory (ammo and fuel), stances, trench fortification, routs and destruction, SITREP / After Action Reports. ✅ |
-| 6 | Recruitment and training queues (new formations from manpower + stockpile); commanders with traits; weather. |
-| 7 | Deeper loadouts (§7.3): Kevlar and night vision in play, equipment upgrades, mixed-caliber logistics; bombing of factories. |
-| 8 | R&D (§7.1): research slots, tech tree, obsolescence. |
+| **6** | **The backbone of the state**: tax policies and trade income, bankruptcy spiral, recruitment and training (muster under-equipped), R&D with breakthroughs, unlocks, establishment upgrades and tech effects, Protocol Zero lock with restart. ✅ |
+| 7 | Commanders with traits, weather and seasons, more research (multiple slots, more techs), 5.56mm re-arming and mixed-caliber logistics. |
+| 8 | Strategic bombing of factories, naval blockade of Port Cassel, larger event deck (triggered events). |
 | 9 | Domestic Politics & the Draft (§7.4): war weariness, rationing, conscription laws, factions. |
 | 10 | Diplomacy, save/load, balance pass. |
 
@@ -535,7 +592,7 @@ The long-term goal: nothing on the battlefield is abstract. Every rifle, shell a
 researched, built in a real factory, shipped along a real supply line, and physically carried by
 a formation, and the home front pays for all of it.
 
-### 7.1 Hearts of Iron-style R&D
+### 7.1 Hearts of Iron-style R&D `[core built in P6]`
 - **Granular technologies**, not "+10% attack" cards: 7.62mm battle rifle → **5.56mm intermediate
   cartridge**, **Kevlar body armor**, light → **Medium Tank Chassis**, **APFSDS** penetrators,
   **night vision** (image intensifiers), assembly-line retooling, doctrines.
@@ -591,5 +648,8 @@ a formation, and the home front pays for all of it.
   but the economy is still a placeholder. Recurring and triggered events should add more.
 - Casualty and consumption rates are first-pass numbers (see the balance note in §4.10). Tune after real play.
 - Overproduction piles up in depots (rifle and ammunition stockpiles grow fast). Should stockpiles cost upkeep, or spoil?
+- Civil morale drifts down over a campaign even at Normal taxes (about 62 → 39 in 40 weeks, from expired dispatches
+  and bankruptcy-free wear). Is that the right baseline pressure, or should peace and victories restore it faster?
+- The 5.56mm rifle can be researched and built, but no template re-arms with it yet (mixed-caliber logistics).
 - Should the player see a supply-flow projection (who will be OVEREXTENDED if a move order completes) before
   confirming an order?

@@ -21,6 +21,7 @@ class AIState:
     focus_y: int | None = None  # Schwerpunkt: the row of the front it is massing toward (PROBE)
     assault_flank: str | None = None  # flank chosen for the current ASSAULT ("north" / "south")
     assault_group: dict[str, int] = field(default_factory=dict)  # unit id -> next waypoint index
+    baseline_strength: int = 0  # army strength at game start: the AI recruits to get back to it
     log: list[str] = field(default_factory=list)  # decision history, for debugging/tests
 
     def __post_init__(self) -> None:

@@ -42,11 +42,23 @@ class CommandTerminalApp(App):
 
     def __init__(self, skip_boot: bool = False, seed: int | None = None, reveal: bool = False) -> None:
         super().__init__()
+        self._reveal = reveal
+        self._new_campaign(seed)
+        self._skip_boot = skip_boot
+
+    def _new_campaign(self, seed: int | None = None) -> None:
         self.game = new_game(seed=seed)
-        if reveal:
+        if self._reveal:
             self.game.config.setdefault("map", {})["debug_reveal_all"] = True
         self.tick_engine = build_default_engine(self.game)
-        self._skip_boot = skip_boot
+
+    def restart_campaign(self) -> None:
+        """After a fall: a fresh campaign on a fresh desktop."""
+        self._new_campaign()
+        while len(self.screen_stack) > 2:  # drop modals above the desktop
+            self.pop_screen()
+        self.switch_screen(TerminalScreen())
+        self.notify("A new government takes office.", title="CAMPAIGN RESTARTED")
 
     def state_changed(self) -> None:
         self.revision += 1

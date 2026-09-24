@@ -385,3 +385,51 @@ Toast {
     background: $ct-panel;
     border-left: outer $ct-amber;
 }
+
+/* ---------- game over ---------- */
+
+GameOverScreen {
+    align: center middle;
+    background: #200000 85%;
+}
+
+#gameover-dialog {
+    width: 96;
+    height: 80%;
+    padding: 1 2;
+    background: #0a0404;
+    border: heavy #ff3b3b;
+    border-title-color: #ff3b3b;
+    border-title-style: bold;
+}
+
+#gameover-title {
+    height: 1;
+    margin-bottom: 1;
+}
+
+#gameover-body {
+    height: 1fr;
+}
+
+#gameover-buttons {
+    height: auto;
+    margin-top: 1;
+    align-horizontal: center;
+}
+
+#gameover-buttons Button {
+    margin: 0 2;
+    background: $ct-panel;
+    color: $ct-phosphor-bright;
+    border: tall #8b0000;
+}
+
+#gameover-buttons Button:focus {
+    border: tall $ct-amber;
+    color: $ct-amber;
+}
+
+ResearchView {
+    padding: 1 2;
+}

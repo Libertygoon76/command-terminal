@@ -45,7 +45,7 @@ class Nation:
     morale: float  # 0-100 civilian morale; 0 = revolution
     military_morale: float  # 0-100 armed forces loyalty; too low = coup
     population: int
-    tax_rate: float  # 0.0-1.0
+    tax_rate: float  # 0.0-1.0, set by the tax policy (inbox effects may nudge it)
     stockpiles: dict[str, int] = field(default_factory=dict)  # raw & manufactured resources (resources.json)
     units: list[Unit] = field(default_factory=list)  # formations in the field
     # --- war economy ---
@@ -55,6 +55,14 @@ class Nation:
     national_stockpile: dict[str, int] = field(default_factory=dict)  # finished equipment in depots
     resource_output: dict[str, int] = field(default_factory=dict)  # resources produced per week
     known_techs: set[str] = field(default_factory=set)
+    # --- administration ---
+    adjective: str = ""  # "Kestrian": used in new formation names
+    tax_policy: str = "normal"  # id in config economy.tax_policies
+    trade_income: int = 0  # base trade/industrial income per week
+    muster_point: tuple[int, int] | None = None  # where new formations appear (None = the capital)
+    research_project: str | None = None  # tech id being researched
+    research_progress: dict[str, float] = field(default_factory=dict)  # tech id -> weeks done (kept on switch)
+    modifiers: dict[str, float] = field(default_factory=dict)  # from researched techs, e.g. factory_efficiency
 
     def __post_init__(self) -> None:
         self.morale = _clamp(float(self.morale), MORALE_MIN, MORALE_MAX)
@@ -111,6 +119,10 @@ class Nation:
     def in_debt(self) -> bool:
         return self.treasury < 0
 
+    @property
+    def bankrupt(self) -> bool:
+        return self.treasury <= 0
+
     # --- serialization ------------------------------------------------------
 
     @classmethod
@@ -125,13 +137,17 @@ class Nation:
             morale=float(data["morale"]),
             military_morale=float(data.get("military_morale", 60)),
             population=int(data["population"]),
-            tax_rate=float(data["tax_rate"]),
+            tax_rate=float(data.get("tax_rate", 0.18)),
             stockpiles=dict(data.get("stockpiles", {})),
             military_factories=int(data.get("military_factories", 0)),
             production={k: int(v) for k, v in data.get("production", {}).items() if int(v) > 0},
             national_stockpile={k: int(v) for k, v in data.get("national_stockpile", {}).items()},
             resource_output={k: int(v) for k, v in data.get("resource_output", {}).items()},
             known_techs=set(data.get("known_techs") or []),
+            adjective=data.get("adjective", data["name"]),
+            tax_policy=data.get("tax_policy", "normal"),
+            trade_income=int(data.get("trade_income", 0)),
+            muster_point=tuple(data["muster_point"]) if data.get("muster_point") else None,
         )
 
     def to_dict(self) -> dict[str, Any]:

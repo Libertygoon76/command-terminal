@@ -14,6 +14,7 @@ from src.models.military import (
     WITHDRAW,
     Contact,
     MoveOrder,
+    TrainingOrder,
     Unit,
 )
 from src.models.world_map import MapFeature, MapRegion, WorldMap
@@ -27,6 +28,7 @@ __all__ = [
     "DEFEND",
     "ROUTING",
     "STANCES",
+    "TrainingOrder",
     "WITHDRAW",
     "Contact",
     "ENGAGED",

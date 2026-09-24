@@ -12,7 +12,7 @@ from textual.binding import Binding
 from textual.containers import VerticalScroll
 from textual.widgets import DataTable, Static
 
-from src.engine.economy_engine import compute_ledger
+from src.engine.economy_engine import EconomyError, compute_ledger, shift_tax_policy, tax_policies, tax_policy
 from src.engine.production import (
     ProductionError,
     assign_factories,
@@ -32,6 +32,8 @@ class EconomyView(VerticalScroll):
         Binding("plus,equals_sign", "assign(1)", "+Factory"),
         Binding("minus", "assign(-1)", "-Factory"),
         Binding("0", "close_line", "Close Line"),
+        Binding("left_square_bracket", "tax(-1)", "Tax −"),
+        Binding("right_square_bracket", "tax(1)", "Tax +"),
     ]
 
     def compose(self) -> ComposeResult:
@@ -97,6 +99,18 @@ class EconomyView(VerticalScroll):
         name = equipment_by_id(game)[item_id]["name"]
         self.notify(f"{name}: {count} factor{'y' if count == 1 else 'ies'} assigned.", title="WAR PRODUCTION")
 
+    def action_tax(self, step: int) -> None:
+        game = self.app.game
+        try:
+            policy = shift_tax_policy(game, game.player.id, step)
+        except EconomyError as error:
+            self.notify(str(error), title="TAXATION", severity="warning")
+            return
+        self.app.state_changed()
+        drift = float(policy.get("morale_per_week", 0))
+        effect = "no effect on morale" if not drift else f"civil morale {'+' if drift > 0 else '−'}{abs(drift):g}/week"
+        self.notify(f"{policy['name'].upper()}: {policy['rate']:.0%} tax rate, {effect}.", title="TAX POLICY")
+
     def action_close_line(self) -> None:
         game = self.app.game
         item_id = self._selected_item()
@@ -114,7 +128,16 @@ class EconomyView(VerticalScroll):
         summary.append_text(label_value("TREASURY    ", palette.money(nation.treasury, cur),
                                         palette.RED if nation.in_debt else palette.PHOSPHOR_BRIGHT))
         summary.append("\n")
-        summary.append_text(label_value("TAX RATE    ", f"{nation.tax_rate:.0%}"))
+        policy = tax_policy(game, nation)
+        ladder = Text()
+        for p in tax_policies(game):
+            current = p["id"] == nation.tax_policy
+            ladder.append(f" {p['name'].upper()} {p['rate']:.0%} ",
+                          style=f"bold #000000 on {palette.AMBER}" if current else palette.PHOSPHOR_DIM)
+        summary.append_text(label_value("TAX POLICY  ", ladder))
+        drift = float(policy.get("morale_per_week", 0))
+        drift_style = palette.PHOSPHOR_BRIGHT if drift >= 0 else palette.RED
+        summary.append(f"  [ / ] adjust · civil morale {'+' if drift >= 0 else '−'}{abs(drift):g}/wk", style=drift_style)
         summary.append("\n")
         summary.append_text(label_value("POPULATION  ", f"{nation.population:,}"))
         summary.append("\n\n")
@@ -128,9 +151,13 @@ class EconomyView(VerticalScroll):
             summary.append(label, style=palette.PHOSPHOR_DIM)
         net_style = f"bold {palette.PHOSPHOR_BRIGHT}" if ledger.net >= 0 else f"bold {palette.RED}"
         summary.append(f"\n  = {'+' if ledger.net >= 0 else '−'}{abs(ledger.net):>8,} {cur}  NET", style=net_style)
-        if game.weeks_insolvent:
+        if nation.bankrupt:
             grace = game.config.get("fail_states", {}).get("bankruptcy_grace_weeks", 8)
-            summary.append(f"\n\n  ! INSOLVENT — WEEK {game.weeks_insolvent} OF {grace}", style=f"bold {palette.RED}")
+            penalties = game.config.get("economy", {}).get("bankruptcy", {})
+            summary.append(f"\n\n  ! STATE BANKRUPT — WEEK {game.weeks_insolvent} OF {grace}: civil morale "
+                           f"−{penalties.get('civil_morale_per_week', 4)}/wk, military morale "
+                           f"−{penalties.get('military_morale_per_week', 6)}/wk, research halted",
+                           style=f"bold {palette.RED}")
         self.query_one("#econ-summary", Static).update(summary)
 
         title = Text()

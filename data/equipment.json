@@ -7,54 +7,264 @@
     "Combat (weapons only): soft_attack / hard_attack per weapon per combat week, firing only while it has ammunition:",
     "  `uses_ammo` + `ammo_per_week` (ammo units per weapon per combat week). Tanks also burn `fuel_per_week` fuel_drums in combat.",
     "  `loss_rate`: fraction of the owner's casualty rate at which this item is destroyed (rifles die with their riflemen; guns survive more).",
-    "  `casualty_reduction` (protection): multiplier on casualties taken when every man has one."
+    "  `casualty_reduction` (protection): multiplier on casualties taken when every man has one.",
+    "hard_attack_bonus / attack_bonus: multiplier bonus when the formation carries at least its establishment share of the item (APFSDS rounds, night vision)."
   ],
   "equipment": [
-    { "id": "rifle_762", "name": "7.62mm Battle Rifle", "category": "small_arms", "unit": "rifles",
-      "cost": { "steel": 0.004 }, "batch": 1000, "factory_days": 3, "requires_tech": "standard_rifle_762",
-      "combat": { "soft_attack": 0.03, "hard_attack": 0.0, "uses_ammo": "ammo_762", "ammo_per_week": 0.12, "loss_rate": 1.0 } },
-    { "id": "rifle_556", "name": "5.56mm Assault Rifle", "category": "small_arms", "unit": "rifles",
-      "cost": { "steel": 0.003 }, "batch": 1000, "factory_days": 3, "requires_tech": "intermediate_cartridge",
-      "combat": { "soft_attack": 0.035, "hard_attack": 0.0, "uses_ammo": "ammo_556", "ammo_per_week": 0.12, "loss_rate": 1.0 } },
-    { "id": "ammo_762", "name": "7.62mm Ammunition", "category": "ammunition", "unit": "k-rounds",
-      "cost": { "munitions": 0.02 }, "batch": 500, "factory_days": 1, "requires_tech": "standard_rifle_762", "combat": {} },
-    { "id": "ammo_556", "name": "5.56mm Ammunition", "category": "ammunition", "unit": "k-rounds",
-      "cost": { "munitions": 0.015 }, "batch": 500, "factory_days": 1, "requires_tech": "intermediate_cartridge", "combat": {} },
-
-    { "id": "lt_tank", "name": "Light Tank (Model 64)", "category": "armor", "unit": "tanks",
-      "cost": { "steel": 22, "fuel": 1 }, "batch": 10, "factory_days": 14, "requires_tech": "light_tank_chassis",
-      "combat": { "soft_attack": 1.5, "hard_attack": 4.0, "uses_ammo": "shell_76", "ammo_per_week": 30,
-                  "fuel_per_week": 1.3, "loss_rate": 0.6 } },
-    { "id": "shell_76", "name": "76mm Tank Shell", "category": "ammunition", "unit": "shells",
-      "cost": { "munitions": 0.1 }, "batch": 300, "factory_days": 2, "requires_tech": "light_tank_chassis", "combat": {} },
-    { "id": "mbt_medium", "name": "Medium Tank (Model 71)", "category": "armor", "unit": "tanks",
-      "cost": { "steel": 38, "fuel": 2 }, "batch": 10, "factory_days": 14, "requires_tech": "medium_tank_chassis",
-      "combat": { "soft_attack": 2.0, "hard_attack": 8.0, "uses_ammo": "shell_120_he", "ammo_per_week": 30,
-                  "fuel_per_week": 1.8, "loss_rate": 0.5 } },
-    { "id": "shell_120_he", "name": "120mm HE Tank Shell", "category": "ammunition", "unit": "shells",
-      "cost": { "munitions": 0.4 }, "batch": 200, "factory_days": 2, "requires_tech": "medium_tank_chassis", "combat": {} },
-    { "id": "shell_120_apfsds", "name": "120mm APFSDS Shell", "category": "ammunition", "unit": "shells",
-      "cost": { "munitions": 0.7, "steel": 0.1 }, "batch": 200, "factory_days": 3, "requires_tech": "apfsds_penetrator", "combat": {} },
-
-    { "id": "howitzer_152", "name": "152mm Towed Howitzer", "category": "artillery", "unit": "guns",
-      "cost": { "steel": 9 }, "batch": 6, "factory_days": 10, "requires_tech": "towed_artillery_152",
-      "combat": { "soft_attack": 8.0, "hard_attack": 1.0, "uses_ammo": "shell_152_he", "ammo_per_week": 60, "loss_rate": 0.4 } },
-    { "id": "shell_152_he", "name": "152mm HE Shell", "category": "ammunition", "unit": "shells",
-      "cost": { "munitions": 0.2 }, "batch": 200, "factory_days": 2, "requires_tech": "towed_artillery_152", "combat": {} },
-
-    { "id": "truck_4t", "name": "4-Tonne Logistics Truck", "category": "vehicle", "unit": "trucks",
-      "cost": { "steel": 3, "fuel": 0.5 }, "batch": 20, "factory_days": 5, "requires_tech": null,
-      "combat": { "loss_rate": 0.3 } },
-    { "id": "fuel_drums", "name": "Motor Fuel (Drums)", "category": "consumable", "unit": "drums",
-      "cost": { "fuel": 0.2 }, "batch": 400, "factory_days": 1, "requires_tech": null, "combat": {} },
-    { "id": "field_ration", "name": "Field Ration Pack", "category": "consumable", "unit": "k-rations",
-      "cost": { "rations": 1 }, "batch": 100, "factory_days": 1, "requires_tech": null, "combat": {} },
-
-    { "id": "kevlar_vest", "name": "Kevlar Body Armor", "category": "protection", "unit": "vests",
-      "cost": { "steel": 0.001, "fuel": 0.002 }, "batch": 500, "factory_days": 4, "requires_tech": "kevlar_armor",
-      "combat": { "casualty_reduction": 0.85, "loss_rate": 0.8 } },
-    { "id": "night_vision", "name": "Gen-1 Night Vision Device", "category": "electronics", "unit": "devices",
-      "cost": { "steel": 0.002 }, "batch": 100, "factory_days": 6, "requires_tech": "image_intensifier",
-      "combat": { "loss_rate": 0.5 } }
+    {
+      "id": "rifle_762",
+      "name": "7.62mm Battle Rifle",
+      "category": "small_arms",
+      "unit": "rifles",
+      "cost": {
+        "steel": 0.004
+      },
+      "batch": 1000,
+      "factory_days": 3,
+      "requires_tech": "standard_rifle_762",
+      "combat": {
+        "soft_attack": 0.03,
+        "hard_attack": 0.0,
+        "uses_ammo": "ammo_762",
+        "ammo_per_week": 0.12,
+        "loss_rate": 1.0
+      }
+    },
+    {
+      "id": "rifle_556",
+      "name": "5.56mm Assault Rifle",
+      "category": "small_arms",
+      "unit": "rifles",
+      "cost": {
+        "steel": 0.003
+      },
+      "batch": 1000,
+      "factory_days": 3,
+      "requires_tech": "intermediate_cartridge",
+      "combat": {
+        "soft_attack": 0.035,
+        "hard_attack": 0.0,
+        "uses_ammo": "ammo_556",
+        "ammo_per_week": 0.12,
+        "loss_rate": 1.0
+      }
+    },
+    {
+      "id": "ammo_762",
+      "name": "7.62mm Ammunition",
+      "category": "ammunition",
+      "unit": "k-rounds",
+      "cost": {
+        "munitions": 0.02
+      },
+      "batch": 500,
+      "factory_days": 1,
+      "requires_tech": "standard_rifle_762",
+      "combat": {}
+    },
+    {
+      "id": "ammo_556",
+      "name": "5.56mm Ammunition",
+      "category": "ammunition",
+      "unit": "k-rounds",
+      "cost": {
+        "munitions": 0.015
+      },
+      "batch": 500,
+      "factory_days": 1,
+      "requires_tech": "intermediate_cartridge",
+      "combat": {}
+    },
+    {
+      "id": "lt_tank",
+      "name": "Light Tank (Model 64)",
+      "category": "armor",
+      "unit": "tanks",
+      "cost": {
+        "steel": 22,
+        "fuel": 1
+      },
+      "batch": 10,
+      "factory_days": 14,
+      "requires_tech": "light_tank_chassis",
+      "combat": {
+        "soft_attack": 1.5,
+        "hard_attack": 4.0,
+        "uses_ammo": "shell_76",
+        "ammo_per_week": 30,
+        "fuel_per_week": 1.3,
+        "loss_rate": 0.6
+      }
+    },
+    {
+      "id": "shell_76",
+      "name": "76mm Tank Shell",
+      "category": "ammunition",
+      "unit": "shells",
+      "cost": {
+        "munitions": 0.1
+      },
+      "batch": 300,
+      "factory_days": 2,
+      "requires_tech": "light_tank_chassis",
+      "combat": {}
+    },
+    {
+      "id": "mbt_medium",
+      "name": "Medium Tank (Model 71)",
+      "category": "armor",
+      "unit": "tanks",
+      "cost": {
+        "steel": 38,
+        "fuel": 2
+      },
+      "batch": 10,
+      "factory_days": 14,
+      "requires_tech": "medium_tank_chassis",
+      "combat": {
+        "soft_attack": 2.0,
+        "hard_attack": 8.0,
+        "uses_ammo": "shell_120_he",
+        "ammo_per_week": 30,
+        "fuel_per_week": 1.8,
+        "loss_rate": 0.5
+      }
+    },
+    {
+      "id": "shell_120_he",
+      "name": "120mm HE Tank Shell",
+      "category": "ammunition",
+      "unit": "shells",
+      "cost": {
+        "munitions": 0.4
+      },
+      "batch": 200,
+      "factory_days": 2,
+      "requires_tech": "medium_tank_chassis",
+      "combat": {}
+    },
+    {
+      "id": "shell_120_apfsds",
+      "name": "120mm APFSDS Shell",
+      "category": "ammunition",
+      "unit": "shells",
+      "cost": {
+        "munitions": 0.7,
+        "steel": 0.1
+      },
+      "batch": 200,
+      "factory_days": 3,
+      "requires_tech": "apfsds_penetrator",
+      "combat": {
+        "hard_attack_bonus": 0.35
+      }
+    },
+    {
+      "id": "howitzer_152",
+      "name": "152mm Towed Howitzer",
+      "category": "artillery",
+      "unit": "guns",
+      "cost": {
+        "steel": 9
+      },
+      "batch": 6,
+      "factory_days": 10,
+      "requires_tech": "towed_artillery_152",
+      "combat": {
+        "soft_attack": 8.0,
+        "hard_attack": 1.0,
+        "uses_ammo": "shell_152_he",
+        "ammo_per_week": 60,
+        "loss_rate": 0.4
+      }
+    },
+    {
+      "id": "shell_152_he",
+      "name": "152mm HE Shell",
+      "category": "ammunition",
+      "unit": "shells",
+      "cost": {
+        "munitions": 0.2
+      },
+      "batch": 200,
+      "factory_days": 2,
+      "requires_tech": "towed_artillery_152",
+      "combat": {}
+    },
+    {
+      "id": "truck_4t",
+      "name": "4-Tonne Logistics Truck",
+      "category": "vehicle",
+      "unit": "trucks",
+      "cost": {
+        "steel": 3,
+        "fuel": 0.5
+      },
+      "batch": 20,
+      "factory_days": 5,
+      "requires_tech": null,
+      "combat": {
+        "loss_rate": 0.3
+      }
+    },
+    {
+      "id": "fuel_drums",
+      "name": "Motor Fuel (Drums)",
+      "category": "consumable",
+      "unit": "drums",
+      "cost": {
+        "fuel": 0.2
+      },
+      "batch": 400,
+      "factory_days": 1,
+      "requires_tech": null,
+      "combat": {}
+    },
+    {
+      "id": "field_ration",
+      "name": "Field Ration Pack",
+      "category": "consumable",
+      "unit": "k-rations",
+      "cost": {
+        "rations": 1
+      },
+      "batch": 100,
+      "factory_days": 1,
+      "requires_tech": null,
+      "combat": {}
+    },
+    {
+      "id": "kevlar_vest",
+      "name": "Kevlar Body Armor",
+      "category": "protection",
+      "unit": "vests",
+      "cost": {
+        "steel": 0.001,
+        "fuel": 0.002
+      },
+      "batch": 500,
+      "factory_days": 4,
+      "requires_tech": "kevlar_armor",
+      "combat": {
+        "casualty_reduction": 0.85,
+        "loss_rate": 0.8
+      }
+    },
+    {
+      "id": "night_vision",
+      "name": "Gen-1 Night Vision Device",
+      "category": "electronics",
+      "unit": "devices",
+      "cost": {
+        "steel": 0.002
+      },
+      "batch": 100,
+      "factory_days": 6,
+      "requires_tech": "image_intensifier",
+      "combat": {
+        "attack_bonus": 0.1,
+        "loss_rate": 0.5
+      }
+    }
   ]
 }

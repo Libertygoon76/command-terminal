@@ -41,7 +41,18 @@ def build_status_body(state: GameState) -> str:
     lines.append(_stat("Civil morale", f"{nation.morale:.0f} / 100  ({nation.morale_band})"))
     lines.append(_stat("Military morale", f"{nation.military_morale:.0f} / 100  ({nation.military_morale_band})"))
     lines.append(_stat("Manpower pool", f"{nation.manpower:,}"))
-    lines.append(_stat("Tax rate", f"{nation.tax_rate:.0%}"))
+    from src.engine.economy_engine import tax_policy
+
+    lines.append(_stat("Tax policy", f"{tax_policy(state, nation)['name'].upper()} ({nation.tax_rate:.0%})"))
+    if nation.research_project:
+        from src.engine.research import techs, weeks_remaining
+
+        tech = techs(state)[nation.research_project]
+        lines.append(_stat("Research", f"{tech['name']} — {weeks_remaining(state, nation, tech['id']):.0f} wk left"))
+    else:
+        lines.append(_stat("Research", "NO ACTIVE PROJECT"))
+    in_training = [o for o in state.training if o.nation_id == nation.id]
+    lines.append(_stat("In training", ", ".join(f"{o.designation} ({o.weeks_left} wk)" for o in in_training) or "none"))
     awaiting = state.inbox.awaiting_response()
     expiring = [m for m in awaiting if m.reply_by_turn == state.clock.turn]
     lines.append(_stat("Awaiting your reply", f"{len(awaiting)} ({len(expiring)} due this week)"))
@@ -97,7 +108,10 @@ def build_status_body(state: GameState) -> str:
     if engaged:
         warnings.append(f"In contact with the enemy: {', '.join(engaged)}.")
     if state.weeks_insolvent:
-        warnings.append(f"Treasury insolvent: week {state.weeks_insolvent} of {grace} before state collapse.")
+        warnings.append(f"STATE BANKRUPT: week {state.weeks_insolvent} of {grace} before collapse. "
+                        "Morale is falling every week and research has halted.")
+    if not nation.research_project:
+        warnings.append("No research project is running.")
 
     lines.append("WARNINGS")
     lines += [f"  ! {w}" for w in warnings] or ["  None."]

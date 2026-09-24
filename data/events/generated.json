@@ -63,5 +63,15 @@
     "sender": "General Staff, Operations Directorate",
     "classification": "TOP SECRET",
     "subject": "AFTER ACTION REPORT: {battle} — {outcome}"
+  },
+  "breakthrough": {
+    "sender": "Directorate of Research & Development",
+    "classification": "SECRET",
+    "subject": "R&D BREAKTHROUGH: {tech}"
+  },
+  "formation_ready": {
+    "sender": "Adjutant-General's Office",
+    "classification": "CONFIDENTIAL",
+    "subject": "New Formation Ready: {unit}"
   }
 }

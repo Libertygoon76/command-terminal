@@ -9,7 +9,8 @@ from textual.widgets import Button, ContentSwitcher, Footer, ListView, Static
 
 from src.engine.event_manager import GameOverError
 from src.ui import palette
-from src.ui.views import EconomyView, InboxView, MapView, MilitaryView
+from src.ui.screens.game_over import GameOverScreen
+from src.ui.views import EconomyView, InboxView, MapView, MilitaryView, ResearchView
 from src.ui.widgets.sidebar import NAV_ENTRIES, NavItem, Sidebar
 from src.ui.widgets.status_bar import StatusBar
 
@@ -28,6 +29,7 @@ class TerminalScreen(Screen):
         Binding("2", "show('economy')", "Economy"),
         Binding("3", "show('military')", "Military"),
         Binding("4", "show('map')", "Map"),
+        Binding("5", "show('research')", "Research"),
         Binding("n", "end_turn", "Advance Week"),
         Binding("q", "app.quit", "Log Out"),
     ]
@@ -41,6 +43,7 @@ class TerminalScreen(Screen):
                 yield EconomyView(id="economy")
                 yield MilitaryView(id="military")
                 yield MapView(id="map")
+                yield ResearchView(id="research")
         yield Static(id="comms-log")
         yield Footer()
 
@@ -85,12 +88,9 @@ class TerminalScreen(Screen):
 
         if report.game_over:
             self.action_show("inbox")
-            self.notify(
-                "The government has fallen. Read the final dispatch.",
-                title="CRITICAL ALERT: SYSTEM PURGE",
-                severity="error",
-                timeout=12,
-            )
+            alert = next((m for m in game.inbox.newest_first() if m.pinned), None)
+            self.app.push_screen(GameOverScreen(alert.subject if alert else "SYSTEM PURGE",
+                                                alert.body if alert else "The government has fallen."))
             return
 
         awaiting = game.inbox.awaiting_response()

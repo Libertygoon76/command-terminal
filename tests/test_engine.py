@@ -88,12 +88,12 @@ def test_revolution_ends_game_with_pinned_alert(game):
 
 def test_bankruptcy_grace_period(game):
     state, engine = game
-    state.player.treasury = -10_000
+    state.player.treasury = -200_000  # deep enough that weekly income cannot climb out
     state.player.military_morale = 100  # isolate the insolvency rule from pay-arrears coups
     grace = state.config["fail_states"]["bankruptcy_grace_weeks"]
     for _ in range(grace - 1):
         engine.advance()
-        state.player.treasury = min(state.player.treasury, -10_000)
+        assert state.player.treasury < 0
         assert check_fail_state(state) is None
     engine.advance()
     assert state.game_over and state.game_over.cause == "collapse"

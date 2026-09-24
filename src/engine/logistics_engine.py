@@ -207,10 +207,17 @@ def _template(state: GameState, unit: Unit) -> dict:
 
 
 def establishment(state: GameState, unit: Unit) -> dict[str, int]:
-    """What the formation should carry: its template loadout scaled by current strength."""
+    """What the formation should carry: its template loadout, plus the `upgrades` of every tech its
+    nation has researched, scaled by current strength."""
     template = _template(state, unit)
     share = unit.strength / max(1, template["manpower"])
-    return {item: int(round(qty * share)) for item, qty in template.get("loadout", {}).items()}
+    loadout = dict(template.get("loadout", {}))
+    known = state.nations[unit.nation_id].known_techs
+    for tech_id, extra in template.get("upgrades", {}).items():
+        if tech_id in known:
+            for item, qty in extra.items():
+                loadout[item] = loadout.get(item, 0) + qty
+    return {item: int(round(qty * share)) for item, qty in loadout.items()}
 
 
 def fill_ratio(state: GameState, unit: Unit, categories: tuple[str, ...] = ("ammunition",)) -> float:

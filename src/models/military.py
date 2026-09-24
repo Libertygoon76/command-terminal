@@ -96,6 +96,26 @@ class Unit:
 
 
 @dataclass
+class TrainingOrder:
+    """A formation being raised: paid for up front, it musters when `weeks_left` reaches 0."""
+
+    id: str  # future unit id
+    nation_id: str
+    unit_type: str
+    designation: str
+    name: str
+    weeks_total: int
+    weeks_left: int
+    cost: int
+    manpower: int
+    started_turn: int
+
+    @property
+    def progress(self) -> float:
+        return 1.0 - self.weeks_left / max(1, self.weeks_total)
+
+
+@dataclass
 class Contact:
     """Kestrian intelligence's record of a hostile formation it has seen at least once."""
 

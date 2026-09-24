@@ -13,6 +13,7 @@ NAV_ENTRIES = (
     ("economy", "ECONOMY", "2"),
     ("military", "MILITARY", "3"),
     ("map", "STRATEGIC MAP", "4"),
+    ("research", "RESEARCH", "5"),
 )
 
 
@@ -78,6 +79,15 @@ class Sidebar(Vertical):
         if due_now:
             info.append(f"  ({due_now} DUE THIS WEEK)", style=f"bold {palette.RED}")
         info.append("\n\n")
+        info.append("RESEARCH\n", style=palette.PHOSPHOR_DIM)
+        if game.player.research_project:
+            from src.engine.research import techs, weeks_remaining
+
+            tech = techs(game)[game.player.research_project]
+            left = weeks_remaining(game, game.player, tech["id"])
+            info.append(f"{tech['name'][:22].upper()}\n{left:.0f} WK LEFT\n\n", style=palette.AMBER)
+        else:
+            info.append("IDLE\n\n", style=f"bold {palette.RED}")
         info.append("INSOLVENCY\n", style=palette.PHOSPHOR_DIM)
         if game.weeks_insolvent:
             grace = game.config.get("fail_states", {}).get("bankruptcy_grace_weeks", 8)

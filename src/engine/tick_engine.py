@@ -37,6 +37,8 @@ def build_default_engine(state: GameState) -> TickEngine:
     from src.engine.logistics_engine import LogisticsEngine
     from src.engine.movement import MovementSystem
     from src.engine.production import ProductionSystem
+    from src.engine.recruitment import RecruitmentSystem
+    from src.engine.research import ResearchSystem
     from src.engine.recon import ReconSystem
     from src.engine.reports import StatusReportSystem
 
@@ -47,6 +49,8 @@ def build_default_engine(state: GameState) -> TickEngine:
             MovementSystem(),  # both sides march simultaneously; border clashes detected
             CombatSystem(),  # every engaged group fights a round; routs, retreats, reports
             ReconSystem(),  # what our forces can now see
+            ResearchSystem(),  # labs progress; breakthroughs unlock production and upgrade loadouts
+            RecruitmentSystem(),  # training completes; new formations muster at the capital
             ProductionSystem(),  # factories deliver to the national stockpile
             LogisticsEngine(),  # supply lines, fuel, resupply from the stockpile, attrition
             EconomyEngine(),

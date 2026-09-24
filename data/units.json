@@ -1,5 +1,5 @@
 {
-  "_comment": "Unit templates. `symbol` is the terminal NATO-style map glyph, drawn as [symbol]: X infantry, O armor, • artillery, H HQ/logistics, m militia. Stacks draw as [*]. move_speed = map rows per week on plains (a column is half a row: 5 km vs 10 km). detection_radius = rows; enemies outside every friendly radius are hidden on the map. loadout: equipment carried at full establishment (ids in equipment.json); the establishment: what a formation at full strength carries. Resupply tops units up to it from the national stockpile. fuel_use: fuel_drums consumed per week by status. stances: combat multipliers on firepower (attack), casualties taken are divided by defense, and ammunition use is multiplied by ammo.",
+  "_comment": "Unit templates. `symbol` is the terminal NATO-style map glyph, drawn as [symbol]: X infantry, O armor, • artillery, H HQ/logistics, m militia. Stacks draw as [*]. move_speed = map rows per week on plains (a column is half a row: 5 km vs 10 km). detection_radius = rows; enemies outside every friendly radius are hidden on the map. loadout: equipment carried at full establishment (ids in equipment.json); the establishment: what a formation at full strength carries. Resupply tops units up to it from the national stockpile. fuel_use: fuel_drums consumed per week by status. stances: combat multipliers on firepower (attack), casualties taken are divided by defense, and ammunition use is multiplied by ammo. name_pattern: name for newly raised formations ({ordinal} {adjective} {capital}). upgrades: tech id -> extra establishment items once that tech is researched (resupply then delivers them).",
   "units": [
     {
       "id": "infantry_division",
@@ -39,6 +39,15 @@
         "holding": 10,
         "moving": 40,
         "engaged": 30
+      },
+      "name_pattern": "{ordinal} {adjective} Infantry Division",
+      "upgrades": {
+        "kevlar_armor": {
+          "kevlar_vest": 9000
+        },
+        "image_intensifier": {
+          "night_vision": 250
+        }
       }
     },
     {
@@ -79,6 +88,22 @@
         "holding": 30,
         "moving": 180,
         "engaged": 60
+      },
+      "name_pattern": "{ordinal} Armored Brigade",
+      "upgrades": {
+        "medium_tank_chassis": {
+          "mbt_medium": 45,
+          "shell_120_he": 1500
+        },
+        "apfsds_penetrator": {
+          "shell_120_apfsds": 600
+        },
+        "kevlar_armor": {
+          "kevlar_vest": 3000
+        },
+        "image_intensifier": {
+          "night_vision": 120
+        }
       }
     },
     {
@@ -119,6 +144,12 @@
         "holding": 10,
         "moving": 40,
         "engaged": 40
+      },
+      "name_pattern": "{ordinal} Artillery Regiment",
+      "upgrades": {
+        "kevlar_armor": {
+          "kevlar_vest": 2000
+        }
       }
     },
     {
@@ -155,6 +186,12 @@
         "holding": 0,
         "moving": 0,
         "engaged": 0
+      },
+      "name_pattern": "{ordinal} {capital} Militia Battalion",
+      "upgrades": {
+        "kevlar_armor": {
+          "kevlar_vest": 1100
+        }
       }
     },
     {
@@ -193,6 +230,15 @@
         "holding": 20,
         "moving": 100,
         "engaged": 40
+      },
+      "name_pattern": "{ordinal} Army Headquarters",
+      "upgrades": {
+        "kevlar_armor": {
+          "kevlar_vest": 3500
+        },
+        "image_intensifier": {
+          "night_vision": 60
+        }
       }
     }
   ],

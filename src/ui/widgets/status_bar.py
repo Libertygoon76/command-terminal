@@ -135,6 +135,8 @@ class StatusBar(Horizontal):
         else:
             title.append("▣ ", style=palette.AMBER)
             title.append(game.config.get("game_title", "COMMAND TERMINAL"), style=f"bold {palette.PHOSPHOR_BRIGHT}")
+            if game.player.bankrupt:
+                title.append("  ⚠ STATE BANKRUPT ", style=f"bold {palette.PHOSPHOR_BRIGHT} on #8b4000")
         self.query_one("#sb-title", Static).update(title)
 
         self.query_one("#sb-date", Static).update(label_value("DATE", f"{game.clock.date_str}  WK {self.turn:03d}"))

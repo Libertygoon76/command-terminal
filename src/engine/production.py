@@ -68,7 +68,8 @@ def assign_factories(state: GameState, nation_id: str, item_id: str, delta: int)
 def forecast(state: GameState, nation: Nation, item_id: str) -> float:
     """Planned weekly output of a line at its current efficiency (ignoring input shortages)."""
     item = equipment_by_id(state)[item_id]
-    return nation.production.get(item_id, 0) * weekly_rate(state, item) * nation.line_efficiency.get(item_id, 0.0)
+    bonus = 1.0 + nation.modifiers.get("factory_efficiency", 0.0)  # e.g. Assembly-Line Retooling
+    return nation.production.get(item_id, 0) * weekly_rate(state, item) * nation.line_efficiency.get(item_id, 0.0) * bonus
 
 
 def run_production(state: GameState, nation: Nation) -> dict:

@@ -122,6 +122,16 @@ def firepower(state: GameState, unit: Unit, consume: bool = True) -> Fire:
                 inv["fuel_drums"] = inv.get("fuel_drums", 0) - used
                 fire.expended["fuel_drums"] = fire.expended.get("fuel_drums", 0) + used
     fire.starved = potential > 0 and actual / potential < 0.5
+    # Force multipliers carried in quantity: APFSDS rounds (hard), night vision (all fire).
+    from src.engine.logistics_engine import establishment  # avoid import cycle
+
+    wanted = establishment(state, unit)
+    for item_id, need in wanted.items():
+        combat = items.get(item_id, {}).get("combat", {})
+        if need and inv.get(item_id, 0) >= need * 0.5:
+            fire.hard *= 1.0 + float(combat.get("hard_attack_bonus", 0.0))
+            fire.soft *= 1.0 + float(combat.get("attack_bonus", 0.0))
+            fire.hard *= 1.0 + float(combat.get("attack_bonus", 0.0))
     fire.soft += unit.strength * 0.0005  # bayonets, grenades, desperation: near zero
     return fire
 
@@ -172,6 +182,7 @@ def defense(state: GameState, unit: Unit) -> float:
     region = world.region_at(*unit.location)
     terrain = float(world.terrain_info(region.terrain).get("defense", 1.0)) if region else 1.0
     value = terrain * fortification(state, unit) * float(_stance(state, unit.stance).get("defense", 1.0))
+    value *= 1.0 + state.nations[unit.nation_id].modifiers.get(f"stance_defense:{unit.stance}", 0.0)  # doctrine
     vests = unit.equipment_inventory.get("kevlar_vest", 0)
     if vests and vests >= unit.strength * 0.9:
         reduction = float(_items(state).get("kevlar_vest", {}).get("combat", {}).get("casualty_reduction", 1.0))

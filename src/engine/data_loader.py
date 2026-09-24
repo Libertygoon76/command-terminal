@@ -147,6 +147,16 @@ def new_game(data_dir: Path = DATA_DIR, seed: int | None = None) -> GameState:
             raise ValueError(f"nations.json [{nation.id}]: more factories assigned than it owns")
         for item_id in nation.production:
             nation.line_efficiency[item_id] = 1.0  # established lines at game start
+    policies = {p["id"]: p for p in config.get("economy", {}).get("tax_policies", [])}
+    for nation in nations.values():
+        if nation.tax_policy not in policies:
+            raise ValueError(f"nations.json [{nation.id}]: unknown tax_policy {nation.tax_policy!r}")
+        nation.tax_rate = float(policies[nation.tax_policy]["rate"])
+    tech_ids = {t["id"] for t in catalog["tech_tree"]["techs"]}
+    for template in catalog["units"]["units"]:
+        for tech_id, extra in template.get("upgrades", {}).items():
+            if tech_id not in tech_ids or set(extra) - equipment_ids:
+                raise ValueError(f"units.json [{template['id']}] upgrades: bad tech or equipment in {tech_id!r}")
     load_orbat(nations, world, catalog["units"], data_dir, {e["id"] for e in catalog["equipment"]})
 
     library = load_email_library(data_dir)
@@ -173,6 +183,8 @@ def new_game(data_dir: Path = DATA_DIR, seed: int | None = None) -> GameState:
         intel_seed=rng.getrandbits(32),
         ai_states=load_ai_states(nations, player_id, world, data_dir),
     )
+    for nation_id, ai in state.ai_states.items():
+        ai.baseline_strength = sum(u.strength for u in nations[nation_id].units)
     from src.engine.logistics_engine import compute_network, supply_status
     from src.engine.recon import update_contacts
 

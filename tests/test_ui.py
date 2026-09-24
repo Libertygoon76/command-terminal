@@ -112,15 +112,29 @@ def test_reply_turn_and_fail_state_flow():
             await pilot.press("n")
             await pilot.pause()
             assert game.game_over and game.game_over.cause == "revolution"
-            first = app.screen.query_one("#mail-list", ListView).query(MailItem).first()
+            from src.ui.screens.game_over import GameOverScreen
+
+            assert isinstance(app.screen, GameOverScreen)  # non-dismissable lock: restart or exit
+            assert "ARMED REVOLUTION" in app.screen.subject
+            desktop = app.screen_stack[-2]
+            first = desktop.query_one("#mail-list", ListView).query(MailItem).first()
             assert first.email.pinned and "SYSTEM PURGE" in first.email.subject
-            assert app.screen.query_one("#advance-week", Button).disabled
-            assert "GOVERNMENT FALLEN" in _cell(app, "#sb-title")
+            assert desktop.query_one("#advance-week", Button).disabled
+            assert "GOVERNMENT FALLEN" in str(desktop.query_one("#sb-title", Static).render())
             _shot(app, "p2_5_game_over")
             turn = game.clock.turn
+            await pilot.press("n")  # every other command is locked out
+            await pilot.pause()
+            assert game.clock.turn == turn and isinstance(app.screen, GameOverScreen)
+
+            # --- restart: a fresh campaign on a fresh desktop ---
+            await pilot.press("r")
+            await pilot.pause()
+            assert isinstance(app.screen, TerminalScreen)
+            assert app.game is not game and app.game.clock.turn == 1 and app.game.game_over is None
             await pilot.press("n")
             await pilot.pause()
-            assert game.clock.turn == turn  # locked
+            assert app.game.clock.turn == 2
 
     asyncio.run(run())
 

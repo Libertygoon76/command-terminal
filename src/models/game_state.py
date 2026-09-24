@@ -8,7 +8,7 @@ from typing import Any
 from src.models.inbox import Email, Inbox
 from src.models.ai import AIState
 from src.models.battle import Battle
-from src.models.military import Contact, Unit
+from src.models.military import Contact, TrainingOrder, Unit
 from src.models.nation import Nation
 from src.models.world_map import WorldMap
 
@@ -96,6 +96,8 @@ class GameState:
     cost_cache: dict[Any, Any] = field(default_factory=dict, repr=False)  # derived static data (e.g. supply costs)
     battles: dict[str, Battle] = field(default_factory=dict)  # battle id -> Battle (active and finished)
     last_production: dict[str, dict[str, Any]] = field(default_factory=dict)  # nation -> last week's factory report
+    training: list[TrainingOrder] = field(default_factory=list)  # formations being raised (all nations)
+    unit_serial: int = 0  # for unique ids of newly raised formations
 
     def all_units(self) -> list[Unit]:
         return [unit for nation in self.nations.values() for unit in nation.units]
