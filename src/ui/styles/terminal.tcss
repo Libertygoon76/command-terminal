@@ -502,3 +502,15 @@ DilemmaScreen {
     height: 1;
     margin-top: 1;
 }
+
+/* ---------- victory ---------- */
+
+GameOverScreen.-victory {
+    background: #1a1400 85%;
+}
+
+GameOverScreen.-victory #gameover-dialog {
+    background: #0a0a02;
+    border: double $ct-amber;
+    border-title-color: $ct-amber;
+}

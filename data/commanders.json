@@ -1,0 +1,57 @@
+{
+  "_comment": [
+    "Chain of command. Every formation is led by a commander with hidden TRAITS. The player learns them only when",
+    "they show: a refusal, or the commander's first week in battle (the SITREP carries a staff assessment).",
+    "Trait effects: refuse_unsupported_assault = chance to refuse an ASSAULT order when no artillery, air superiority",
+    "or naval gunfire supports the formation; refuse_withdraw = chance to refuse a WITHDRAW order; attack_bonus /",
+    "defense_bonus = firepower in ASSAULT / defense in DEFEND; casualties_taken multiplies losses; supply_consumption",
+    "multiplies weekly supply use and resupply_bonus raises what the depots push forward each week.",
+    "orbat: traits of the starting commanders (names as in orbat.json). Anyone not listed rolls random traits from",
+    "trait_weights. pool: replacement generals for relieved commanders and newly raised formations.",
+    "relieve: cost of firing a general (military morale of the nation, morale of the formation).",
+    "base_refusal: any commander may refuse a suicidal (unsupported) assault; the chance rises when the army's",
+    "military morale is below low_military_morale."
+  ],
+  "traits": {
+    "cautious": {"name": "Cautious", "refuse_unsupported_assault": 0.8, "defense_bonus": 0.1,
+                 "assessment": "a careful officer who will not attack without heavy fire support"},
+    "aggressive": {"name": "Aggressive", "attack_bonus": 0.1, "refuse_withdraw": 0.25,
+                   "assessment": "a fighter who presses every attack and hates to give ground"},
+    "logistics_master": {"name": "Logistics-Master", "supply_consumption": 0.75, "resupply_bonus": 0.25,
+                         "assessment": "an organiser: his formation eats less and is always first at the depot"},
+    "glory_hound": {"name": "Glory-Hound", "attack_bonus": 0.15, "casualties_taken": 1.15, "refuse_withdraw": 0.6,
+                    "assessment": "a medal-hunter who spends his men freely and will not retreat"},
+    "steady": {"name": "Steady", "assessment": "a dependable professional without notable vices or virtues"}
+  },
+  "trait_weights": {"cautious": 25, "aggressive": 20, "logistics_master": 15, "glory_hound": 15, "steady": 25},
+  "base_refusal": 0.05,
+  "low_military_morale": 30,
+  "low_morale_refusal": 0.25,
+  "relieve": {"military_morale": -6, "unit_morale": -8},
+  "orbat": {
+    "Maj. Gen. Oskar Hale": ["cautious"],
+    "Maj. Gen. Ilse Varga": ["logistics_master"],
+    "Maj. Gen. Piet Aldren": ["steady"],
+    "Col. (Res.) Maren Tolle": ["glory_hound"],
+    "Brig. Konrad Wess": ["aggressive"],
+    "Col. Anja Brecht": ["steady"],
+    "Gen. Aurel Vance": ["logistics_master"],
+    "Maj. Gen. Tomas Rehn": ["glory_hound"],
+    "Maj. Lena Voight": ["steady"],
+    "Capt. Elin Marsh": ["aggressive"],
+    "Vice-Adm. Hugo Stavely": ["cautious"],
+    "Cdr. Nils Arden": ["steady"]
+  },
+  "pool": {
+    "kestria": [
+      "Maj. Gen. Edda Thorne", "Maj. Gen. Casimir Holt", "Brig. Rolf Ammer", "Maj. Gen. Signe Barlow",
+      "Maj. Gen. Julius Crane", "Brig. Hedda Lind", "Maj. Gen. Viktor Pell", "Maj. Gen. Oda Strand",
+      "Brig. Anselm Kray", "Maj. Gen. Freya Dahl", "Maj. Gen. Lukas Brandt", "Brig. Mira Solberg",
+      "Maj. Gen. Emil Varro", "Maj. Gen. Katrin Moss", "Brig. Tobias Wren", "Maj. Gen. Helmut Asch"
+    ],
+    "vosk": [
+      "Gen.-Maj. Boris Kalem", "Gen.-Maj. Nadia Orlov", "Col. Stepan Vyrin", "Gen.-Maj. Ilya Garov",
+      "Gen.-Lt. Marta Zelen", "Col. Anton Rusk", "Gen.-Maj. Fedor Lask", "Gen.-Maj. Olga Tern"
+    ]
+  }
+}

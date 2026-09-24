@@ -1,5 +1,5 @@
 {
-  "_comment": "Unit templates. domain: land (default) or sea (warships move only on open water). `symbol` is the terminal NATO-style map glyph, drawn as [symbol]: X infantry, O armor, • artillery, H HQ/logistics, m militia, D destroyers, B battle squadron, U submarines. Stacks draw as [*]. SPEED (one map row = 10 miles, config map.miles_per_cell): speed_mpd = sustained march in miles per day over open plains; truck_mpd = extra miles per day with a full establishment of trucks and fuel (scaled by the truck fill). Movement points per week = miles per week / 10; roads and rail stretch them (config map.transport_cost). detection_radius = rows. loadout: equipment carried at full establishment (ids in equipment.json). fuel_use: fuel_drums consumed per week by status. stances: combat multipliers. name_pattern: name for newly raised formations. upgrades: tech id -> extra establishment items once researched. modernize: tech id -> {old item: new item | [new item, quantity ratio]}: once researched the establishment switches to the new item and old stock is turned in as the new arrives. support (artillery): fires in support of friendly battles within combat.artillery_support_range instead of fighting in the line. hull_defense (warships): damage taken is divided by it. asw: hunts submarines. stealth: hard to detect.",
+  "_comment": "Unit templates. domain: land (default) or sea (warships move only on open water). `symbol` is the terminal NATO-style map glyph, drawn as [symbol]: X infantry, O armor, • artillery, H HQ/logistics, m militia, D destroyers, B battle squadron, U submarines. Stacks draw as [*]. SPEED (one map row = 10 miles, config map.miles_per_cell): speed_mpd = sustained march in miles per day over open plains; truck_mpd = extra miles per day with a full establishment of trucks and fuel (scaled by the truck fill). Movement points per week = miles per week / 10; roads and rail stretch them (config map.transport_cost). detection_radius = rows. loadout: equipment carried at full establishment (ids in equipment.json). fuel_use: fuel_drums consumed per week by status. stances: combat multipliers. name_pattern: name for newly raised formations. upgrades: tech id -> extra establishment items once researched. modernize: tech id -> {old item: new item | [new item, quantity ratio]}: once researched the establishment switches to the new item and old stock is turned in as the new arrives. support (artillery): fires in support of friendly battles within combat.artillery_support_range instead of fighting in the line. hull_defense (warships): damage taken is divided by it. asw: hunts submarines. stealth: hard to detect. engineer (Combat Engineer Battalion [E]): a formation holding position inside its supply net repairs engineering.repair_per_week destroyed rail/road cells within engineering.repair_range rows.",
   "units": [
     {
       "id": "infantry_division",
@@ -271,6 +271,55 @@
         },
         "winter_warfare": {
           "winter_gear": 4000
+        }
+      }
+    },
+    {
+      "id": "combat_engineers",
+      "name": "Combat Engineer Battalion",
+      "symbol": "E",
+      "role": "engineer",
+      "domain": "land",
+      "speed_mpd": 4,
+      "truck_mpd": 3,
+      "detection_radius": 4,
+      "manpower": 1200,
+      "recruit_cost": 35000,
+      "training_weeks": 4,
+      "equipment": {
+        "steel": 60,
+        "munitions": 20
+      },
+      "upkeep": {
+        "rations": 40,
+        "fuel": 15,
+        "munitions": 5,
+        "treasury": 1500
+      },
+      "combat": {
+        "attack": 1,
+        "defense": 2,
+        "breakthrough": 0,
+        "speed": 1
+      },
+      "loadout": {
+        "rifle_762": 1000,
+        "ammo_762": 200,
+        "truck_4t": 120,
+        "fuel_drums": 150
+      },
+      "fuel_use": {
+        "holding": 5,
+        "moving": 20,
+        "engaged": 10
+      },
+      "name_pattern": "{ordinal} {adjective} Combat Engineer Battalion",
+      "upgrades": {
+        "kevlar_armor": {
+          "kevlar_vest": 1200
+        },
+        "winter_warfare": {
+          "winter_gear": 1200
         }
       }
     },

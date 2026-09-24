@@ -18,14 +18,18 @@ class GameOverScreen(ModalScreen[None]):
         Binding("q,escape", "exit", "Exit"),
     ]
 
-    def __init__(self, subject: str, body: str) -> None:
+    def __init__(self, subject: str, body: str, victory: bool = False) -> None:
         super().__init__()
         self.subject = subject
         self.body = body
+        self.victory = victory
+        if victory:
+            self.add_class("-victory")
 
     def compose(self) -> ComposeResult:
         with Vertical(id="gameover-dialog"):
-            yield Static(Text(self.subject.upper(), style=f"bold {palette.PHOSPHOR_BRIGHT} on #8b0000"), id="gameover-title")
+            banner = f"bold #000000 on {palette.AMBER}" if self.victory else f"bold {palette.PHOSPHOR_BRIGHT} on #8b0000"
+            yield Static(Text(self.subject.upper(), style=banner), id="gameover-title")
             with VerticalScroll(id="gameover-body"):
                 yield Static(Text(self.body, style=palette.PHOSPHOR))
             with Horizontal(id="gameover-buttons"):
@@ -33,7 +37,8 @@ class GameOverScreen(ModalScreen[None]):
                 yield Button(Text("[Q] EXIT TERMINAL"), id="gameover-exit")
 
     def on_mount(self) -> None:
-        self.query_one("#gameover-dialog").border_title = "PROTOCOL ZERO — TERMINAL LOCKED"
+        self.query_one("#gameover-dialog").border_title = (
+            "★ OPERATION CONCLUDED — THE WAR IS WON ★" if self.victory else "PROTOCOL ZERO — TERMINAL LOCKED")
         self.query_one("#gameover-restart", Button).focus()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:

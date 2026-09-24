@@ -296,7 +296,10 @@ def test_fuzzed_war_keeps_invariants(seed):
                 except OrderError:
                     pass
             if rng.random() < 0.2:
-                set_stance(state, unit.id, rng.choice([DEFEND, ASSAULT, WITHDRAW]))
+                try:
+                    set_stance(state, unit.id, rng.choice([DEFEND, ASSAULT, WITHDRAW]))
+                except StanceError:
+                    pass  # e.g. NO SIGNAL: the formation sits in a jammed zone
         settle_dilemma(state, rng)
         engine.advance()
         if state.game_over:

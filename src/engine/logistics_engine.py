@@ -45,6 +45,7 @@ from __future__ import annotations
 import heapq
 import math
 
+from src.engine.command import trait_value
 from src.engine.event_manager import deliver
 from src.engine.movement import LAND, SEA, move_costs, passable, scaled_distance, step_cost
 from src.engine.systems import SimulationSystem, TickReport
@@ -370,12 +371,13 @@ def resupply_nation(state: GameState, nation: Nation, info: dict) -> None:
     queue.sort(key=lambda u: (not u.engaged, fill_ratio(state, u)))
     for unit in queue:
         _, reach = supply_status(state, unit, info)
+        bonus = 1.0 + trait_value(state, unit, "resupply_bonus", 0.0)
         for item_id, wanted in establishment(state, unit).items():
             gap = wanted - unit.equipment_inventory.get(item_id, 0)
             if gap <= 0:
                 continue
             consumable = items.get(item_id, {}).get("category") in ("ammunition", "consumable")
-            cap = wanted * ((hi - (hi - lo) * reach) if consumable else heavy)
+            cap = wanted * ((hi - (hi - lo) * reach) if consumable else heavy) * bonus
             take = int(min(gap, max(1, cap), nation.national_stockpile.get(item_id, 0)))
             if take > 0:
                 nation.national_stockpile[item_id] -= take
@@ -413,6 +415,7 @@ def update_supply(state: GameState) -> list[Unit]:
                 consumed += float(use.get("moving", 4))
             if unit.status == ENGAGED:
                 consumed += float(use.get("engaged", 12))
+            consumed *= trait_value(state, unit, "supply_consumption", 1.0)  # a logistics-master wastes nothing
             delivered = 0.0
             if status == SUPPLIED:
                 hi, lo = float(cfg.get("delivery_max", 35)), float(cfg.get("delivery_min", 15))

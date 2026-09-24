@@ -57,6 +57,9 @@ CROSSHAIR_BG = "#0f2a18"
 CURSOR = Style(color="#000000", bgcolor=palette.AMBER, bold=True)
 TARGET_CURSOR = Style(color="#000000", bgcolor="#4fd8ff", bold=True)
 GHOST_COLOR = "#8a3a3a"
+LOST_COLOR = "#2f7f90"  # our own formations out of contact (jammed)
+JAM_BG = "#1a0a24"  # jamming zones
+WRECK = Style(color="#d05030", bold=True)  # destroyed rail / road
 DESTINATION_GLYPH = "◇"
 ROUTE_GLYPH = "·"
 
@@ -150,7 +153,7 @@ class MapCanvas(ScrollView, can_focus=True):
 
         occupied: set[tuple[int, int]] = set()
         for marker in self.markers:
-            color = GHOST_COLOR if marker.ghost else side_colors.get(marker.side, mixed_color)
+            color = GHOST_COLOR if marker.ghost else (LOST_COLOR if marker.lost else side_colors.get(marker.side, mixed_color))
             bg = OWNER_BG.get(world.owner_at(marker.x, marker.y), OWNER_BG[None])
             style = Style(color=color, bgcolor=bg, bold=not marker.ghost)
             for i, ch in enumerate(marker.text):
@@ -166,6 +169,28 @@ class MapCanvas(ScrollView, can_focus=True):
             if order and (order.x, order.y) not in occupied:
                 bg = OWNER_BG.get(world.owner_at(order.x, order.y), OWNER_BG[None])
                 rows[order.y][order.x] = (DESTINATION_GLYPH, Style(color=friendly_color, bgcolor=bg, bold=True))
+        from src.engine.movement import scaled_distance
+
+        for (x, y), kind in game.map_damage.items():  # wrecked track is marked x; rebuilt track redrawn
+            if (x, y) in occupied or world.region_at(x, y) is None:
+                continue
+            if world.base[y][x].isalnum() or world.base[y][x] in " '-":
+                continue  # never scribble over a place name; the sector readout still reports the damage
+            bg = OWNER_BG.get(world.owner_at(x, y), OWNER_BG[None])
+            if kind in ("destroyed_rail", "destroyed_road"):
+                rows[y][x] = ("x", WRECK + Style(bgcolor=bg))
+            elif kind == "rail":
+                rows[y][x] = ("═", Style(color="#9a7a3a", bgcolor=bg))
+            elif kind == "road":
+                rows[y][x] = ("┈", Style(color="#7a6a48", bgcolor=bg))
+        for zone in game.jammed.values():  # jamming zones: a violet haze over the map
+            cx, cy = zone["center"]
+            r = float(zone["radius"])
+            for y in range(max(0, int(cy - r)), min(world.height, int(cy + r) + 1)):
+                for x in range(max(0, int(cx - 2 * r)), min(world.width, int(cx + 2 * r) + 1)):
+                    if scaled_distance(game, (x, y), (cx, cy)) <= r:
+                        ch, style = rows[y][x]
+                        rows[y][x] = (ch, style + Style(bgcolor=JAM_BG))
         for port in world.ports():  # blockaded harbours glow red
             if port.name in game.blockades and (port.x, port.y) not in occupied:
                 bg = OWNER_BG.get(world.owner_at(port.x, port.y), OWNER_BG[None])

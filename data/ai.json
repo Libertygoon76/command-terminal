@@ -129,6 +129,20 @@
     "air": {
       "_comment": "Each week wings go to sectors with Vosk land battles (most engaged strength first), else the front sector.",
       "default_sector": "frontier"
+    },
+    "ew": {
+      "_comment": "Chance per week (by posture) to open a jamming zone of `radius` rows centred on the heaviest concentration of Kestrian land strength, for weeks[0]..weeks[1] weeks; at most max_sectors zones at once.",
+      "chance": {
+        "DEFEND": 0.03,
+        "PROBE": 0.12,
+        "ASSAULT": 0.35
+      },
+      "weeks": [
+        1,
+        3
+      ],
+      "max_sectors": 1,
+      "radius": 7
     }
   }
 }

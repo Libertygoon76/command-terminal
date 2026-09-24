@@ -1,7 +1,7 @@
 # COMMAND TERMINAL — Game Design Document
 
 > Living document. Update it whenever a system is designed, changed, or cut.
-> Last major revision: Phase 7 (continental map at 10 miles per cell, navies and blockades, artillery and air support, weather, the CLASSIFIED DILEMMA event deck, 5.56mm re-arming), 2026-09-24.
+> Last major revision: Phase 8 (chain of command & insubordination, electronic warfare, scorched earth & combat engineers, victory by capitulation, save/load), 2026-09-24.
 
 ---
 
@@ -49,7 +49,7 @@ Confirmed with the project owner after Phase 1. Do not change without asking.
 | **Setting** | Fictional **1984 Cold-War-era** world with **WWI/WWII-style industrial warfare** (trenches, artillery, armor). Gritty and bureaucratic. |
 | **Player nation** | Always the **Commonwealth of Kestria** (capital Aldmark). **No nation-selection screen.** All depth goes into simulating one nation. |
 | **Rival** | **Vosk Hegemony** (capital Karzan), east across the contested **Frontier**. Neutral sea lane: **Iren Straits**. |
-| **Win / loss** | **Open-ended survival.** No win screen. Three brutal loss conditions, below. |
+| **Win / loss** | **Survive — and, since Phase 8, win**: force the Vosk Hegemony to capitulate (§4.26). Three brutal loss conditions, below. |
 | **Fog of war** | **Yes, always.** Intelligence arrives as **ranges with a stated certainty %**, and reports can be **entirely wrong** while still claiming confidence. |
 
 ### Loss conditions (checked at the end of every turn)
@@ -611,6 +611,91 @@ at the heavy-equipment rate and **old rifles are turned in to the depots one-for
 never unarmed. While part of a division still carries 7.62mm, its ammunition establishment is split in
 proportion, so both calibres flow down the same supply line. Militia and other formations keep 7.62mm.
 
+### 4.23 Chain of Command & Insubordination `[P8]`
+Module `src/engine/command.py`, data `data/commanders.json`. The player sits at a terminal and does not
+have god-like control over the troops.
+- **Commanders with hidden traits.** Every formation's commander (`Unit.commander`) carries `traits`:
+
+| Trait | Effect |
+|-------|--------|
+| **Cautious** | Refuses an unsupported ASSAULT 80% of the time; +10% defense in DEFEND |
+| **Aggressive** | +10% firepower in ASSAULT; refuses WITHDRAW 25% of the time |
+| **Logistics-Master** | Formation uses 25% less supply; +25% resupply from the depots each week |
+| **Glory-Hound** | +15% firepower in ASSAULT but takes 15% more casualties; refuses WITHDRAW 60% of the time |
+| **Steady** | No quirks |
+
+  The starting commanders' traits are fixed in the data (K-01's **Maj. Gen. Oskar Hale is Cautious**,
+  K-08's Maj. Gen. Rehn is a Glory-Hound, …); everyone else, including every replacement and every newly
+  raised formation, rolls one. Traits are **hidden** (`TRAITS UNKNOWN`) until they show: the first refusal,
+  or the commander's first week in battle (the SITREP adds a COMMANDER ASSESSMENT).
+- **Orders are acknowledged, not obeyed.** A stance change or move order is queued on the unit
+  (`pending_orders`, readout: *ORDERS SENT — AWAITING ACKNOWLEDGEMENT*) and resolved by the
+  **CommandSystem** at the start of the next week. An **ASSAULT without fire support** (no friendly artillery
+  within 2.5 rows, no warship on BOMBARD in range, no friendly air wing over the sector) may be REFUSED:
+  Cautious commanders 80%; anyone 5%, plus 25% when the army's military morale is below 30. Aggressive and
+  Glory-Hound commanders may refuse to WITHDRAW.
+- **A refusal** halts the order: the move order is cancelled, the formation reverts to **DEFEND**, the trait
+  is revealed, and a TOP SECRET **"COMMAND INSUBORDINATION: K-01 — MAJ. GEN. OSKAR HALE"** dispatch arrives
+  ("…refuses to advance without heavy fire support").
+- **Relieving command** (Military screen: highlight a formation, **`f`**): a new general from the pool takes
+  over with new hidden traits. It costs **−6 military morale** (the officer corps closes ranks) and **−8
+  morale** in the formation. A formation that is out of contact (jammed) cannot be reached to relieve.
+- Vosk formations have commanders and traits too (their combat effects apply), but they obey their own staff.
+
+### 4.24 Electronic Warfare & Loss of Signal `[P8]`
+Module `src/engine/electronic_warfare.py`, config `electronic_warfare`, AI `ai.json → vosk.ew`.
+- A **jamming zone** is a circle (Vosk: 7 rows = 70 miles; natural interference: 4 rows) around a point, named
+  after its sector ("the Frontier around grid 121-038"). The Vosk open one with a chance per week that grows
+  with their posture (DEFEND 3%, PROBE 12%, ASSAULT 35%), centred on the **heaviest concentration of Kestrian
+  land strength**, for 1–3 weeks, one zone at a time. Natural ionospheric interference (3%/week) can black out
+  a smaller zone around one formation for a week.
+- **Every friendly land formation inside a zone goes dark:** it drops off the Order of Battle (a *SIGNAL LOST*
+  line takes its place), its map symbol becomes **`[?]` at its last reported position** (readout: *CONTACT
+  LOST*, with the last report's week and grid), and the Military screen shows *NO SIGNAL*. **No orders, stances
+  or command changes can reach it**; its strength, supply and morale are unknown; what it sees no longer reaches
+  the staff (fog of war); its battles report *NO REPORT: SIGNAL LOST*. It keeps fighting and carrying out its
+  last orders. Jamming zones show as a violet haze on the map; the sidebar counts dark formations.
+- **LOSS OF SIGNAL** and **SIGNAL RESTORED** dispatches bracket each blackout. `state.signal_log` keeps each
+  formation's last report.
+
+### 4.25 Scorched Earth & Combat Engineers `[P8]`
+Module `src/engine/engineering.py`, config `scorched_earth` and `engineering`.
+- **Sabotage.** A formation that **routs** (60%) or falls back in **WITHDRAW** stance (30% each week it
+  retreats) may blow up the railways and roads behind it: 3–6 rail/road cells within 2 rows of where it stood
+  become `destroyed_rail` / `destroyed_road`, drawn as a red **`x`** on the map. **Destroyed transport gives no
+  movement or supply bonus** (config: `destroyed_rail` is no longer in `map.transport_cost`), so armies and
+  their supply must go cross-country. A SCORCHED EARTH dispatch reports damage on our side of the line.
+- **The map remembers.** `state.map_damage` (cell → current kind wherever it differs from world.json) is part
+  of the campaign state: saved, loaded, and re-applied to the map. Any change drops the cached movement/supply
+  cost tables and routes.
+- **Combat Engineers** (`combat_engineers`, symbol **`[E]`**, 1,200 men, 35,000 CR, 4 weeks' training; Kestria
+  starts with **K-E1**, the 1st Kestrian Combat Engineer Battalion, near Kestrel Cross). An engineer battalion
+  **holding position inside its supply net** rebuilds the **2 nearest wrecked sections a week within 2.5 rows**,
+  including the rubble rail bed across no-man's-land. Its readout shows the work in reach.
+
+### 4.26 Victory: Enemy Capitulation `[P8]`
+Checked every week after the loss conditions (`fail_states.check_victory`, config `victory`):
+- **Occupation:** Kestrian land troops (not routing) within 1 row of **Karzan**, the Vosk capital on the far
+  side of the map, with no Vosk land formation as close, for **2 consecutive weeks**. The first week brings a
+  FLASH dispatch ("KESTRIAN TROOPS IN KARZAN"); an enemy counter-attack into the city resets the count.
+- **Collapse:** the Vosk treasury is at or below 0 **and** Vosk military morale has fallen to 0. Blockades
+  starve their trade; since Phase 8 **every** army's military morale moves with its battles (+3 victory,
+  −4 defeat), and bankruptcy drains it further.
+- Either way: a full-screen **"VICTORY: ENEMY CAPITULATION"** modal (amber, *OPERATION CONCLUDED — THE WAR IS
+  WON*) with the terms of surrender and campaign statistics. The campaign ends; restart or exit.
+
+### 4.27 Save / Load `[P8]`
+Module `src/engine/savegame.py`.
+- **`CTRL+S`** (or `F5`) anywhere on the desktop saves the whole campaign to `savegame.json` in the game folder
+  (written atomically). **`python main.py --load`** resumes it; `--load other.json` names a file.
+- Saved: every piece of dynamic state (clock, nations, formations and inventories, orders, commanders and hidden
+  traits, the inbox with read/reply state, scheduled follow-ups, flags, the campaign RNG's exact state, the AI's
+  hidden posture and tension, contacts, engagements, battles, training, air wings, weather, blockades, jamming,
+  map damage, pending dilemmas, the victory counter). Rebuilt from `data/`: config, catalog, email templates, the
+  world map (damage re-applied) and derived caches. A loaded campaign continues **exactly** as the original
+  would have — the tests check that two copies stay identical for weeks after a save.
+- Format: JSON with small tags for tuples, sets, non-string dict keys, dates and model classes; `version` 1.
+
 ---
 
 ## 5. Architecture
@@ -630,7 +715,7 @@ proportion, so both calibres flow down the same supply line. Militia and other f
 
 ```
 command-terminal/
-├── main.py                  # python main.py [--skip-boot] [--seed N] [--reveal] [--event CARD] [--list-events]
+├── main.py                  # python main.py [--skip-boot] [--seed N] [--reveal] [--event CARD] [--list-events] [--load [FILE]]
 ├── requirements.txt / requirements-dev.txt (pytest)
 ├── GAME_DESIGN.md
 ├── data/
@@ -648,6 +733,7 @@ command-terminal/
 │   ├── weather.json         # seasons, conditions, monthly weights, storms
 │   ├── air.json             # air wings
 │   ├── events_deck.json     # CLASSIFIED DILEMMA cards
+│   ├── commanders.json      # commander traits, starting assignments, replacement pool, cost of relieving
 │   └── ui/boot_sequence.json
 ├── src/
 │   ├── models/              # nation.py, inbox.py, game_state.py, military.py (Unit, MoveOrder, Contact), battle.py,
@@ -667,13 +753,17 @@ command-terminal/
 │   │   ├── air_engine.py    # air wings, sectors, superiority, fuel and bombs
 │   │   ├── weather_engine.py# seasons, weekly weather, mud, frostbite
 │   │   ├── dilemmas.py      # the event deck: draw, pause, resolve
+│   │   ├── command.py       # commanders, traits, insubordination, relieving command
+│   │   ├── electronic_warfare.py  # jamming zones, loss of signal
+│   │   ├── engineering.py   # scorched earth sabotage, combat engineer repairs, map damage
+│   │   ├── savegame.py      # save / load (JSON codec for the whole GameState)
 │   │   ├── recon.py         # detection radius, contacts, ghosts (active fog of war)
 │   │   ├── ai_director.py   # Vosk DEFEND / PROBE / ASSAULT state machine
 │   │   ├── sigint.py        # intercepts of major AI orders
 │   │   ├── event_manager.py # delivery, respond(), deadlines, follow-ups
 │   │   ├── economy_engine.py# placeholder ledger
 │   │   ├── reports.py       # weekly status report
-│   │   ├── fail_states.py   # revolution / coup / collapse
+│   │   ├── fail_states.py   # revolution / coup / collapse, and VICTORY (capitulation)
 │   │   ├── tick_engine.py, systems.py, text.py
 │   │   └── (combat_engine.py is listed above)
 │   └── ui/
@@ -682,27 +772,30 @@ command-terminal/
 │       ├── widgets/         # status_bar.py (reactive), sidebar.py (nav + ADVANCE WEEK), map_canvas.py (War Room)
 │       └── views/           # inbox, economy, military (recruitment), map (War Room), research, air (Air Assets)
 ├── tools/generate_world_map.py  # optional: regenerate world.json (overwrites it)
-└── tests/                   # conftest (calm-world fixture), test_engine, test_ui, test_war_room, test_phase4–7
+└── tests/                   # conftest (calm-world fixture), test_engine, test_ui, test_war_room, test_phase4–8
 ```
 
 ### 5.3 Tick order
 0. Refused while a CLASSIFIED DILEMMA is pending (`DilemmaPendingError`); then the clock advances
 1. **Weather**: this week's condition and storms; a bulletin at the change of season
-2. **AI Director**: posture, tension, land orders and attack stances (+ SIGINT), fleet orders and missions
+1a. **Command**: commanders acknowledge last week's orders — or refuse them (COMMAND INSUBORDINATION)
+2. **AI Director**: posture, tension, land orders and attack stances (+ SIGINT), fleet orders and missions, jamming
 3. **Movement**: armies march and fleets sail simultaneously; border clashes / naval contacts → ENGAGED + dispatch
 4. **Air**: wings contest their sectors (AI tasks its wings first); superiority, losses, fuel and bombs
-5. **Combat**: routed units rally; land battles (with artillery, naval gunfire, air support, winter penalty) and naval battles; SITREP / AAR
+5. **Combat**: routed units rally; land battles (with artillery, naval gunfire, air support, winter penalty, commander traits) and naval battles; routing/withdrawing formations may sabotage rail and road; SITREP / AAR
 6. **Naval**: storms at sea; blockades imposed and lifted (+ dispatches)
 7. **Recon**: detection (submarines at half range), contacts acquired/lost, ghosts
 8. **Research**: labs progress (unless bankrupt); breakthroughs unlock lines and upgrade establishments
 9. **Recruitment**: training advances; formations muster at the capital, warships at a harbour
 10. **Production**: domestic resource output; factories produce into the national stockpile (AI rebalances first)
 11. **Logistics**: land and sea supply nets, fuel burn (mud ×2 for armor), supply, attrition, resupply, re-arming turn-in, replacements
+11a. **Engineering**: combat engineers rebuild wrecked track
 12. **Frost**: frostbite for formations without winter kit
 13. **Economy**: ledger for every nation (taxes, trade, overseas trade minus blockaded ports, factories, research), timed modifiers expire
 14. **Events**: expire overdue dispatches (apply `on_expire`), deliver due emails (apply `on_arrival`)
+14a. **Electronic warfare**: jamming zones tick down (SIGNAL RESTORED), natural interference, last reports logged
 15. **Status report**: Weekly Status & Financial Report (now with weather and blockaded ports)
-16. **Fail states**: revolution / coup / collapse → SYSTEM PURGE + Protocol Zero lock (restart or exit)
+16. **Fail states & victory**: revolution / coup / collapse → SYSTEM PURGE + Protocol Zero lock; enemy capitulation → VICTORY modal
 17. **Dilemmas**: maybe draw a CLASSIFIED DILEMMA card (pauses the game until answered)
 
 ### 5.4 Controls
@@ -726,12 +819,14 @@ command-terminal/
 | Research: `Enter` or `r` / `x` | Start (or switch to) the highlighted project / stop research |
 | Air Assets: `[` / `]` / `0` | Move the highlighted wing to the previous / next sector / recall it to base |
 | Dilemma: `1`–`3` or click | Choose (the week cannot advance until you do) |
+| Military: `f` | Relieve the highlighted formation's commander (−6 military morale) |
+| `ctrl+s` / `F5` | Save the campaign (`python main.py --load` resumes it) |
 | Game over: `r` / `q` | Restart the campaign / exit |
 | `n` or **▶ ADVANCE WEEK** | Advance one week |
 | `q` | Log out |
 
 ### 5.5 Testing
-`python -m pytest` (167 tests, 3–5 min) runs engine tests, fuzzed campaigns (random replies and random
+`python -m pytest` (about 190 tests, 5–8 min) runs engine tests, fuzzed campaigns (random replies and random
 move orders, with invariants checked every week) and headless Textual tests that drive the real UI:
 replies, advance week, the War Room overlay at several terminal sizes, issuing and cancelling orders,
 a live seeded campaign until SIGINT and a border clash arrive, factory assignment on the Economy
@@ -759,9 +854,10 @@ SVG screenshots from the UI tests.
 | **5** | **Meatgrinder**: military factories and production lines, national stockpile, physical resupply pipeline, combat driven by inventory (ammo and fuel), stances, trench fortification, routs and destruction, SITREP / After Action Reports. ✅ |
 | **6** | **The backbone of the state**: tax policies and trade income, bankruptcy spiral, recruitment and training (muster under-equipped), R&D with breakthroughs, unlocks, establishment upgrades and tech effects, Protocol Zero lock with restart. ✅ |
 | **7** | **Continental war**: 240×80 map at 10 miles per cell with oceans, 50 settlements and ports; miles-per-day marching; navies (destroyers, battleships, submarines) with PATROL / BLOCKADE / BOMBARD, naval battles and blockades of trade and supply; artillery fire support; abstract air wings and air superiority; weather and seasons (Rasputitsa, frostbite, Cold-Weather Kits, storms); the CLASSIFIED DILEMMA event deck; 5.56mm re-arming. ✅ |
-| 8 | Commanders with traits, strategic bombing of factories (air wings over industrial centres), amphibious landings, multiple research slots. |
-| 9 | Domestic Politics & the Draft (§7.4): war weariness, rationing, conscription laws, factions. |
-| 10 | Diplomacy, save/load, balance pass. |
+| **8** | **Human friction and the endgame**: commanders with hidden traits and insubordination, relieving command; electronic warfare and loss of signal; scorched earth and combat engineers; victory by capitulation (occupy Karzan, or bankrupt and demoralise the Hegemony); save/load. ✅ |
+| 9 | Strategic bombing of factories (air wings over industrial centres), amphibious landings, multiple research slots. |
+| 10 | Domestic Politics & the Draft (§7.4): war weariness, rationing, conscription laws, factions. |
+| 11 | Diplomacy, balance pass. |
 
 ---
 
@@ -829,11 +925,14 @@ a formation, and the home front pays for all of it.
 - Overproduction piles up in depots (rifle and ammunition stockpiles grow fast). Should stockpiles cost upkeep, or spoil?
 - Civil morale drifts down over a campaign even at Normal taxes (about 62 → 39 in 40 weeks, from expired dispatches
   and bankruptcy-free wear). Is that the right baseline pressure, or should peace and victories restore it faster?
-- Civil morale drift is now gentler in a typical campaign (median 54 after 40 weeks in a 12-seed survey), because
-  several dilemma choices restore it. Keep the deck's morale gifts, or make dilemmas net-negative?
+- Civil morale drift is gentler since the event deck (median 54 after 40 weeks). **Decided (Phase 8): keep it** —
+  the deck provides the crises.
 - Frostbite in the first winter costs Kestria 450–3,800 men in the survey (most formations sit in winter quarters).
   Harsher? Should formations in trenches count as winter quarters?
 - Should air wings bomb factories and rail (strategic bombing) in Phase 8, or stay purely tactical?
-- Warships cross the map in 2–3 weeks (70–90 mi/day operational). Slow them for gameplay, or keep it realistic?
+- Warships cross the map in 2–3 weeks. **Decided (Phase 8): keep** — the contrast with trench warfare is the point.
+- Should Vosk armies also suffer insubordination (their commanders refusing the AI), or is friction the player's burden?
+- Jamming is frequent in PROBE/ASSAULT (roughly every 5–8 weeks in a survey). Tune once real campaigns are played.
+- Can Kestria jam back (its own EW brigade blinding the Vosk AI's knowledge)? Currently the AI has perfect information.
 - Should the player see a supply-flow projection (who will be OVEREXTENDED if a move order completes) before
   confirming an order?

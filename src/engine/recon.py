@@ -33,9 +33,12 @@ def sighting_range(state: GameState, observer: Unit, target: Unit) -> float:
 
 
 def is_detected(state: GameState, hostile: Unit) -> bool:
-    return any(
-        distance(state, f.location, hostile.location) <= sighting_range(state, f, hostile) for f in state.player.units
-    ) or bool(hostile.engaged_with)
+    """Seen by a friendly formation that can still report (not blacked out by jamming), or in contact with one."""
+    from src.engine.electronic_warfare import reachable_units
+
+    observers = reachable_units(state)
+    return any(distance(state, f.location, hostile.location) <= sighting_range(state, f, hostile) for f in observers) \
+        or any(u.id in hostile.engaged_with for u in observers)
 
 
 def update_contacts(state: GameState) -> tuple[list[Contact], list[Contact]]:

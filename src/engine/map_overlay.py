@@ -27,6 +27,7 @@ class Marker:
     glyph: str = "?"
     side: str = FRIENDLY
     ghost: Contact | None = None  # set for a lost contact's last-known-position marker
+    lost: Unit | None = None  # a friendly formation blacked out by jamming, drawn at its last report
 
     @property
     def is_stack(self) -> bool:
@@ -62,9 +63,12 @@ def build_markers(state: GameState) -> list[Marker]:
     Hostile units outside detection range are omitted; lost contacts get a dim `[?]` ghost at
     their last known position (unless something real is drawn there).
     """
+    from src.engine.electronic_warfare import is_dark, last_report
+
     stack_glyph = state.config.get("map", {}).get("stack_symbol", "*")
     markers: list[Marker] = []
-    shown = state.player.units + state.visible_hostiles()
+    dark = [u for u in state.player.units if is_dark(state, u)]
+    shown = [u for u in state.player.units if u not in dark] + state.visible_hostiles()
     # Deterministic order: friendly first, then by position.
     units = sorted(shown, key=lambda u: (not state.is_friendly(u.nation_id), u.y, u.x, u.id))
     for unit in units:
@@ -77,6 +81,11 @@ def build_markers(state: GameState) -> list[Marker]:
         host.glyph = stack_glyph
         if host.side != side:
             host.side = MIXED
+    for unit in sorted(dark, key=lambda u: u.id):  # CONTACT LOST: our own formations in a jammed zone
+        report = last_report(state, unit)
+        x, y = report["x"], report["y"]
+        if not any(m.overlaps(x, y) for m in markers):
+            markers.append(Marker(x, y, [], "?", FRIENDLY, lost=unit))
     if not state.config.get("map", {}).get("debug_reveal_all"):
         for contact in sorted(ghost_contacts(state), key=lambda c: c.code):
             if not any(m.overlaps(contact.last_x, contact.last_y) for m in markers):
@@ -95,7 +104,9 @@ def marker_for_unit(markers: list[Marker], unit_id: str) -> Marker | None:
 def units_in_region(state: GameState, region_id: str) -> list[Unit]:
     """Units the player knows are in a region: all friendlies, visible hostiles only."""
     world = state.world_map
-    known = state.player.units + state.visible_hostiles()
+    from src.engine.electronic_warfare import reachable_units
+
+    known = reachable_units(state) + state.visible_hostiles()
     return [u for u in known if (r := world.region_at(u.x, u.y)) is not None and r.id == region_id]
 
 

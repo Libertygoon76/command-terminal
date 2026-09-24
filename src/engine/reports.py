@@ -58,6 +58,15 @@ def build_status_body(state: GameState) -> str:
     closed = [p for p in state.blockades if world.owner_at(*world.feature_named(p).location) == nation.id]
     if closed:
         lines.append(_stat("Ports BLOCKADED", ", ".join(closed)))
+    if state.jammed:
+        from src.engine.electronic_warfare import zone_name
+
+        lines.append(_stat("JAMMED", "; ".join(zone_name(state, z) for _, z in sorted(state.jammed.items()))))
+    from src.engine.engineering import damaged_cells
+
+    wrecked = [c for c in damaged_cells(state) if world.owner_at(*c) == nation.id]
+    if wrecked:
+        lines.append(_stat("Wrecked rail/road", f"{len(wrecked)} section(s) in our territory"))
     in_training = [o for o in state.training if o.nation_id == nation.id]
     lines.append(_stat("In training", ", ".join(f"{o.designation} ({o.weeks_left} wk)" for o in in_training) or "none"))
     awaiting = state.inbox.awaiting_response()

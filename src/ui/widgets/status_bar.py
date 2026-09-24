@@ -131,7 +131,9 @@ class StatusBar(Horizontal):
         game = self.app.game
 
         title = Text()
-        if self.fallen:
+        if self.fallen and game.game_over and game.game_over.cause == "victory":
+            title.append(" ★ VICTORY — THE WAR IS WON ", style=f"bold #000000 on {palette.AMBER}")
+        elif self.fallen:
             title.append(" ⚠ GOVERNMENT FALLEN ", style=f"bold {palette.PHOSPHOR_BRIGHT} on #8b0000")
         else:
             title.append("▣ ", style=palette.AMBER)

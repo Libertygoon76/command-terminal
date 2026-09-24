@@ -94,5 +94,40 @@
     "sender": "Private Office of the {leader_title}",
     "classification": "TOP SECRET",
     "subject": "DECISION RECORDED: {title}"
+  },
+  "insubordination": {
+    "sender": "Office of the Chief of the General Staff",
+    "classification": "TOP SECRET",
+    "subject": "COMMAND INSUBORDINATION: {designation} — {commander}"
+  },
+  "command_change": {
+    "sender": "Office of the Chief of the General Staff",
+    "classification": "SECRET",
+    "subject": "CHANGE OF COMMAND: {designation} {unit}"
+  },
+  "signal_lost": {
+    "sender": "Signals Directorate — Network Control",
+    "classification": "TOP SECRET",
+    "subject": "LOSS OF SIGNAL: {sector}"
+  },
+  "signal_restored": {
+    "sender": "Signals Directorate — Network Control",
+    "classification": "SECRET",
+    "subject": "SIGNAL RESTORED: {sector}"
+  },
+  "scorched_earth": {
+    "sender": "Railway Troops Directorate",
+    "classification": "SECRET",
+    "subject": "SCORCHED EARTH: {what} destroyed near grid {x}-{y}"
+  },
+  "victory": {
+    "sender": "Office of the Lord Protector",
+    "classification": "TOP SECRET",
+    "subject": "VICTORY: ENEMY CAPITULATION"
+  },
+  "capital_entered": {
+    "sender": "Frontier Army Operations Staff",
+    "classification": "TOP SECRET",
+    "subject": "FLASH: KESTRIAN TROOPS IN {capital}"
   }
 }

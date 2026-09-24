@@ -89,12 +89,21 @@ class Sidebar(Vertical):
             info.append(f"{tech['name'][:22].upper()}\n{left:.0f} WK LEFT\n\n", style=palette.AMBER)
         else:
             info.append("IDLE\n\n", style=f"bold {palette.RED}")
+        from src.engine.electronic_warfare import dark_units
+
+        dark = dark_units(game)
+        info.append("SIGNALS\n", style=palette.PHOSPHOR_DIM)
+        if dark:
+            info.append(f"{len(dark)} FORMATION(S) DARK\n\n", style=f"bold {palette.RED}")
+        else:
+            info.append("ALL STATIONS IN CONTACT\n\n", style=palette.PHOSPHOR)
         info.append("INSOLVENCY\n", style=palette.PHOSPHOR_DIM)
         if game.weeks_insolvent:
             grace = game.config.get("fail_states", {}).get("bankruptcy_grace_weeks", 8)
             info.append(f"WEEK {game.weeks_insolvent} OF {grace}", style=f"bold {palette.RED}")
         else:
             info.append("NONE", style=palette.PHOSPHOR)
+        info.append("\n\nCTRL+S  SAVE CAMPAIGN", style=palette.PHOSPHOR_DIM)
         self.query_one("#sys-info", Static).update(info)
 
     def highlight(self, view_id: str) -> None:

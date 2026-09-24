@@ -35,6 +35,7 @@ class TerminalScreen(Screen):
         Binding("5", "show('research')", "Research"),
         Binding("6", "show('air')", "Air"),
         Binding("n", "end_turn", "Advance Week"),
+        Binding("ctrl+s,f5", "save_game", "Save"),
         Binding("q", "app.quit", "Log Out"),
     ]
 
@@ -99,8 +100,10 @@ class TerminalScreen(Screen):
         if report.game_over:
             self.action_show("inbox")
             alert = next((m for m in game.inbox.newest_first() if m.pinned), None)
+            victory = report.game_over.cause == "victory"
             self.app.push_screen(GameOverScreen(alert.subject if alert else "SYSTEM PURGE",
-                                                alert.body if alert else "The government has fallen."))
+                                                alert.body if alert else "The government has fallen.",
+                                                victory=victory))
             return
 
         awaiting = game.inbox.awaiting_response()
@@ -115,6 +118,21 @@ class TerminalScreen(Screen):
         )
         if game.pending_dilemma:
             self.show_dilemma()
+
+    # --- save ------------------------------------------------------------------
+
+    def action_save_game(self) -> None:
+        from src.engine.savegame import SaveError, save_game
+
+        try:
+            path = save_game(self.app.game, self.app.save_path)
+        except (SaveError, OSError) as error:
+            self.notify(str(error), title="SAVE FAILED", severity="error")
+            return
+        clock = self.app.game.clock
+        self._log(f"CAMPAIGN SAVED: WEEK {clock.turn:03d} → {path.name}")
+        self.notify(f"Week {clock.turn:03d} ({clock.date_str}) written to {path}.\n"
+                    "Resume with: python main.py --load", title="CAMPAIGN SAVED")
 
     # --- classified dilemmas ---------------------------------------------------
 
@@ -142,7 +160,8 @@ class TerminalScreen(Screen):
 
     def _log(self, message: str) -> None:
         clock = self.app.game.clock
-        fallen = self.app.game.game_over is not None
+        over = self.app.game.game_over
+        fallen = over is not None and over.cause != "victory"
         line = Text()
         line.append(" COMMS ", style=f"bold {palette.BACKGROUND} on {palette.RED if fallen else palette.PHOSPHOR_DIM}")
         line.append(f" WK {clock.turn:03d} // {clock.date_str} » ", style=palette.PHOSPHOR_DIM)

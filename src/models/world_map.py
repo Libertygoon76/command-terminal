@@ -59,9 +59,11 @@ class WorldMap:
     transport: dict[tuple[int, int], str] = field(default_factory=dict)
     region_rows: list[str] | None = None  # exact region key per cell ('~' = sea); else built from rects
     sea_zones: list[SeaZone] = field(default_factory=list)
+    base_transport: dict[tuple[int, int], str] = field(default_factory=dict, repr=False)  # as loaded from world.json
     _cells: list[list[str | None]] = field(default_factory=list, repr=False)
 
     def __post_init__(self) -> None:
+        self.base_transport = dict(self.transport)
         if len(self.base) != self.height or any(len(row) != self.width for row in self.base):
             raise ValueError(f"map base must be {self.height} rows of exactly {self.width} characters")
         self._cells = [[None] * self.width for _ in range(self.height)]
@@ -125,6 +127,13 @@ class WorldMap:
 
     def transport_at(self, x: int, y: int) -> str | None:
         return self.transport.get((x, y))
+
+    def set_transport(self, cell: tuple[int, int], kind: str | None) -> None:
+        """Change the transport layer (sabotage, repair). Callers must drop derived cost caches."""
+        if kind is None:
+            self.transport.pop(cell, None)
+        else:
+            self.transport[cell] = kind
 
     def terrain_info(self, terrain: str) -> dict[str, Any]:
         return self.terrain_types.get(terrain, {})

@@ -6,6 +6,8 @@ Usage:
     python main.py --reveal     # debug: lift the fog of war and show the AI's posture
     python main.py --event worker_strike   # draw this CLASSIFIED DILEMMA at the next week
     python main.py --list-events           # list the event deck
+    python main.py --load                  # resume the campaign saved with CTRL+S (savegame.json)
+    python main.py --load my_war.json      # resume from a particular save file
 """
 
 import argparse
@@ -21,6 +23,8 @@ def main() -> None:
     parser.add_argument("--event", default=None, metavar="CARD_ID",
                         help="draw this event card (data/events_deck.json) when the next week is advanced")
     parser.add_argument("--list-events", action="store_true", help="list the event deck and exit")
+    parser.add_argument("--load", nargs="?", const="", default=None, metavar="SAVEFILE",
+                        help="resume a saved campaign (default savegame.json in the game folder)")
     args = parser.parse_args()
 
     if args.list_events:
@@ -32,7 +36,15 @@ def main() -> None:
             print(f"{entry['id']:<20} {entry['title']}")
         return
 
-    CommandTerminalApp(skip_boot=args.skip_boot, seed=args.seed, reveal=args.reveal, event=args.event).run()
+    if args.load is not None:
+        from src.engine.savegame import SaveError, load_game
+
+        try:
+            load_game(args.load or None)  # fail fast, before the terminal opens
+        except SaveError as error:
+            parser.exit(1, f"{error}\n")
+    CommandTerminalApp(skip_boot=args.skip_boot, seed=args.seed, reveal=args.reveal, event=args.event,
+                       load=args.load).run()
 
 
 if __name__ == "__main__":

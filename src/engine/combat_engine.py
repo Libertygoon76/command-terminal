@@ -85,6 +85,16 @@ def set_stance(state: GameState, unit_id: str, stance: str, *, nation_id: str | 
         raise StanceError(f"Unknown stance {stance!r}")
     if unit.status == ROUTING:
         raise StanceError(f"{unit.designation} is routing and will not answer orders.")
+    from src.engine.command import queue_order
+    from src.engine.electronic_warfare import require_signal
+    from src.engine.movement import OrderError
+
+    try:
+        require_signal(state, unit)
+    except OrderError as error:
+        raise StanceError(str(error)) from None
+    if unit.stance != stance:
+        queue_order(state, unit, "stance")  # acknowledged (or refused) by the commander next week
     unit.stance = stance
 
 
@@ -197,6 +207,10 @@ def defense(state: GameState, unit: Unit) -> float:
     terrain = float(world.terrain_info(region.terrain).get("defense", 1.0)) if region else 1.0
     value = terrain * fortification(state, unit) * float(_stance(state, unit.stance).get("defense", 1.0))
     value *= 1.0 + state.nations[unit.nation_id].modifier(f"stance_defense:{unit.stance}")  # doctrine
+    if unit.stance == DEFEND:
+        from src.engine.command import trait_value
+
+        value *= 1.0 + trait_value(state, unit, "defense_bonus", 0.0)  # a cautious commander digs deep
     vests = unit.equipment_inventory.get("kevlar_vest", 0)
     if vests and vests >= unit.strength * 0.9:
         reduction = float(_items(state).get("kevlar_vest", {}).get("combat", {}).get("casualty_reduction", 1.0))
@@ -359,7 +373,10 @@ def _weather_combat(state: GameState, unit: Unit) -> float:
     return combat_factor(state, unit)
 
 
-def fight_round(state: GameState, battle: Battle, group: set[str]) -> RoundResult:
+def fight_round(state: GameState, battle: Battle, group: set[str], report: TickReport | None = None) -> RoundResult:
+    from src.engine.command import trait_value
+    from src.engine.engineering import sabotage
+
     cfg = _cfg(state)
     rng = state.rng
     units = [state.unit(i) for i in sorted(group) if state.unit(i) is not None]
@@ -398,6 +415,8 @@ def fight_round(state: GameState, battle: Battle, group: set[str]) -> RoundResul
             if fire.starved:
                 starved.append(unit)
             mult = float(_stance(state, unit.stance).get("attack", 1.0)) * (0.5 + unit.morale / 200)
+            if unit.stance == ASSAULT:
+                mult *= 1.0 + trait_value(state, unit, "attack_bonus", 0.0)  # aggressive / glory-hound commanders
             if unit.supply < float(state.config.get("logistics", {}).get("low_supply_threshold", 25)):
                 mult *= float(cfg.get("low_supply_factor", 0.6))
             mult *= _weather_combat(state, unit)
@@ -424,7 +443,8 @@ def fight_round(state: GameState, battle: Battle, group: set[str]) -> RoundResul
         applied = soft * (1 - armored) + hard * armored
         for unit in side[n]:
             before = unit.strength
-            lost = min(before, int(round(applied * k * (before / total) / defense(state, unit))))
+            lost = min(before, int(round(applied * k * (before / total) / defense(state, unit)
+                                         * trait_value(state, unit, "casualties_taken", 1.0))))
             unit.strength -= lost
             casualties[n] += lost
             frac = lost / max(1, before)
@@ -468,6 +488,8 @@ def fight_round(state: GameState, battle: Battle, group: set[str]) -> RoundResul
                     other.engaged_with.remove(unit.id)
             unit.engaged_with = []
             fall_back(state, unit, int(cfg.get("rout_retreat_cells", 2)))
+            scorched = state.config.get("scorched_earth", {})
+            sabotage(state, unit, origin, float(scorched.get("rout_chance", 0.0)), report)  # blow the line behind them
             victors = [e for e in enemies_engaged if e.status != ROUTING and e.stance != WITHDRAW]
             if victors:  # the victor takes the ground
                 victor = max(victors, key=lambda v: v.strength)
@@ -476,7 +498,11 @@ def fight_round(state: GameState, battle: Battle, group: set[str]) -> RoundResul
             routed.append(unit)
             battle.routed.append(unit.id)
         elif unit.stance == WITHDRAW:
+            origin = unit.location
             fall_back(state, unit, int(cfg.get("withdraw_cells", 1)))
+            if unit.location != origin:
+                chance = float(state.config.get("scorched_earth", {}).get("withdraw_chance", 0.0))
+                sabotage(state, unit, origin, chance, report)
             withdrew.append(unit)
     for unit in withdrew:
         if unit.id not in battle.withdrew:
@@ -514,7 +540,11 @@ def _est(state: GameState, battle: Battle, true_value: float, accuracy: float, s
 
 
 def _unit_line(state: GameState, unit: Unit) -> str:
+    from src.engine.electronic_warfare import is_dark
     from src.engine.logistics_engine import fill_ratio
+
+    if is_dark(state, unit):
+        return f"  {unit.designation:<6} — NO REPORT: SIGNAL LOST (sector jammed) —"
 
     ammo = fill_ratio(state, unit)
     stance = _stance(state, unit.stance).get("name", unit.stance).upper()
@@ -557,6 +587,13 @@ def sitrep_email(state: GameState, result: RoundResult) -> Email:
         "  None. (Artillery 1-2 cells behind the line, warships on BOMBARD offshore, or air superiority.)"]
     if enemy_support:
         lines.append(f"  ! Enemy supporting fire observed ({len(enemy_support)} source(s)).")
+    from src.engine.command import assessment_line
+    from src.engine.electronic_warfare import is_dark
+
+    fresh = [u for u in ours if not u.traits_known and not is_dark(state, u)]
+    if fresh:  # a commander's first week under fire tells the staff what kind of officer he is
+        lines += ["", "COMMANDER ASSESSMENT (first week in action)"]
+        lines += [f"  {assessment_line(state, u)}" for u in fresh]
     events = []
     events += [f"  {u.designation} has BROKEN and is routing." for u in result.routed if u.nation_id == player]
     events += ["  Enemy formation broken and routing." for u in result.routed if u.nation_id != player]
@@ -656,7 +693,7 @@ class CombatSystem(SimulationSystem):
         for group in battle_groups(state):
             battle = _battle_for(state, group)
             naval = all(is_naval(state, state.unit(i)) for i in group if state.unit(i) is not None)
-            results.append(fight_naval_round(state, battle, group) if naval else fight_round(state, battle, group))
+            results.append(fight_naval_round(state, battle, group) if naval else fight_round(state, battle, group, report))
         state.cost_cache.pop(("support_used", state.clock.turn), None)
         for result in results:
             battle = result.battle
@@ -666,10 +703,11 @@ class CombatSystem(SimulationSystem):
                 continue
             battle.ended_turn = state.clock.turn
             battle.victor = _decide(state, battle)
-            if battle.victor == state.player.id:
-                state.player.adjust_military_morale(float(cfg.get("victory_military_morale", 3)))
-            elif battle.victor is not None:
-                state.player.adjust_military_morale(float(cfg.get("defeat_military_morale", -4)))
+            if battle.victor is not None:  # every army's loyalty rises and falls with its battles
+                for nation_id in sorted({n for n, _ in battle.roster.values()}):
+                    delta = cfg.get("victory_military_morale", 3) if nation_id == battle.victor \
+                        else cfg.get("defeat_military_morale", -4)
+                    state.nations[nation_id].adjust_military_morale(float(delta))
             report.new_messages.append(deliver(state, aar_email(state, battle)))
             report.log.append(f"{battle.name} has ended.")
         for unit in state.all_units():

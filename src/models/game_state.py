@@ -107,6 +107,11 @@ class GameState:
     used_cards: set[str] = field(default_factory=set)  # event cards already drawn
     last_card_turn: int = 0
     forced_card: str | None = None  # debug (main.py --event): draw this card at the next week
+    # --- Phase 8 ---
+    map_damage: dict[tuple[int, int], str] = field(default_factory=dict)  # cell -> transport kind now (vs world.json)
+    jammed: dict[str, dict[str, Any]] = field(default_factory=dict)  # zone id -> {center, radius, weeks, sector}
+    signal_log: dict[str, dict[str, Any]] = field(default_factory=dict)  # unit id -> last report before the jam
+    occupation_weeks: int = 0  # consecutive weeks Kestrian troops have held the enemy capital
 
     def template(self, unit_type: str) -> dict[str, Any]:
         """Unit template (units.json) by id."""

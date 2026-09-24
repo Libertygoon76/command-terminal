@@ -41,11 +41,20 @@ class CommandTerminalApp(App):
     revision: reactive[int] = reactive(0)
 
     def __init__(self, skip_boot: bool = False, seed: int | None = None, reveal: bool = False,
-                 event: str | None = None) -> None:
+                 event: str | None = None, load: str | None = None, save_path: str | None = None) -> None:
         super().__init__()
         self._reveal = reveal
         self._forced_event = event
-        self._new_campaign(seed)
+        self.save_path = save_path or load  # where CTRL+S writes (default: savegame.json in the game folder)
+        if load is not None:
+            from src.engine.savegame import load_game
+
+            self.game = load_game(load or None)
+            if self._reveal:
+                self.game.config.setdefault("map", {})["debug_reveal_all"] = True
+            self.tick_engine = build_default_engine(self.game)
+        else:
+            self._new_campaign(seed)
         self._skip_boot = skip_boot
 
     def _new_campaign(self, seed: int | None = None) -> None:

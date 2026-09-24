@@ -148,6 +148,7 @@ def new_game(data_dir: Path = DATA_DIR, seed: int | None = None) -> GameState:
     catalog["tech_tree"] = load_json("tech_tree.json", data_dir)
     catalog["weather"] = load_json("weather.json", data_dir)
     catalog["events_deck"] = load_json("events_deck.json", data_dir)
+    catalog["commanders"] = load_json("commanders.json", data_dir)
     equipment_ids = {e["id"] for e in catalog["equipment"]}
     for nation in nations.values():
         if not nation.known_techs:
@@ -203,6 +204,11 @@ def new_game(data_dir: Path = DATA_DIR, seed: int | None = None) -> GameState:
     for nation_id, ai in state.ai_states.items():
         ai.baseline_strength = sum(u.strength for u in nations[nation_id].units if state.domain(u) == "land")
     state.air_wings = load_air_wings(nations, world, data_dir)
+    from src.engine.command import assign_commanders
+    from src.engine.electronic_warfare import log_signals
+
+    assign_commanders(state)
+    log_signals(state)
     from src.engine.weather_engine import bulletin_email, roll_weather
 
     state.weather = roll_weather(state)  # the campaign opens in the dead of winter

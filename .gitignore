@@ -4,3 +4,7 @@ __pycache__/
 venv/
 saves/
 *.log
+
+# saved campaigns
+savegame.json
+*.json.tmp

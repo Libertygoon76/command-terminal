@@ -118,9 +118,11 @@ class AIDirector(SimulationSystem):
         planner = {DEFEND: self._defend_orders, PROBE: self._probe_orders, ASSAULT: self._assault_orders}[ai.posture]
         orders += [(u, t) for u, t in planner(state, ai) if u.id not in taken]
 
+        from src.engine.electronic_warfare import ai_jamming
         from src.engine.naval_engine import issue_ai_naval_orders
 
         issue_ai_naval_orders(state, ai, report)
+        ai_jamming(state, ai, report)
         sigint_cfg = cfg.get("sigint", {})
         sent = 0
         for unit, target in orders[: int(cfg["max_orders_per_week"].get(ai.posture, 3))]:

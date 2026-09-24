@@ -179,11 +179,11 @@ EXTRA_ROADS = [
 ]
 RIVERS = [[(72, 20), (66, 34), (70, 48), (64, 62)], [(182, 30), (176, 44), (182, 60)]]
 
-SEA_ZONES = [
-    {"name": "Northern Sea", "rect": [0, 0, W - 1, 15]},
+SEA_ZONES = [  # first match wins; the bays either side of the Frontier belong to the seas beyond
     {"name": "Western Ocean", "rect": [0, 16, 20, 63]},
-    {"name": "Iren Straits", "rect": [0, 56, 150, H - 1]},
-    {"name": "Gulf of Sevrask", "rect": [151, 56, W - 1, H - 1]},
+    {"name": "Northern Sea", "rect": [0, 0, W - 1, 24]},
+    {"name": "Iren Straits", "rect": [0, 46, 150, H - 1]},
+    {"name": "Gulf of Sevrask", "rect": [151, 46, W - 1, H - 1]},
 ]
 SEA_LABELS = [(" N  O  R  T  H  E  R  N     S  E  A ", (64, 2)), (" N  O  R  T  H  E  R  N     S  E  A ", (178, 2)),
               (" WESTERN ", (2, 30)), (" OCEAN ", (3, 31)),

@@ -138,6 +138,10 @@ def muster(state: GameState, order: TrainingOrder) -> Unit:
         supply=100.0,
         stance=DEFEND,
     )
+    from src.engine.command import next_commander, roll_traits
+
+    unit.commander = next_commander(state, nation.id)
+    unit.traits = roll_traits(state)
     share = float(_cfg(state).get("initial_issue", 0.25))
     for item_id, wanted in establishment(state, unit).items():
         take = min(int(wanted * share), nation.national_stockpile.get(item_id, 0))

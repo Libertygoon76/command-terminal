@@ -64,6 +64,9 @@ def build_default_engine(state: GameState) -> TickEngine:
     from src.engine.ai_director import AIDirector
     from src.engine.air_engine import AirSystem
     from src.engine.combat_engine import CombatSystem
+    from src.engine.command import CommandSystem
+    from src.engine.electronic_warfare import EWSystem
+    from src.engine.engineering import EngineeringSystem
     from src.engine.dilemmas import DilemmaSystem
     from src.engine.economy_engine import EconomyEngine
     from src.engine.event_manager import EventManager
@@ -82,6 +85,7 @@ def build_default_engine(state: GameState) -> TickEngine:
         state,
         [
             WeatherSystem(),  # this week's weather over the continent (and the season)
+            CommandSystem(),  # commanders acknowledge last week's orders — or refuse them
             AIDirector(),  # enemy plans its moves (land, sea, air) before the week resolves
             MovementSystem(),  # both sides march and sail simultaneously; clashes detected
             AirSystem(),  # air wings contest their sectors; superiority decided before the fighting
@@ -92,11 +96,13 @@ def build_default_engine(state: GameState) -> TickEngine:
             RecruitmentSystem(),  # training completes; new formations muster
             ProductionSystem(),  # factories deliver to the national stockpile
             LogisticsEngine(),  # supply lines, fuel, resupply from the stockpile, attrition
+            EngineeringSystem(),  # combat engineers rebuild wrecked railways and roads
             FrostSystem(),  # frostbite for formations without winter kit
             EconomyEngine(),  # taxes, trade (minus blockaded ports), expenses
             EventManager(),  # dispatches, deadlines
+            EWSystem(),  # jamming ticks down; last reports of formations still in contact
             StatusReportSystem(),
-            FailStateSystem(),
+            FailStateSystem(),  # revolution / coup / collapse — or VICTORY: enemy capitulation
             DilemmaSystem(),  # maybe draw a CLASSIFIED DILEMMA card (pauses the game until answered)
         ],
     )

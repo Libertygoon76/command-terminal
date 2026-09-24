@@ -28,6 +28,7 @@ class MilitaryView(VerticalScroll):
     BINDINGS = [
         Binding("r", "raise_unit", "Raise Formation"),
         Binding("x", "cancel_training", "Cancel Training"),
+        Binding("f", "relieve", "Relieve Commander"),
     ]
 
     def compose(self) -> ComposeResult:
@@ -37,7 +38,8 @@ class MilitaryView(VerticalScroll):
         yield DataTable(id="mil-recruit", cursor_type="row", classes="primary-focus")
         yield Static(id="mil-training-title", classes="section-title")
         yield DataTable(id="mil-training", cursor_type="row")
-        yield Static(Text("FORMATIONS IN THE FIELD", style=f"bold {palette.AMBER}"), classes="section-title")
+        yield Static(Text("FORMATIONS IN THE FIELD — highlight one and press F to RELIEVE its commander "
+                          "(costs military morale)", style=f"bold {palette.AMBER}"), classes="section-title")
         yield DataTable(id="mil-formations", cursor_type="row")
         yield Static(Text("COMBAT STANCES (set per formation in the War Room: T)", style=f"bold {palette.AMBER}"),
                      classes="section-title")
@@ -49,7 +51,7 @@ class MilitaryView(VerticalScroll):
         self.query_one("#mil-training", DataTable).add_columns(
             "ID", "FORMATION", "TYPE", "PROGRESS", "WEEKS LEFT", "MUSTERS AT", "COST PAID")
         self.query_one("#mil-formations", DataTable).add_columns(
-            "ID", "FORMATION", "TYPE", "STRENGTH", "MORALE", "SUPPLY", "AMMO", "READY", "LINE", "STATUS", "STANCE/MISSION",
+            "ID", "FORMATION", "TYPE", "STRENGTH", "MORALE", "SUPPLY", "AMMO", "READY", "LINE", "STATUS", "STANCE/MISSION", "COMMANDER",
             "ORDER", "GRID")
         stances = Text()
         for stance in self.app.game.catalog["units"].get("stances", []):
@@ -83,6 +85,24 @@ class MilitaryView(VerticalScroll):
         self.app.state_changed()
         self.notify(f"{order.name} ({order.designation}) will muster in {order.weeks_total} weeks.",
                     title="FORMATION RAISED")
+
+    def action_relieve(self) -> None:
+        from src.engine.command import CommandError, relieve_commander
+
+        game = self.app.game
+        unit_id = self._key(self.query_one("#mil-formations", DataTable))
+        if unit_id is None:
+            self.notify("Highlight a formation in the field first.", severity="warning")
+            return
+        try:
+            old, new = relieve_commander(game, unit_id)
+        except CommandError as error:
+            self.notify(str(error), title="CHAIN OF COMMAND", severity="warning")
+            return
+        self.app.state_changed()
+        cost = game.catalog.get("commanders", {}).get("relieve", {}).get("military_morale", -6)
+        self.notify(f"{old} relieved. {new} takes command. Military morale {cost:+g}.", title="CHANGE OF COMMAND",
+                    severity="warning")
 
     def action_cancel_training(self) -> None:
         game = self.app.game
@@ -177,10 +197,20 @@ class MilitaryView(VerticalScroll):
 
         # Formations in the field.
         templates = {t["id"]: t for t in game.catalog["units"]["units"]}
+        from src.engine.electronic_warfare import is_dark
+        from src.ui.views.map import commander_text
+
         table = self.query_one("#mil-formations", DataTable)
+        cursor = table.cursor_row
         table.clear()
         for unit in sorted(units, key=lambda u: u.designation):
             template = templates[unit.unit_type]
+            if is_dark(game, unit):
+                blank = Text("NO SIGNAL", style=f"bold {palette.RED}")
+                table.add_row(unit.designation, unit.name.upper(), Text(f"[{template['symbol']}] {template['name'].upper()}"),
+                              blank, "—", "—", "—", "—", "—", Text("CONTACT LOST", style=f"bold {palette.RED}"), "—",
+                              commander_text(game, unit), "—", "—", key=unit.id)
+                continue
             ammo = fill_ratio(game, unit)
             ready = readiness(game, unit)
             table.add_row(
@@ -196,6 +226,10 @@ class MilitaryView(VerticalScroll):
                      style=palette.PHOSPHOR if unit.supply_state == "supplied" else f"bold {palette.RED}"),
                 Text(unit.status.upper(), style=f"bold {palette.RED}" if unit.engaged else palette.PHOSPHOR),
                 unit.mission.upper() if template.get("domain") == "sea" else unit.stance.upper(),
+                commander_text(game, unit),
                 (f"MOVE → {unit.active_order.x:03d}-{unit.active_order.y:03d}" if unit.active_order else "HOLD"),
                 f"{unit.x:03d}-{unit.y:03d}",
+                key=unit.id,
             )
+        if table.row_count:
+            table.move_cursor(row=min(cursor, table.row_count - 1))

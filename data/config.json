@@ -69,7 +69,7 @@
     "status_sender": "Ministry of the Treasury — Automated Ledger"
   },
   "map": {
-    "_comment": "War Room. Friendly = player nation; everyone else is hostile. SCALE: miles_per_cell = miles per map row (one grid step); column_scale: a column is half as far as a row (terminal characters are twice as tall as wide), so a column is 5 miles. transport_cost: multiplier on a step along rail/road/destroyed rail (terrain is ignored there). obstacle_cost: extra multiplier for crossing trench lines. ghost_weeks: how long a lost contact stays plotted. debug_reveal_all: show every enemy (or run main.py --reveal).",
+    "_comment": "War Room. Friendly = player nation; everyone else is hostile. SCALE: miles_per_cell = miles per map row (one grid step); column_scale: a column is half as far as a row (terminal characters are twice as tall as wide), so a column is 5 miles. transport_cost: multiplier on a step along rail/road/destroyed rail (terrain is ignored there). obstacle_cost: extra multiplier for crossing trench lines. ghost_weeks: how long a lost contact stays plotted. debug_reveal_all: show every enemy (or run main.py --reveal). Destroyed rail and road (no-man's-land, or sabotaged: see scorched_earth) give no movement or supply bonus until Combat Engineers repair them.",
     "friendly_color": "#4fd8ff",
     "hostile_color": "#ff3b3b",
     "mixed_stack_color": "#ffb000",
@@ -80,8 +80,7 @@
     "debug_reveal_all": false,
     "transport_cost": {
       "rail": 0.35,
-      "road": 0.55,
-      "destroyed_rail": 0.8
+      "road": 0.55
     },
     "obstacle_cost": {
       "trench": 1.8
@@ -139,7 +138,7 @@
     "upkeep_per_factory": 1100
   },
   "combat": {
-    "_comment": "Weekly combat in every battle. Damage = firepower x stance.attack x morale factor x supply factor x air support x weather x noise, plus fire support from artillery and warships; casualties = damage x casualty_factor / (terrain defense x fortification x stance.defense). fortification applies within fort_range columns of the unit's own trench line; urban_fortification in urban terrain or within 1 row of a town or city. ARTILLERY (templates with `support`) that is not itself in contact fires for the nearest friendly battle within artillery_support_range rows of an engaged friendly formation: its firepower x artillery_support_multiplier is added to that side and it takes no casualties.",
+    "_comment": "Weekly combat in every battle. Damage = firepower x stance.attack x morale factor x supply factor x air support x weather x noise, plus fire support from artillery and warships; casualties = damage x casualty_factor / (terrain defense x fortification x stance.defense). fortification applies within fort_range columns of the unit's own trench line; urban_fortification in urban terrain or within 1 row of a town or city. ARTILLERY (templates with `support`) that is not itself in contact fires for the nearest friendly battle within artillery_support_range rows of an engaged friendly formation: its firepower x artillery_support_multiplier is added to that side and it takes no casualties. Every nation's military morale moves with its battles (victory +, defeat -).",
     "casualty_factor": 1.6,
     "noise": [
       0.8,
@@ -206,5 +205,39 @@
     "attrition_rate": 0.04,
     "replacements_per_week": 6,
     "enemy_estimate_accuracy": 0.6
+  },
+  "command": {
+    "_comment": "Chain of command (data/commanders.json for traits). Orders the player gives (a stance change, a move order) are acknowledged at the start of the next week: a commander may REFUSE. Fire support = a friendly artillery formation within combat.artillery_support_range, a friendly warship on BOMBARD within naval.bombard_range, or a friendly air wing flying over the sector."
+  },
+  "electronic_warfare": {
+    "_comment": "Jamming zones: circles of `radius` rows. Every friendly LAND formation inside is cut off from the terminal: it vanishes from the Order of Battle, its map symbol becomes [?] at its last reported position, it cannot be given orders and its own sightings stop reaching the staff. It keeps fighting and following its last orders. The Vosk AI jams (ai.json ew); natural interference (random_chance per week, random_radius rows around one formation) blacks out for random_weeks.",
+    "random_chance": 0.03,
+    "random_weeks": [
+      1,
+      1
+    ],
+    "random_radius": 4
+  },
+  "scorched_earth": {
+    "_comment": "A formation that ROUTS (rout_chance) or falls back in WITHDRAW stance (withdraw_chance per week) may blow up railways and roads behind it: cells (min..max) of rail/road within radius rows of where it stood become destroyed_rail / destroyed_road (no movement or supply bonus).",
+    "rout_chance": 0.6,
+    "withdraw_chance": 0.3,
+    "radius": 2.0,
+    "cells": [
+      3,
+      6
+    ]
+  },
+  "engineering": {
+    "_comment": "Combat Engineers (template role 'engineer') holding position in supply repair repair_per_week destroyed cells (nearest first) within repair_range rows each week.",
+    "repair_per_week": 2,
+    "repair_range": 2.5
+  },
+  "victory": {
+    "_comment": "VICTORY: ENEMY CAPITULATION when (a) Kestrian land forces hold the enemy capital (a formation within occupation_radius rows of it and no enemy land formation as close) for occupation_weeks consecutive weeks, or (b) the enemy is bankrupt (treasury <= 0) and its military morale has fallen to collapse_military_morale.",
+    "enemy": "vosk",
+    "occupation_weeks": 2,
+    "occupation_radius": 1.0,
+    "collapse_military_morale": 0
   }
 }

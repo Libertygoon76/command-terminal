@@ -83,6 +83,34 @@ def _order_text(game: GameState, unit: Unit) -> str:
     return f"MOVE → {grid_ref(order.x, order.y)}{eta}"
 
 
+def commander_text(game: GameState, unit: Unit) -> str:
+    from src.engine.command import trait_names
+
+    if not unit.commander:
+        return "—"
+    return f"{unit.commander} · {trait_names(game, unit) if unit.traits_known else 'TRAITS UNKNOWN'}"
+
+
+def lost_block(game: GameState, unit: Unit) -> Text:
+    from src.engine.electronic_warfare import last_report, zone_name, zone_of
+
+    friendly, _ = _colors(game)
+    report = last_report(game, unit)
+    zone = game.jammed.get(zone_of(game, unit) or "", {})
+    text = Text()
+    text.append(f"? CONTACT LOST  {unit.designation}\n", style=f"bold {friendly}")
+    text.append(f"{unit.name.upper()}\n", style=f"bold {palette.PHOSPHOR_BRIGHT}")
+    _row(text, "SIGNAL", "NONE — SECTOR JAMMED", f"bold {palette.RED}")
+    if zone:
+        _row(text, "JAMMING", f"{zone_name(game, zone).upper()} · ~{zone['weeks']} WK", palette.AMBER)
+    _row(text, "LAST REPORT", f"WK {report['turn']:03d} · GRID {grid_ref(report['x'], report['y'])}")
+    for label in ("STRENGTH", "SUPPLY", "MORALE", "POSITION NOW"):
+        _row(text, label, "UNKNOWN", palette.PHOSPHOR_DIM)
+    text.append("The formation carries out its last orders. No new orders, stances or command changes can reach it "
+                "until the jamming stops.\n", style=palette.PHOSPHOR_DIM)
+    return text
+
+
 def friendly_block(game: GameState, unit: Unit) -> Text:
     friendly, _ = _colors(game)
     template = _templates(game)[unit.unit_type]
@@ -123,7 +151,16 @@ def friendly_block(game: GameState, unit: Unit) -> Text:
     from src.engine.movement import pace_mpd
 
     _row(text, "SPEED / RECON", f"{pace_mpd(game, unit):.0f} MI/DAY · SEES {miles(game, template.get('detection_radius', 5)):.0f} MI")
-    _row(text, "COMMANDER", unit.commander or "—")
+    _row(text, "COMMANDER", commander_text(game, unit))
+    if unit.pending_orders:
+        _row(text, "ORDERS", "SENT — AWAITING ACKNOWLEDGEMENT (next week)", palette.AMBER)
+    if template.get("role") == "engineer":
+        from src.engine.engineering import work_in_range
+
+        work = work_in_range(game, unit)
+        _row(text, "ENGINEERING", f"{len(work)} WRECKED SECTION(S) IN REACH" + (" · REPAIRING" if work and
+             unit.status == "holding" and unit.supply_state == "supplied" else ""),
+             palette.AMBER if work else palette.PHOSPHOR_DIM)
     _row(text, "POSITION", f"GRID {grid_ref(unit.x, unit.y)} · {game.world_map.place_name(unit.x, unit.y).upper()}")
     text.append("LOADOUT  carried / establishment\n", style=palette.PHOSPHOR_DIM)
     items = {e["id"]: e for e in game.catalog["equipment"]}
@@ -181,6 +218,12 @@ def sector_block(game: GameState, x: int, y: int) -> Text:
     text = Text()
     text.append("SECTOR READOUT\n", style=f"bold {palette.AMBER}")
     _row(text, "GRID", grid_ref(x, y))
+    kind = world.transport_at(x, y)
+    if kind in ("destroyed_rail", "destroyed_road"):
+        _row(text, "INFRASTRUCTURE", f"{'RAILWAY' if kind == 'destroyed_rail' else 'ROAD'} DESTROYED — needs Combat "
+             "Engineers", f"bold {palette.RED}")
+    elif kind:
+        _row(text, "INFRASTRUCTURE", kind.upper())
     feature = next((f for f in world.features if f.x == x and f.y == y), None)
     if feature:
         _row(text, "SETTLEMENT", f"{feature.name.upper()} ({feature.type.upper()})")
@@ -220,6 +263,9 @@ def readout(game: GameState, x: int, y: int, marker: Marker | None) -> Text:
     text = Text()
     if marker is not None and marker.ghost is not None:
         text.append_text(ghost_block(game, marker.ghost))
+        text.append(f"{RULE}\n\n", style=palette.PHOSPHOR_DIM)
+    elif marker is not None and marker.lost is not None:
+        text.append_text(lost_block(game, marker.lost))
         text.append(f"{RULE}\n\n", style=palette.PHOSPHOR_DIM)
     elif marker is not None:
         if marker.is_stack:
@@ -311,9 +357,11 @@ class MapView(Horizontal):
     # --- selection -----------------------------------------------------------
 
     def _selected_friendly(self) -> Unit | None:
+        from src.engine.electronic_warfare import is_dark
+
         game = self.app.game
         unit = game.unit(self.selected_unit_id) if self.selected_unit_id else None
-        return unit if unit is not None and game.is_friendly(unit.nation_id) else None
+        return unit if unit is not None and game.is_friendly(unit.nation_id) and not is_dark(game, unit) else None
 
     def _update_order_bar(self) -> None:
         game = self.app.game
@@ -484,7 +532,13 @@ class MapView(Horizontal):
         friendly_color, hostile_color = _colors(game)
         templates = _templates(game)
         options: list[Option] = [Option(Text("FRIENDLY FORMATIONS", style=f"bold {friendly_color}"), disabled=True)]
-        for unit in sorted(game.player.units, key=lambda u: u.designation):
+        from src.engine.electronic_warfare import is_dark
+
+        dark = [u for u in game.player.units if is_dark(game, u)]
+        if dark:
+            options.append(Option(Text(f"  ! SIGNAL LOST: {len(dark)} formation(s) out of contact",
+                                       style=f"bold {palette.RED}"), disabled=True))
+        for unit in sorted((u for u in game.player.units if u not in dark), key=lambda u: u.designation):
             prompt = Text()
             prompt.append(f"[{templates[unit.unit_type]['symbol']}] ", style=f"bold {friendly_color}")
             prompt.append(f"{unit.designation} ", style=palette.PHOSPHOR_BRIGHT)

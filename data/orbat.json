@@ -136,6 +136,22 @@
       "commander": "Maj. Gen. Tomas Rehn"
     },
     {
+      "id": "kes_1_eng",
+      "designation": "K-E1",
+      "name": "1st Kestrian Combat Engineer Battalion",
+      "nation": "kestria",
+      "type": "combat_engineers",
+      "location": [
+        106,
+        37
+      ],
+      "strength": 1150,
+      "morale": 76,
+      "supply": 100,
+      "stance": "defend",
+      "commander": "Maj. Lena Voight"
+    },
+    {
       "id": "kes_1_dd",
       "designation": "KN-1",
       "name": "1st Destroyer Flotilla",

@@ -27,7 +27,9 @@ to issue a move order (`Esc` aborts) · `g` type a grid reference · `x` cancel 
 
 Economy (`2`): highlight a production line → `+` / `-` assign or remove a military factory · `0` close the line. · `[` / `]` lower / raise taxes.
 
-Military (`3`): highlight a formation type → `r` raise it · highlight one in training → `x` cancel.
+Military (`3`): highlight a formation type → `r` raise it · highlight one in training → `x` cancel · highlight a
+formation in the field → `f` relieve its commander (costs military morale). Commanders may refuse unsupported
+assaults: back attacks with artillery, naval gunfire or air cover.
 
 Research (`5`): highlight a technology → `Enter` start (or switch) · `x` stop.
 
@@ -35,6 +37,8 @@ Air Assets (`6`): highlight a wing → `[` / `]` move it between sectors · `0` 
 
 Classified Dilemmas pop up between weeks: press `1`–`3` (or click) to decide. The week cannot advance until you do.
 `python main.py --event worker_strike` forces a card at the next week; `python main.py --list-events` lists the deck.
+
+**Save / load:** `ctrl+s` (or `F5`) saves the campaign to `savegame.json`; `python main.py --load` resumes it.
 
 `python main.py --reveal` lifts the fog of war and shows the AI's hidden posture (debug).
 

@@ -217,6 +217,9 @@ def issue_move_order(state: GameState, unit_id: str, target: tuple[int, int], *,
         raise OrderError(f"{unit.designation} is not under your command.")
     if unit.routing:
         raise OrderError(f"{unit.designation} is routing and will not answer orders for {unit.routing_weeks} week(s).")
+    from src.engine.electronic_warfare import require_signal
+
+    require_signal(state, unit)
     target = (int(target[0]), int(target[1]))
     grid = f"{target[0]:03d}-{target[1]:03d}"
     if not state.world_map.in_bounds(*target):
@@ -235,6 +238,9 @@ def issue_move_order(state: GameState, unit_id: str, target: tuple[int, int], *,
     unit.active_order = MoveOrder(target=target, issued_turn=state.clock.turn)
     if not unit.engaged:
         unit.status = MOVING
+    from src.engine.command import queue_order
+
+    queue_order(state, unit, "move")  # the commander acknowledges (or refuses) at the start of the week
     return route
 
 
@@ -242,6 +248,9 @@ def cancel_order(state: GameState, unit_id: str, *, nation_id: str | None = None
     unit = state.unit(unit_id)
     if unit is None or unit.nation_id != (nation_id or state.player.id):
         raise OrderError(f"No such formation under your command: {unit_id}")
+    from src.engine.electronic_warfare import require_signal
+
+    require_signal(state, unit)
     unit.active_order = None
     unit.move_points = 0.0
     if not unit.engaged:

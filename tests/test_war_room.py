@@ -38,7 +38,7 @@ def test_world_map_grid_and_regions(game):
 
 def test_units_have_locations_on_land(game):
     units = game.all_units()
-    assert len(game.player.units) == 11 and len(game.nations["vosk"].units) == 12
+    assert len(game.player.units) == 12 and len(game.nations["vosk"].units) == 12
     for unit in units:
         naval = game.domain(unit) == "sea"
         assert game.world_map.is_sea(unit.x, unit.y) == naval, unit.id  # warships at sea, armies on land
