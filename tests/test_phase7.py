@@ -356,8 +356,8 @@ def test_every_card_has_two_or_three_valid_choices(quiet):
     state, _ = quiet
     deck = dilemmas.cards(state)
     assert len(deck) >= 12
-    for entry in deck.values():
-        assert 2 <= len(entry["choices"]) <= 3
+    for entry in deck.values():  # a chain-only card (the next act of a chain) may be a single acknowledgement
+        assert (1 if entry.get("chain_only") else 2) <= len(entry["choices"]) <= 3
 
 
 # --- 6. 5.56mm modernization ------------------------------------------------------------------------

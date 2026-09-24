@@ -53,8 +53,9 @@ class DilemmaScreen(ModalScreen[str]):
                     effects = choice_preview(game, choice)
                     label.append("\n".join(effects) if effects else "No immediate cost.", style=palette.AMBER)
                     yield Button(label, id=f"dilemma-{choice['id']}", classes="dilemma-choice")
-            yield Static(Text("The week cannot advance until you decide. Press 1-" + str(len(self.choices))
-                              + " or click an option.", style=palette.PHOSPHOR_DIM), id="dilemma-footer")
+            keys = "1" if len(self.choices) == 1 else f"1-{len(self.choices)}"
+            yield Static(Text(f"The week cannot advance until you decide. Press {keys} or click an option.",
+                              style=palette.PHOSPHOR_DIM), id="dilemma-footer")
 
     def on_mount(self) -> None:
         self.query_one("#dilemma-dialog").border_title = (

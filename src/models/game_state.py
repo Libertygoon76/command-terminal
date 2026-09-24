@@ -122,6 +122,7 @@ class GameState:
     shipments: list[dict[str, Any]] = field(default_factory=list)  # lend-lease convoys at sea
     ceasefire_weeks: int = 0  # Hotline ceasefire in force (the Vosk hold their fire)
     hotline_turn: int = 0  # when the Vosk Chancellor last called
+    card_schedule: list[dict[str, Any]] = field(default_factory=list)  # event-chain follow-ups: {card, turn}
 
     def template(self, unit_type: str) -> dict[str, Any]:
         """Unit template (units.json) by id."""

@@ -46,6 +46,8 @@ def card(state: GameState, card_id: str) -> dict:
 def eligible(state: GameState, entry: dict) -> bool:
     from src.engine.weather_engine import season_of
 
+    if entry.get("chain_only"):  # the second act of an event chain: only ever scheduled, never drawn
+        return False
     if entry["id"] in state.used_cards and not entry.get("repeatable"):
         return False
     cond = entry.get("conditions", {})
@@ -65,6 +67,8 @@ def eligible(state: GameState, entry: dict) -> bool:
         if nid not in state.foreign or state.foreign[nid]["alignment"] < float(low):
             return False
     if "requires_trade" in cond and state.player.id not in state.foreign.get(cond["requires_trade"], {}).get("trade", []):
+        return False
+    if "tax_policies" in cond and state.player.tax_policy not in cond["tax_policies"]:
         return False
     missing = cond.get("requires_city_without")
     if missing and (missing["city"] not in state.cities or state.cities[missing["city"]].count(missing["building"])):
@@ -97,6 +101,33 @@ def draw(state: GameState, *, force: bool = False) -> str | None:
     return chosen
 
 
+def schedule_follow_ups(state: GameState, follow_ups: list[dict]) -> list[dict]:
+    """EVENT CHAINS. Same schema as email follow-ups, with `card` in place of `email`:
+        {"card": "defector_designs", "delay_weeks": 2}
+        {"delay_weeks": 3, "chance": 0.8, "outcomes": [{"card": "a", "weight": 60}, {"card": "b", "weight": 40}]}
+    The chosen card arrives `delay_weeks` weeks later as a modal (ahead of the random draw)."""
+    scheduled = []
+    for follow in follow_ups:
+        if state.rng.random() >= float(follow.get("chance", 1.0)):
+            continue
+        if "card" in follow:
+            chosen = follow["card"]
+        else:
+            outcomes = follow["outcomes"]
+            chosen = state.rng.choices([o["card"] for o in outcomes],
+                                       weights=[float(o.get("weight", 1)) for o in outcomes], k=1)[0]
+        entry = {"card": chosen, "turn": state.clock.turn + max(1, int(follow.get("delay_weeks", 1)))}
+        state.card_schedule.append(entry)
+        scheduled.append(entry)
+    return scheduled
+
+
+def due_follow_ups(state: GameState) -> list[str]:
+    due = [e["card"] for e in state.card_schedule if e["turn"] <= state.clock.turn]
+    state.card_schedule = [e for e in state.card_schedule if e["turn"] > state.clock.turn]
+    return due
+
+
 def card_text(state: GameState, entry: dict) -> str:
     return fill(entry.get("text", ""), state.text_vars())
 
@@ -116,6 +147,7 @@ def resolve(state: GameState, choice_id: str) -> list[str]:
     if choice is None:
         raise DilemmaError(f"The dilemma has no option {choice_id!r}.")
     changes = apply_effects(state, choice.get("effects", {}))
+    schedule_follow_ups(state, choice.get("follow_ups", []))
     state.crisis_cards.pop(entry["id"], None)
     state.pending_dilemma = state.dilemma_queue.pop(0) if state.dilemma_queue else None
     body = [
@@ -145,6 +177,16 @@ class DilemmaSystem(SimulationSystem):
     name = "dilemmas"
 
     def on_tick(self, state: GameState, report: TickReport) -> None:
+        if state.game_over:
+            return
+        for card_id in due_follow_ups(state):  # the next act of an event chain
+            state.used_cards.add(card_id)
+            if state.pending_dilemma is None:
+                state.pending_dilemma = card_id
+                report.dilemma = card_id
+            else:
+                state.dilemma_queue.append(card_id)
+            report.log.append(f"CLASSIFIED DILEMMA: {card(state, card_id)['title']}.")
         chosen = draw(state)
         if chosen:
             report.dilemma = chosen

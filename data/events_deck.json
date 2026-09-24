@@ -10,7 +10,8 @@
     "    treasury, manpower, population, morale, military_morale, tax_rate, stockpiles {resource: n}, flags {name: v},",
     "    ai_tension (hidden), equipment {item: n} (national stockpile), army_morale (every formation),",
     "    modifier {key, value, weeks} (e.g. factory_efficiency +0.15 for 4 weeks), research_weeks (current project).",
-    "Expansion 1.1 conditions: requires_relation {nation: min}, requires_trade <nation>, requires_city_without {city, building}. Effects: relations / rival_relations {nation: delta}, build {city, building}, city_morale {city: delta}."
+    "Expansion 1.1 conditions: requires_relation {nation: min}, requires_trade <nation>, requires_city_without {city, building}. Effects: relations / rival_relations {nation: delta}, build {city, building}, city_morale {city: delta}.",
+    "EVENT CHAINS: a choice may carry follow_ups, same schema as email follow-ups with `card` for `email`: [{card, delay_weeks}] or [{delay_weeks, chance, outcomes: [{card, weight}]}]. Cards marked chain_only are only ever scheduled. Generated/extended by tools/generate_massive_deck.py."
   ],
   "draw_chance": 0.16,
   "min_weeks_between": 3,
@@ -65,7 +66,7 @@
     {
       "id": "vosk_defector",
       "title": "A Vosk Jet Lands at Harrow",
-      "category": "INTELLIGENCE",
+      "category": "ESPIONAGE",
       "weight": 7,
       "text": "At dawn a Vosk strike fighter touched down on the Harrow airfield with its guns cold. The pilot, a Guards captain, asks for asylum. He has brought his aircraft, his codebooks, and a grudge against the Chairman.\n\nKarzan is already demanding his return and calling it an act of piracy.",
       "choices": [
@@ -184,7 +185,7 @@
     {
       "id": "iren_arms_dealer",
       "title": "A Merchant of Death in Iren",
-      "category": "FOREIGN",
+      "category": "DIPLOMACY",
       "weight": 6,
       "text": "A broker in the Iren Free Port offers war materiel from undisclosed sources: small arms, heavy shells, even airframes with the serial numbers ground off. Payment in gold, delivery by neutral freighter, no questions asked.",
       "choices": [
@@ -223,7 +224,7 @@
     {
       "id": "ministry_mole",
       "title": "A Mole in the War Ministry",
-      "category": "INTELLIGENCE",
+      "category": "ESPIONAGE",
       "weight": 6,
       "text": "Counter-intelligence has traced a leak to the Ministry of War: a colonel on the planning staff meets a Vosk courier every Thursday in the Aldmark botanical gardens. Our operational plans have been read in Karzan for months.",
       "choices": [
@@ -499,7 +500,7 @@
     {
       "id": "peace_feeler",
       "title": "A Feeler from Karzan",
-      "category": "FOREIGN",
+      "category": "DIPLOMACY",
       "weight": 5,
       "conditions": {
         "min_turn": 10
@@ -575,7 +576,7 @@
     {
       "id": "sabotage_rail",
       "title": "Sabotage on the Eastmarch Line",
-      "category": "INTELLIGENCE",
+      "category": "ESPIONAGE",
       "weight": 6,
       "text": "Partisans have blown a culvert under the main Eastmarch railway. Two ammunition trains were derailed. The local police chief suspects the villagers of Halden sheltered the saboteurs.",
       "choices": [
@@ -604,7 +605,7 @@
     {
       "id": "oakhaven_bribe",
       "title": "Oakhaven Wants a Consideration",
-      "category": "FOREIGN",
+      "category": "DIPLOMACY",
       "weight": 6,
       "conditions": {
         "requires_trade": "oakhaven",
@@ -709,7 +710,7 @@
     {
       "id": "tor_embargo",
       "title": "Tor Weighs an Embargo",
-      "category": "FOREIGN",
+      "category": "DIPLOMACY",
       "weight": 6,
       "conditions": {
         "min_turn": 8
@@ -759,7 +760,7 @@
     {
       "id": "oakhaven_volunteers",
       "title": "The Oakhaven Volunteer Squadron",
-      "category": "FOREIGN",
+      "category": "DIPLOMACY",
       "weight": 5,
       "conditions": {
         "requires_relation": {
@@ -796,7 +797,7 @@
     {
       "id": "vael_medical_mission",
       "title": "A Vaelish Medical Mission",
-      "category": "FOREIGN",
+      "category": "DIPLOMACY",
       "weight": 5,
       "conditions": {
         "min_turn": 4,
@@ -837,7 +838,7 @@
     {
       "id": "tor_arms_freighters",
       "title": "Arms for the Enemy",
-      "category": "INTELLIGENCE",
+      "category": "ESPIONAGE",
       "weight": 5,
       "conditions": {
         "min_turn": 10
@@ -880,6 +881,2639 @@
           "effects": {}
         }
       ]
+    },
+    {
+      "id": "munitions_quota",
+      "title": "The Kessel Works Quota",
+      "category": "DOMESTIC",
+      "weight": 7,
+      "text": "The Ministry of Munitions has raised the Kessel Works quota by a third. Foremen report women fainting at the shell presses after fourteen-hour shifts; the TNT dust has turned their skin yellow. The works director asks for the Lord Protector's decision: hold the quota, or let the lines slow.",
+      "choices": [
+        {
+          "id": "enforce",
+          "label": "Hold the quota",
+          "hint": "Every shell counts. The women are paid for their sacrifice.",
+          "effects": {
+            "modifier": {
+              "key": "factory_efficiency",
+              "value": 0.15,
+              "weeks": 3
+            },
+            "morale": -3,
+            "city_morale": {
+              "Kessel Works": -15
+            }
+          },
+          "follow_ups": [
+            {
+              "delay_weeks": 3,
+              "chance": 0.6,
+              "outcomes": [
+                {
+                  "card": "kessel_explosion",
+                  "weight": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "relent",
+          "label": "Cut the shifts to ten hours",
+          "hint": "The front will wait a little longer for its shells.",
+          "effects": {
+            "modifier": {
+              "key": "factory_efficiency",
+              "value": -0.08,
+              "weeks": 3
+            },
+            "morale": 2,
+            "city_morale": {
+              "Kessel Works": 10
+            }
+          }
+        },
+        {
+          "id": "convicts",
+          "label": "Send in convict labour",
+          "hint": "Internal Security has prisoners to spare.",
+          "effects": {
+            "morale": -2,
+            "modifier": {
+              "key": "factory_efficiency",
+              "value": 0.05,
+              "weeks": 4
+            }
+          },
+          "follow_ups": [
+            {
+              "delay_weeks": 2,
+              "chance": 0.5,
+              "outcomes": [
+                {
+                  "card": "convict_sabotage",
+                  "weight": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kessel_explosion",
+      "title": "Explosion at the Kessel Works",
+      "category": "CRISIS",
+      "weight": 5,
+      "text": "At 03:10 the filling shed of Line Four went up. Windows broke in Ironvale, eleven miles away. Rescue teams are still pulling women from the rubble; the dead number in the hundreds. The survivors say the line was running too fast for anyone to follow the safety drill.",
+      "choices": [
+        {
+          "id": "saboteurs",
+          "label": "Blame Vosk saboteurs",
+          "hint": "Internal Security will find someone to hang.",
+          "effects": {
+            "morale": -2,
+            "military_morale": 1,
+            "ai_tension": 3
+          }
+        },
+        {
+          "id": "compensate",
+          "label": "Compensate the families",
+          "hint": "Pensions for the widowers, a memorial in the square.",
+          "effects": {
+            "treasury": -40000,
+            "morale": 2,
+            "city_morale": {
+              "Kessel Works": 10
+            }
+          }
+        },
+        {
+          "id": "silence",
+          "label": "Suppress the news",
+          "hint": "The censors will call it an industrial accident.",
+          "effects": {
+            "morale": -1,
+            "city_morale": {
+              "Kessel Works": -20
+            }
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "convict_sabotage",
+      "title": "Sabotage on the Filling Lines",
+      "category": "ESPIONAGE",
+      "weight": 5,
+      "text": "Fuse caps filled with sand, detonators wired backwards: the convict gangs at the Kessel Works have been quietly ruining a tenth of what they touch. The gunners at the front have noticed.",
+      "choices": [
+        {
+          "id": "hang",
+          "label": "Hang the ringleaders",
+          "hint": "An example for the others.",
+          "effects": {
+            "morale": -2,
+            "military_morale": 2
+          }
+        },
+        {
+          "id": "withdraw",
+          "label": "Send them back to the camps",
+          "hint": "Lose the labour; keep the shells good.",
+          "effects": {
+            "modifier": {
+              "key": "factory_efficiency",
+              "value": -0.05,
+              "weeks": 2
+            },
+            "army_morale": 1
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "black_market",
+      "title": "The Black Market",
+      "category": "DOMESTIC",
+      "weight": 6,
+      "text": "Butter at forty times the ration price, petrol in whisky bottles, army boots in the flea markets: the black market has taken over the back streets of Aldmark. The Director of Internal Security wants authority to shoot profiteers on sight.",
+      "choices": [
+        {
+          "id": "shoot",
+          "label": "Shoot the profiteers",
+          "hint": "Public executions on Canal Street.",
+          "effects": {
+            "morale": -3,
+            "stockpiles": {
+              "rations": 2000
+            }
+          }
+        },
+        {
+          "id": "license",
+          "label": "License small traders",
+          "hint": "Tax what cannot be stopped.",
+          "effects": {
+            "treasury": 20000,
+            "morale": 1
+          }
+        },
+        {
+          "id": "ignore",
+          "label": "Look the other way",
+          "hint": "It keeps the city fed, after a fashion.",
+          "effects": {
+            "morale": 1
+          },
+          "follow_ups": [
+            {
+              "delay_weeks": 4,
+              "chance": 0.7,
+              "outcomes": [
+                {
+                  "card": "black_market_cartel",
+                  "weight": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "black_market_cartel",
+      "title": "The Rail-Yard Cartel",
+      "category": "ESPIONAGE",
+      "weight": 5,
+      "text": "Left alone, the black market has organised. A cartel of railwaymen and quartermasters now skims one wagon in twenty from the military trains out of Aldmark yards, and the fuel dumps at the front are running dry.",
+      "choices": [
+        {
+          "id": "raid",
+          "label": "Raid the yards",
+          "hint": "Military police, a night, and no warrants.",
+          "effects": {
+            "treasury": 60000,
+            "military_morale": -1,
+            "equipment": {
+              "fuel_drums": 1500
+            }
+          }
+        },
+        {
+          "id": "coopt",
+          "label": "Buy them into the war effort",
+          "hint": "Their networks can move what the army cannot.",
+          "effects": {
+            "treasury": -30000,
+            "equipment": {
+              "fuel_drums": 2500
+            },
+            "morale": -1
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "refugee_columns",
+      "title": "Refugees on the Greywater Road",
+      "category": "DOMESTIC",
+      "weight": 6,
+      "text": "Tens of thousands of refugees from the Eastmarch are streaming into Greywater with carts, cattle and nothing else. The town council demands a hospital, soup kitchens and somewhere to put them before the winter kills them in the fields.",
+      "choices": [
+        {
+          "id": "hospital",
+          "label": "Build a hospital and shelters",
+          "hint": "The state pays; Greywater will remember.",
+          "effects": {
+            "treasury": -60000,
+            "build": {
+              "city": "Greywater",
+              "building": "hospital"
+            },
+            "city_morale": {
+              "Greywater": 12
+            },
+            "morale": 1
+          }
+        },
+        {
+          "id": "camps",
+          "label": "Put up tent camps",
+          "hint": "Cheap, fast, and crowded.",
+          "effects": {
+            "treasury": -15000,
+            "morale": -1
+          },
+          "follow_ups": [
+            {
+              "delay_weeks": 3,
+              "chance": 0.5,
+              "outcomes": [
+                {
+                  "card": "refugee_typhus",
+                  "weight": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "turn_back",
+          "label": "Turn them back east",
+          "hint": "Keep the roads clear for the army.",
+          "effects": {
+            "morale": -5,
+            "military_morale": 1,
+            "city_morale": {
+              "Greywater": 5
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "refugee_typhus",
+      "title": "Typhus in the Camps",
+      "category": "CRISIS",
+      "weight": 5,
+      "text": "The tent camps outside Greywater are full of lice, and the lice are full of typhus. The camp doctors have run out of everything.",
+      "choices": [
+        {
+          "id": "delouse",
+          "label": "Delousing stations and a quarantine line",
+          "hint": "Expensive, and it may be too late.",
+          "effects": {
+            "treasury": -30000,
+            "morale": 1
+          }
+        },
+        {
+          "id": "burn",
+          "label": "Burn the camps and scatter the refugees",
+          "hint": "The fever goes with them.",
+          "effects": {
+            "morale": -4,
+            "outbreak": {
+              "disease": "trench_typhus",
+              "city": "Greywater"
+            }
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "church_bells",
+      "title": "The Bells of Aldmark",
+      "category": "DOMESTIC",
+      "weight": 5,
+      "text": "The Ministry of Munitions wants the bronze bells of every church in the capital melted for shell casings. The Bishop of Aldmark has announced that he will chain himself to the cathedral tower.",
+      "choices": [
+        {
+          "id": "seize",
+          "label": "Seize the bells",
+          "hint": "Bronze is bronze.",
+          "effects": {
+            "stockpiles": {
+              "steel": 800
+            },
+            "morale": -3
+          }
+        },
+        {
+          "id": "spare",
+          "label": "Spare the bells",
+          "hint": "Some things are worth more than shells.",
+          "effects": {
+            "morale": 2
+          }
+        },
+        {
+          "id": "compromise",
+          "label": "Take only the small bells",
+          "hint": "The cathedral keeps its great bell.",
+          "effects": {
+            "stockpiles": {
+              "steel": 300
+            },
+            "morale": -1
+          }
+        }
+      ]
+    },
+    {
+      "id": "student_protest",
+      "title": "The University Occupation",
+      "category": "DOMESTIC",
+      "weight": 6,
+      "text": "Students have occupied the Aldmark University great hall with banners reading PEACE NOW and BRING THEM HOME. Internal Security has surrounded the building and awaits orders.",
+      "choices": [
+        {
+          "id": "storm",
+          "label": "Send in Internal Security",
+          "hint": "Clear the hall before it spreads.",
+          "effects": {
+            "morale": -3,
+            "military_morale": 1
+          },
+          "follow_ups": [
+            {
+              "card": "martyr_funeral",
+              "delay_weeks": 2
+            }
+          ]
+        },
+        {
+          "id": "negotiate",
+          "label": "Negotiate",
+          "hint": "Hear them out, promise nothing.",
+          "effects": {
+            "morale": 1,
+            "military_morale": -1
+          }
+        },
+        {
+          "id": "draft",
+          "label": "Draft the ringleaders",
+          "hint": "Let them see the trenches for themselves.",
+          "effects": {
+            "manpower": 500,
+            "morale": -2
+          }
+        }
+      ]
+    },
+    {
+      "id": "martyr_funeral",
+      "title": "A Student's Funeral",
+      "category": "DOMESTIC",
+      "weight": 5,
+      "text": "A nineteen-year-old medical student died of his injuries after the university was cleared. His funeral procession is expected to draw fifty thousand people.",
+      "choices": [
+        {
+          "id": "ban",
+          "label": "Ban the procession",
+          "hint": "Internal Security will hold the bridges.",
+          "effects": {
+            "morale": -4
+          }
+        },
+        {
+          "id": "allow",
+          "label": "Allow it under guard",
+          "hint": "Let them grieve, and watch them.",
+          "effects": {
+            "morale": -1,
+            "city_morale": {
+              "Aldmark": 4
+            }
+          }
+        },
+        {
+          "id": "attend",
+          "label": "The Lord Protector walks behind the coffin",
+          "hint": "A gesture the generals will not forgive.",
+          "effects": {
+            "morale": 4,
+            "military_morale": -3
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "coal_crisis",
+      "title": "No Coal for the Cities",
+      "category": "DOMESTIC",
+      "weight": 7,
+      "text": "The frost has come early and the coal ration has failed in half the cities of the Commonwealth. Families are burning floorboards. The Ministry of Fuel can keep either the homes or the steelworks warm, not both.",
+      "choices": [
+        {
+          "id": "homes",
+          "label": "Heat the homes",
+          "hint": "The steelworks bank their furnaces.",
+          "effects": {
+            "modifier": {
+              "key": "factory_efficiency",
+              "value": -0.1,
+              "weeks": 3
+            },
+            "morale": 3
+          }
+        },
+        {
+          "id": "works",
+          "label": "Keep the steelworks burning",
+          "hint": "The people must endure.",
+          "effects": {
+            "morale": -4
+          }
+        },
+        {
+          "id": "tor_coal",
+          "label": "Buy coal from Tor",
+          "hint": "At Tor's prices, and Tor's gratitude.",
+          "effects": {
+            "treasury": -45000,
+            "stockpiles": {
+              "coal": 6000
+            },
+            "relations": {
+              "tor": 3
+            }
+          }
+        }
+      ],
+      "conditions": {
+        "seasons": [
+          "Winter",
+          "Autumn"
+        ]
+      }
+    },
+    {
+      "id": "iron_line_film",
+      "title": "The Iron Line",
+      "category": "DOMESTIC",
+      "weight": 5,
+      "text": "The Ministry of Information proposes a great patriotic film: 'The Iron Line', three hours of heroism in the Frontier trenches, with real soldiers as extras and real shells for the barrage scenes.",
+      "choices": [
+        {
+          "id": "fund",
+          "label": "Fund the film",
+          "hint": "Art is a weapon.",
+          "effects": {
+            "treasury": -30000,
+            "morale": 1
+          },
+          "follow_ups": [
+            {
+              "delay_weeks": 4,
+              "chance": 1.0,
+              "outcomes": [
+                {
+                  "card": "film_triumph",
+                  "weight": 65
+                },
+                {
+                  "card": "film_flop",
+                  "weight": 35
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "refuse",
+          "label": "Refuse",
+          "hint": "The shells are needed at the front.",
+          "effects": {
+            "military_morale": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "film_triumph",
+      "title": "'The Iron Line' Premieres",
+      "category": "DOMESTIC",
+      "weight": 5,
+      "text": "Audiences weep and cheer. Queues stretch around the cinemas of every city. The Oakhaven distributors want the film for the Republic.",
+      "choices": [
+        {
+          "id": "export",
+          "label": "Export it to Oakhaven",
+          "hint": "Let the Republic see what Kestria is fighting for.",
+          "effects": {
+            "relations": {
+              "oakhaven": 5
+            },
+            "treasury": 10000,
+            "morale": 2
+          }
+        },
+        {
+          "id": "home",
+          "label": "Keep it for the home front",
+          "hint": "Screen it in every barracks too.",
+          "effects": {
+            "morale": 3,
+            "army_morale": 2
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "film_flop",
+      "title": "'The Iron Line' Is Laughed Off the Screen",
+      "category": "DOMESTIC",
+      "weight": 5,
+      "text": "The premiere audience howled at the cardboard tanks and the actor-general's wooden speeches. Veterans walked out. The foreign press is having a wonderful time.",
+      "choices": [
+        {
+          "id": "blame",
+          "label": "Blame the director",
+          "hint": "He will make training films in Harrowfen.",
+          "effects": {
+            "morale": -1
+          }
+        },
+        {
+          "id": "pull",
+          "label": "Pull it quietly",
+          "hint": "Every print into the furnace.",
+          "effects": {
+            "treasury": -5000
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "war_widows",
+      "title": "The War Widows' Pensions",
+      "category": "DOMESTIC",
+      "weight": 5,
+      "text": "The Treasury is eleven weeks behind on war widows' pensions. Three thousand black-clad women are standing in silence outside the Ministry of Finance.",
+      "choices": [
+        {
+          "id": "pay",
+          "label": "Pay them in full",
+          "hint": "The state keeps its promises.",
+          "effects": {
+            "treasury": -50000,
+            "morale": 3
+          }
+        },
+        {
+          "id": "delay",
+          "label": "Delay payment",
+          "hint": "The war comes first.",
+          "effects": {
+            "morale": -3,
+            "military_morale": -2
+          }
+        },
+        {
+          "id": "half",
+          "label": "Pay half now",
+          "hint": "Something is better than nothing.",
+          "effects": {
+            "treasury": -25000,
+            "morale": 1
+          }
+        }
+      ],
+      "conditions": {
+        "min_turn": 10
+      }
+    },
+    {
+      "id": "harvest_requisition",
+      "title": "Requisitioning the Harvest",
+      "category": "DOMESTIC",
+      "weight": 5,
+      "text": "The army quartermasters want the whole Harrowfen harvest requisitioned at fixed prices. The farmers say they will burn their ricks first.",
+      "choices": [
+        {
+          "id": "requisition",
+          "label": "Requisition it",
+          "hint": "Soldiers with bayonets at every threshing floor.",
+          "effects": {
+            "stockpiles": {
+              "rations": 3000
+            },
+            "morale": -4
+          }
+        },
+        {
+          "id": "buy",
+          "label": "Buy at market price",
+          "hint": "Fair, and ruinous.",
+          "effects": {
+            "treasury": -40000,
+            "stockpiles": {
+              "rations": 3000
+            }
+          }
+        },
+        {
+          "id": "leave",
+          "label": "Leave the farmers alone",
+          "hint": "The army will tighten its belt.",
+          "effects": {
+            "military_morale": -2
+          }
+        }
+      ],
+      "conditions": {
+        "seasons": [
+          "Autumn",
+          "Summer"
+        ]
+      }
+    },
+    {
+      "id": "women_factories",
+      "title": "Women to the Factories",
+      "category": "DOMESTIC",
+      "weight": 5,
+      "text": "The Ministry of Labour proposes to conscript unmarried women into the munitions industry. The Church, the unions and half the Assembly are outraged; the other half say it is long overdue.",
+      "choices": [
+        {
+          "id": "conscript",
+          "label": "Conscript them",
+          "hint": "Industry needs hands.",
+          "effects": {
+            "modifier": {
+              "key": "factory_efficiency",
+              "value": 0.08
+            },
+            "morale": -3
+          }
+        },
+        {
+          "id": "volunteers",
+          "label": "Call for volunteers",
+          "hint": "Posters, pay and pride.",
+          "effects": {
+            "modifier": {
+              "key": "factory_efficiency",
+              "value": 0.03
+            },
+            "morale": 1
+          }
+        },
+        {
+          "id": "refuse",
+          "label": "Refuse",
+          "hint": "Kestrian women will not be drafted.",
+          "effects": {
+            "morale": 1
+          }
+        }
+      ],
+      "conditions": {
+        "min_turn": 8
+      }
+    },
+    {
+      "id": "refugee_hospital_petition",
+      "title": "The Hospital Petition",
+      "category": "DOMESTIC",
+      "weight": 5,
+      "text": "A petition with two hundred thousand signatures demands a modern hospital for Kessel Works, where the munitions workers are dying of TNT poisoning in the old infirmary.",
+      "choices": [
+        {
+          "id": "build",
+          "label": "Build the hospital",
+          "hint": "The state pays; construction starts at once.",
+          "effects": {
+            "treasury": -60000,
+            "build": {
+              "city": "Kessel Works",
+              "building": "hospital"
+            },
+            "city_morale": {
+              "Kessel Works": 15
+            }
+          }
+        },
+        {
+          "id": "refuse",
+          "label": "The war comes first",
+          "hint": "No money for bricks and beds.",
+          "effects": {
+            "morale": -2,
+            "city_morale": {
+              "Kessel Works": -12
+            }
+          }
+        }
+      ],
+      "conditions": {
+        "requires_city_without": {
+          "city": "Kessel Works",
+          "building": "hospital"
+        },
+        "min_turn": 6
+      }
+    },
+    {
+      "id": "draft_dodgers",
+      "title": "Draft Dodgers in the Harrowfen",
+      "category": "MILITARY",
+      "weight": 5,
+      "text": "Three thousand young men are hiding from the call-up in the Harrowfen marshes, fed by their families and warned by the village priests. The Adjutant-General wants a manhunt.",
+      "choices": [
+        {
+          "id": "manhunt",
+          "label": "Order the manhunt",
+          "hint": "Dogs, patrols and hostages.",
+          "effects": {
+            "manpower": 3000,
+            "morale": -3,
+            "military_morale": 1
+          }
+        },
+        {
+          "id": "amnesty",
+          "label": "Offer an amnesty",
+          "hint": "Come in now and nothing will be said.",
+          "effects": {
+            "manpower": 1500,
+            "morale": 1
+          }
+        },
+        {
+          "id": "ignore",
+          "label": "Leave them in the marsh",
+          "hint": "The army is not short of men — yet.",
+          "effects": {
+            "military_morale": -2
+          }
+        }
+      ]
+    },
+    {
+      "id": "shell_scandal",
+      "title": "The Dud Shell Scandal",
+      "category": "MILITARY",
+      "weight": 6,
+      "text": "Artillery officers report that one shell in five from the latest Kessel Works lots fails to explode. Infantry went over the top last month behind a barrage that never came.",
+      "choices": [
+        {
+          "id": "court_martial",
+          "label": "Court-martial the inspectors",
+          "hint": "Heads will roll at the Ministry of Munitions.",
+          "effects": {
+            "military_morale": 2,
+            "modifier": {
+              "key": "factory_efficiency",
+              "value": -0.05,
+              "weeks": 2
+            }
+          }
+        },
+        {
+          "id": "cover",
+          "label": "Cover it up",
+          "hint": "Nothing must shake faith in Kestrian industry.",
+          "effects": {
+            "military_morale": -3
+          },
+          "follow_ups": [
+            {
+              "delay_weeks": 3,
+              "chance": 0.7,
+              "outcomes": [
+                {
+                  "card": "shell_scandal_press",
+                  "weight": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "tor_shells",
+          "label": "Buy shells from Tor instead",
+          "hint": "Toran shells are dear, but they go off.",
+          "effects": {
+            "treasury": -25000,
+            "equipment": {
+              "shell_152_he": 3000
+            },
+            "relations": {
+              "tor": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "shell_scandal_press",
+      "title": "THE HERALD: 'DUD SHELLS KILLED OUR SONS'",
+      "category": "DOMESTIC",
+      "weight": 5,
+      "text": "The Aldmark Herald has the whole story, with a photograph of a crate of dud shells and the inspector's signature on the lot card. The Assembly is in uproar.",
+      "choices": [
+        {
+          "id": "resign",
+          "label": "Sack the Minister of Munitions",
+          "hint": "A sacrifice to the public.",
+          "effects": {
+            "morale": 2,
+            "military_morale": -1
+          }
+        },
+        {
+          "id": "censor",
+          "label": "Seize the Herald's presses",
+          "hint": "The story dies tonight.",
+          "effects": {
+            "morale": -4,
+            "military_morale": 1
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "great_push",
+      "title": "High Command Proposes the Great Push",
+      "category": "MILITARY",
+      "weight": 5,
+      "text": "The General Staff has drawn up plans for a general offensive along the whole Frontier: three days of barrage, then every division over the top at once. They promise to be in Karzan by the harvest.",
+      "choices": [
+        {
+          "id": "approve",
+          "label": "Approve the plan",
+          "hint": "The generals are delighted; the gunners start stacking shells.",
+          "effects": {
+            "military_morale": 5,
+            "army_morale": 3,
+            "ai_tension": 6
+          }
+        },
+        {
+          "id": "refuse",
+          "label": "Refuse",
+          "hint": "Kestria will not bleed itself white.",
+          "effects": {
+            "military_morale": -4
+          }
+        },
+        {
+          "id": "study",
+          "label": "Order a further study",
+          "hint": "Buy time without saying no.",
+          "effects": {
+            "military_morale": -1
+          }
+        }
+      ],
+      "conditions": {
+        "min_turn": 6
+      }
+    },
+    {
+      "id": "christmas_truce",
+      "title": "Truce in No-Man's-Land",
+      "category": "MILITARY",
+      "weight": 5,
+      "text": "On the night of the winter solstice the Vosk trenches began to sing. By morning men of both armies were exchanging cigarettes and photographs in no-man's-land.",
+      "choices": [
+        {
+          "id": "punish",
+          "label": "Court-martial the officers",
+          "hint": "Fraternisation is treason.",
+          "effects": {
+            "army_morale": -3,
+            "military_morale": 2
+          }
+        },
+        {
+          "id": "allow",
+          "label": "Look the other way",
+          "hint": "One day's peace will not lose the war.",
+          "effects": {
+            "army_morale": 3,
+            "ai_tension": -5,
+            "military_morale": -2
+          }
+        },
+        {
+          "id": "exploit",
+          "label": "Send intelligence officers into the truce",
+          "hint": "Every Vosk soldier knows something.",
+          "effects": {
+            "flags": {
+              "network_lantern": true
+            },
+            "ai_tension": 3,
+            "army_morale": -1
+          }
+        }
+      ],
+      "conditions": {
+        "seasons": [
+          "Winter"
+        ]
+      }
+    },
+    {
+      "id": "deserters",
+      "title": "The Clemency Petition",
+      "category": "MILITARY",
+      "weight": 5,
+      "text": "Six men of the 3rd Division, sentenced to death for desertion under fire, are to be shot at dawn. Their mothers have walked from Stanhope to beg for their lives.",
+      "choices": [
+        {
+          "id": "execute",
+          "label": "Let the sentences stand",
+          "hint": "Discipline is the army.",
+          "effects": {
+            "military_morale": 2,
+            "morale": -3
+          }
+        },
+        {
+          "id": "penal",
+          "label": "Commute to a penal battalion",
+          "hint": "They can die usefully.",
+          "effects": {
+            "manpower": 300,
+            "morale": 1
+          }
+        },
+        {
+          "id": "pardon",
+          "label": "Pardon them",
+          "hint": "Mercy from the Lord Protector.",
+          "effects": {
+            "military_morale": -4,
+            "morale": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "veterans_march",
+      "title": "The March of the Maimed",
+      "category": "MILITARY",
+      "weight": 5,
+      "text": "Ten thousand disabled veterans — men on crutches, men with no faces, men pushed in barrows — are marching on Aldmark to demand the pensions they were promised.",
+      "choices": [
+        {
+          "id": "grant",
+          "label": "Grant the pensions",
+          "hint": "The nation pays its debts.",
+          "effects": {
+            "treasury": -35000,
+            "morale": 3,
+            "military_morale": 2
+          }
+        },
+        {
+          "id": "disperse",
+          "label": "Disperse the march",
+          "hint": "Mounted police on the bridges.",
+          "effects": {
+            "morale": -4,
+            "military_morale": -3
+          }
+        }
+      ],
+      "conditions": {
+        "min_turn": 12
+      }
+    },
+    {
+      "id": "airfield_fire",
+      "title": "Fire at Harrow Airfield",
+      "category": "CRISIS",
+      "weight": 5,
+      "text": "The fuel dump at Harrow airfield exploded last night, taking a hangar and a dozen fighters with it. The base commander says it was an accident; the military police are not so sure.",
+      "choices": [
+        {
+          "id": "investigate",
+          "label": "Open an investigation",
+          "hint": "Find out who, or what.",
+          "effects": {
+            "equipment": {
+              "strike_aircraft": -4
+            }
+          },
+          "follow_ups": [
+            {
+              "delay_weeks": 2,
+              "chance": 1.0,
+              "outcomes": [
+                {
+                  "card": "airfield_saboteur",
+                  "weight": 50
+                },
+                {
+                  "card": "airfield_negligence",
+                  "weight": 50
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "rebuild",
+          "label": "Rebuild and move on",
+          "hint": "No time for inquiries.",
+          "effects": {
+            "treasury": -30000,
+            "equipment": {
+              "strike_aircraft": -4
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "airfield_saboteur",
+      "title": "The Harrow Saboteur",
+      "category": "ESPIONAGE",
+      "weight": 5,
+      "text": "The investigation has found him: a fuel clerk with a Vosk grandmother, a bank account in Vael and a short-wave set in his attic.",
+      "choices": [
+        {
+          "id": "hang",
+          "label": "Hang him publicly",
+          "hint": "A warning to every traitor.",
+          "effects": {
+            "morale": 2,
+            "ai_tension": 3
+          }
+        },
+        {
+          "id": "turn",
+          "label": "Turn him",
+          "hint": "He will send Karzan what we want them to hear.",
+          "effects": {
+            "flags": {
+              "network_lantern": true
+            },
+            "ai_tension": -3
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "airfield_negligence",
+      "title": "Negligence at Harrow",
+      "category": "MILITARY",
+      "weight": 5,
+      "text": "No saboteur: a drunk mechanic, a cigarette, and a fuel dump that should never have been sited next to the hangars.",
+      "choices": [
+        {
+          "id": "court_martial",
+          "label": "Court-martial the base commander",
+          "hint": "Someone must answer.",
+          "effects": {
+            "military_morale": -1
+          }
+        },
+        {
+          "id": "quiet",
+          "label": "Keep it quiet",
+          "hint": "Sabotage sounds better in the newspapers.",
+          "effects": {
+            "morale": -1
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "oakhaven_tax_embargo",
+      "title": "Oakhaven Threatens an Embargo",
+      "category": "DIPLOMACY",
+      "weight": 8,
+      "text": "President Caul's government has sent a stiff note: the Republic cannot continue to trade with a state that taxes its citizens into penury. Unless Kestria lowers its taxes, Oakhaven will suspend the trade agreement and every lend-lease licence.",
+      "choices": [
+        {
+          "id": "lower",
+          "label": "Lower taxes to Normal",
+          "hint": "Keep the Republic sweet.",
+          "effects": {
+            "tax_policy": "normal",
+            "relations": {
+              "oakhaven": 8
+            }
+          }
+        },
+        {
+          "id": "refuse",
+          "label": "Refuse the interference",
+          "hint": "Kestria sets its own taxes.",
+          "effects": {
+            "relations": {
+              "oakhaven": -20
+            },
+            "morale": 1
+          }
+        },
+        {
+          "id": "promise",
+          "label": "Promise reforms",
+          "hint": "Words cost nothing — for now.",
+          "effects": {
+            "relations": {
+              "oakhaven": 2
+            }
+          },
+          "follow_ups": [
+            {
+              "card": "oakhaven_inspection",
+              "delay_weeks": 4
+            }
+          ]
+        }
+      ],
+      "conditions": {
+        "tax_policies": [
+          "high",
+          "oppressive"
+        ],
+        "requires_trade": "oakhaven"
+      }
+    },
+    {
+      "id": "oakhaven_inspection",
+      "title": "Oakhaven Observers Arrive",
+      "category": "DIPLOMACY",
+      "weight": 5,
+      "text": "A delegation from the Oakhaven Senate has arrived to see the promised tax reforms for itself.",
+      "choices": [
+        {
+          "id": "truth",
+          "label": "Show them the truth",
+          "hint": "Honesty, whatever it costs.",
+          "effects": {
+            "relations": {
+              "oakhaven": -5
+            }
+          }
+        },
+        {
+          "id": "potemkin",
+          "label": "Stage a model town",
+          "hint": "Fresh paint, full shops, happy workers for a day.",
+          "effects": {
+            "treasury": -15000,
+            "relations": {
+              "oakhaven": 6
+            }
+          }
+        },
+        {
+          "id": "lower_now",
+          "label": "Lower taxes before they arrive",
+          "hint": "Keep the promise after all.",
+          "effects": {
+            "tax_policy": "normal",
+            "relations": {
+              "oakhaven": 10
+            }
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "tor_artillery_offer",
+      "title": "Tor Offers Cheap Artillery",
+      "category": "DIPLOMACY",
+      "weight": 6,
+      "text": "The Protector-General of Tor offers twenty-four new howitzers at half price — if Kestria formally recognises Tor's annexation of the Marish coast. Oakhaven will call it a betrayal of every principle Kestria claims.",
+      "choices": [
+        {
+          "id": "recognise",
+          "label": "Buy and recognise the annexation",
+          "hint": "Guns now, principles later.",
+          "effects": {
+            "treasury": -40000,
+            "equipment": {
+              "howitzer_152": 24,
+              "shell_152_he": 2000
+            },
+            "relations": {
+              "tor": 12,
+              "oakhaven": -10
+            }
+          }
+        },
+        {
+          "id": "full_price",
+          "label": "Offer full price without recognition",
+          "hint": "Tor may take the money.",
+          "effects": {
+            "treasury": -85000,
+            "equipment": {
+              "howitzer_152": 24
+            },
+            "relations": {
+              "tor": 2
+            }
+          }
+        },
+        {
+          "id": "decline",
+          "label": "Decline",
+          "hint": "Kestria does not trade in other nations' land.",
+          "effects": {
+            "relations": {
+              "oakhaven": 4,
+              "tor": -4
+            }
+          }
+        }
+      ],
+      "conditions": {
+        "min_turn": 6
+      }
+    },
+    {
+      "id": "vael_peace_conference",
+      "title": "Vael Offers Good Offices",
+      "category": "DIPLOMACY",
+      "weight": 5,
+      "text": "The Council of Savants of Vael offers to host talks between Kestria and the Hegemony in the neutral city of Aurel: prisoner exchanges first, and perhaps more.",
+      "choices": [
+        {
+          "id": "attend",
+          "label": "Send a delegation",
+          "hint": "Talking is not surrender.",
+          "effects": {
+            "relations": {
+              "vael": 8
+            },
+            "ai_tension": -8,
+            "military_morale": -2
+          },
+          "follow_ups": [
+            {
+              "delay_weeks": 3,
+              "chance": 1.0,
+              "outcomes": [
+                {
+                  "card": "vael_talks_progress",
+                  "weight": 55
+                },
+                {
+                  "card": "vael_talks_collapse",
+                  "weight": 45
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "refuse",
+          "label": "Refuse",
+          "hint": "There is nothing to discuss with Karzan.",
+          "effects": {
+            "relations": {
+              "vael": -5
+            },
+            "morale": 1
+          }
+        }
+      ],
+      "conditions": {
+        "min_turn": 10
+      }
+    },
+    {
+      "id": "vael_talks_progress",
+      "title": "Progress at Aurel",
+      "category": "DIPLOMACY",
+      "weight": 5,
+      "text": "The Vosk delegation has agreed to a general exchange of prisoners, and hints that more could follow.",
+      "choices": [
+        {
+          "id": "exchange",
+          "label": "Sign the prisoner exchange",
+          "hint": "Thousands of men come home.",
+          "effects": {
+            "manpower": 3000,
+            "morale": 3,
+            "ai_tension": -5
+          }
+        },
+        {
+          "id": "walk_away",
+          "label": "Walk away",
+          "hint": "An exchange frees their veterans too.",
+          "effects": {
+            "relations": {
+              "vael": -5
+            },
+            "military_morale": 2
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "vael_talks_collapse",
+      "title": "The Aurel Talks Collapse",
+      "category": "DIPLOMACY",
+      "weight": 5,
+      "text": "The Vosk delegation walked out after one day, calling Kestria's terms 'an insult to the Hegemony'.",
+      "choices": [
+        {
+          "id": "blame",
+          "label": "Blame Karzan publicly",
+          "hint": "Let the world see who wants peace.",
+          "effects": {
+            "relations": {
+              "vael": 4,
+              "oakhaven": 2
+            },
+            "ai_tension": 4
+          }
+        },
+        {
+          "id": "silence",
+          "label": "Say nothing",
+          "hint": "Leave the door open.",
+          "effects": {
+            "relations": {
+              "vael": 2
+            }
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "tor_state_visit",
+      "title": "The Protector-General's Visit",
+      "category": "DIPLOMACY",
+      "weight": 5,
+      "text": "Protector-General Oskar Tor will pass through Port Cassel on his way home from Oakhaven. His ministers hint that he expects a state reception worthy of a great power — and a gift.",
+      "choices": [
+        {
+          "id": "lavish",
+          "label": "A lavish reception",
+          "hint": "Guards of honour, a banquet, a gold-mounted sabre.",
+          "effects": {
+            "treasury": -40000,
+            "relations": {
+              "tor": 12
+            }
+          }
+        },
+        {
+          "id": "modest",
+          "label": "A modest welcome",
+          "hint": "Correct, and cheap.",
+          "effects": {
+            "relations": {
+              "tor": 3
+            }
+          }
+        },
+        {
+          "id": "snub",
+          "label": "Snub him",
+          "hint": "Kestria does not grovel to dictators.",
+          "effects": {
+            "relations": {
+              "tor": -10
+            },
+            "morale": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "oakhaven_war_loan",
+      "title": "The Oakhaven War Loan",
+      "category": "DIPLOMACY",
+      "weight": 5,
+      "text": "A consortium of Oakhaven banks offers Kestria a war loan of a quarter of a million, repayable with interest in eight weeks. The Treasury is tempted; the Finance Minister is terrified.",
+      "choices": [
+        {
+          "id": "accept",
+          "label": "Take the loan",
+          "hint": "Money now; the reckoning later.",
+          "effects": {
+            "treasury": 250000
+          },
+          "follow_ups": [
+            {
+              "card": "loan_due",
+              "delay_weeks": 8
+            }
+          ]
+        },
+        {
+          "id": "decline",
+          "label": "Decline",
+          "hint": "Kestria will not mortgage its future.",
+          "effects": {}
+        }
+      ],
+      "conditions": {
+        "requires_relation": {
+          "oakhaven": 10
+        }
+      }
+    },
+    {
+      "id": "loan_due",
+      "title": "The Oakhaven Loan Falls Due",
+      "category": "DIPLOMACY",
+      "weight": 5,
+      "text": "The Oakhaven consortium presents its bill: three hundred thousand, principal and interest, payable this week.",
+      "choices": [
+        {
+          "id": "repay",
+          "label": "Repay in full",
+          "hint": "Kestria pays its debts.",
+          "effects": {
+            "treasury": -300000,
+            "relations": {
+              "oakhaven": 5
+            }
+          }
+        },
+        {
+          "id": "default",
+          "label": "Default",
+          "hint": "Let them sue.",
+          "effects": {
+            "relations": {
+              "oakhaven": -30
+            },
+            "morale": -2
+          }
+        },
+        {
+          "id": "refinance",
+          "label": "Refinance for another eight weeks",
+          "hint": "Pay the interest, roll the rest.",
+          "effects": {
+            "treasury": -60000,
+            "relations": {
+              "oakhaven": -3
+            }
+          },
+          "follow_ups": [
+            {
+              "card": "loan_due",
+              "delay_weeks": 8
+            }
+          ]
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "oakhaven_journalist",
+      "title": "An Oakhaven Journalist at the Front",
+      "category": "DIPLOMACY",
+      "weight": 5,
+      "text": "Clara Whitlow of the Oakhaven Evening Standard, the most famous war correspondent in the Republic, asks for a pass to the Frontier trenches.",
+      "choices": [
+        {
+          "id": "grant",
+          "label": "Grant the pass",
+          "hint": "Let the Republic see the war as it is.",
+          "effects": {
+            "relations": {
+              "oakhaven": 4
+            }
+          },
+          "follow_ups": [
+            {
+              "delay_weeks": 3,
+              "chance": 1.0,
+              "outcomes": [
+                {
+                  "card": "journalist_praise",
+                  "weight": 60
+                },
+                {
+                  "card": "journalist_exposé",
+                  "weight": 40
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "deny",
+          "label": "Deny it",
+          "hint": "No foreigners at the front.",
+          "effects": {
+            "relations": {
+              "oakhaven": -3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "journalist_praise",
+      "title": "'THE LIONS OF THE FRONTIER'",
+      "category": "DIPLOMACY",
+      "weight": 5,
+      "text": "Whitlow's dispatches — mud, courage, and quiet Kestrian decency — are front-page news in Oakhaven.",
+      "choices": [
+        {
+          "id": "syndicate",
+          "label": "Syndicate it everywhere",
+          "hint": "Every neutral paper should print it.",
+          "effects": {
+            "relations": {
+              "oakhaven": 8,
+              "vael": 3
+            },
+            "morale": 2
+          }
+        },
+        {
+          "id": "thank",
+          "label": "Thank her quietly",
+          "hint": "Modesty plays well abroad.",
+          "effects": {
+            "relations": {
+              "oakhaven": 4
+            }
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "journalist_exposé",
+      "title": "'THE BUTCHERS OF THE FRONTIER'",
+      "category": "DIPLOMACY",
+      "weight": 5,
+      "text": "Whitlow has written about the field punishments, the dud shells and the penal battalions. The Oakhaven Senate wants hearings.",
+      "choices": [
+        {
+          "id": "expel",
+          "label": "Expel her",
+          "hint": "She abused Kestrian hospitality.",
+          "effects": {
+            "relations": {
+              "oakhaven": -10
+            },
+            "morale": 1
+          }
+        },
+        {
+          "id": "reform",
+          "label": "Promise reforms at the front",
+          "hint": "Fix what she found.",
+          "effects": {
+            "treasury": -30000,
+            "army_morale": 3,
+            "relations": {
+              "oakhaven": 4
+            }
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "vael_scientists",
+      "title": "Refugee Scientists from Vael",
+      "category": "DIPLOMACY",
+      "weight": 5,
+      "text": "A group of Vaelish chemists, quarrelling with their own Council, ask for asylum and laboratories in Kestria. The Council of Savants would regard it as theft.",
+      "choices": [
+        {
+          "id": "welcome",
+          "label": "Welcome them",
+          "hint": "Their knowledge is ours.",
+          "effects": {
+            "research_weeks": 5,
+            "relations": {
+              "vael": -12
+            }
+          }
+        },
+        {
+          "id": "return",
+          "label": "Send them home",
+          "hint": "Vael's friendship is worth more.",
+          "effects": {
+            "relations": {
+              "vael": 8
+            }
+          }
+        }
+      ],
+      "conditions": {
+        "requires_research": true
+      }
+    },
+    {
+      "id": "agent_in_karzan",
+      "title": "Our Man in Karzan",
+      "category": "ESPIONAGE",
+      "weight": 5,
+      "text": "Agent LANTERN-7, our best source inside the Vosk General Staff, has sent an unusual request: a large sum of money and a promise of exfiltration. Counter-intelligence thinks he may have been turned.",
+      "choices": [
+        {
+          "id": "trust",
+          "label": "Trust him",
+          "hint": "Pay, and keep him in place.",
+          "effects": {
+            "treasury": -30000
+          },
+          "follow_ups": [
+            {
+              "delay_weeks": 3,
+              "chance": 1.0,
+              "outcomes": [
+                {
+                  "card": "agent_gold",
+                  "weight": 50
+                },
+                {
+                  "card": "agent_betrayed",
+                  "weight": 50
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "burn",
+          "label": "Burn him",
+          "hint": "Cut contact. Lose the source.",
+          "effects": {
+            "military_morale": -1
+          }
+        }
+      ]
+    },
+    {
+      "id": "agent_gold",
+      "title": "LANTERN-7 Delivers",
+      "category": "ESPIONAGE",
+      "weight": 5,
+      "text": "LANTERN-7's report is pure gold: the Vosk order of battle, the ammunition stocks of the Western Front, and the date of their next offensive.",
+      "choices": [
+        {
+          "id": "prepare",
+          "label": "Prepare the defences",
+          "hint": "Every division stands to.",
+          "effects": {
+            "army_morale": 3,
+            "flags": {
+              "network_lantern": true
+            }
+          }
+        },
+        {
+          "id": "share",
+          "label": "Share it with Oakhaven",
+          "hint": "Proof that the Hegemony plans aggression.",
+          "effects": {
+            "relations": {
+              "oakhaven": 6
+            },
+            "flags": {
+              "network_lantern": true
+            }
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "agent_betrayed",
+      "title": "LANTERN-7 Was Turned",
+      "category": "ESPIONAGE",
+      "weight": 5,
+      "text": "Everything LANTERN-7 has sent for two months was written in Karzan. Our dispositions on the northern flank were built on Vosk fiction.",
+      "choices": [
+        {
+          "id": "purge",
+          "label": "Purge the intelligence service",
+          "hint": "Start again from nothing.",
+          "effects": {
+            "military_morale": -2,
+            "army_morale": -2,
+            "flags": {
+              "network_lantern": false
+            }
+          }
+        },
+        {
+          "id": "feed_back",
+          "label": "Feed them lies in return",
+          "hint": "Two can play.",
+          "effects": {
+            "ai_tension": -4,
+            "army_morale": -2
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "cipher_breakthrough",
+      "title": "The Codebreakers' Request",
+      "category": "ESPIONAGE",
+      "weight": 5,
+      "text": "The cryptanalysts at Stanhope say they are close to breaking the Vosk high-command cipher. They need mathematicians, calculating machines and money.",
+      "choices": [
+        {
+          "id": "fund",
+          "label": "Fund the crash programme",
+          "hint": "Whatever they need.",
+          "effects": {
+            "treasury": -40000
+          },
+          "follow_ups": [
+            {
+              "delay_weeks": 3,
+              "chance": 0.7,
+              "outcomes": [
+                {
+                  "card": "cipher_cracked",
+                  "weight": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "later",
+          "label": "Not now",
+          "hint": "The front needs shells more than sums.",
+          "effects": {}
+        }
+      ]
+    },
+    {
+      "id": "cipher_cracked",
+      "title": "The Vosk Cipher Is Broken",
+      "category": "ESPIONAGE",
+      "weight": 5,
+      "text": "Stanhope has done it: the Vosk high-command traffic is readable. The question is how to use it without revealing that we can.",
+      "choices": [
+        {
+          "id": "quiet",
+          "label": "Exploit it quietly",
+          "hint": "Never act on more than we could have guessed.",
+          "effects": {
+            "flags": {
+              "network_lantern": true
+            },
+            "ai_tension": -3,
+            "army_morale": 2
+          }
+        },
+        {
+          "id": "leak",
+          "label": "Reveal Vosk war plans to the world",
+          "hint": "Shame Karzan in every capital.",
+          "effects": {
+            "relations": {
+              "oakhaven": 8,
+              "vael": 5
+            },
+            "ai_tension": 5
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "internal_security_powers",
+      "title": "Emergency Powers for Internal Security",
+      "category": "ESPIONAGE",
+      "weight": 5,
+      "text": "The Director of Internal Security asks for powers to detain suspects without trial, open any letter and tap any telephone. 'The Vosk are everywhere,' he says.",
+      "choices": [
+        {
+          "id": "grant",
+          "label": "Grant the powers",
+          "hint": "Security first.",
+          "effects": {
+            "morale": -3,
+            "military_morale": 2,
+            "flags": {
+              "counterintel_purge": true
+            }
+          }
+        },
+        {
+          "id": "refuse",
+          "label": "Refuse",
+          "hint": "Kestria is not the Hegemony.",
+          "effects": {
+            "morale": 1,
+            "military_morale": -1
+          }
+        }
+      ]
+    },
+    {
+      "id": "assassination_plot",
+      "title": "The Ostrakov Operation",
+      "category": "ESPIONAGE",
+      "weight": 5,
+      "text": "Our agents propose to assassinate Marshal Ostrakov, commander of the Vosk Western Front, with a bomb in his staff car. The operation needs money and the Lord Protector's signature.",
+      "choices": [
+        {
+          "id": "authorise",
+          "label": "Authorise the operation",
+          "hint": "Decapitate the Western Front.",
+          "effects": {
+            "treasury": -30000
+          },
+          "follow_ups": [
+            {
+              "delay_weeks": 2,
+              "chance": 1.0,
+              "outcomes": [
+                {
+                  "card": "assassination_success",
+                  "weight": 40
+                },
+                {
+                  "card": "assassination_blowback",
+                  "weight": 60
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "veto",
+          "label": "Veto it",
+          "hint": "Kestria does not murder generals.",
+          "effects": {}
+        }
+      ],
+      "conditions": {
+        "min_turn": 8
+      }
+    },
+    {
+      "id": "assassination_success",
+      "title": "Marshal Ostrakov Is Dead",
+      "category": "ESPIONAGE",
+      "weight": 5,
+      "text": "The bomb went off under the Marshal's car on the Karzan road. The Western Front staff is in chaos, and Karzan is howling for revenge.",
+      "choices": [
+        {
+          "id": "claim",
+          "label": "Let it be known it was us",
+          "hint": "Terror for their generals.",
+          "effects": {
+            "military_morale": 4,
+            "ai_tension": 12
+          }
+        },
+        {
+          "id": "deny",
+          "label": "Deny everything",
+          "hint": "Partisans, perhaps. Who can say?",
+          "effects": {
+            "military_morale": 2,
+            "ai_tension": 6
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "assassination_blowback",
+      "title": "The Agents Are Taken",
+      "category": "ESPIONAGE",
+      "weight": 5,
+      "text": "The bomb team was arrested at a roadblock. Radio Karzan is broadcasting their confessions, and Vael has recalled its ambassador for consultations.",
+      "choices": [
+        {
+          "id": "disown",
+          "label": "Disown them",
+          "hint": "They were adventurers.",
+          "effects": {
+            "relations": {
+              "vael": -6
+            },
+            "ai_tension": 10
+          }
+        },
+        {
+          "id": "trade",
+          "label": "Offer a prisoner trade",
+          "hint": "Get our men back.",
+          "effects": {
+            "relations": {
+              "vael": -3
+            },
+            "ai_tension": 6,
+            "manpower": -200
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "lost_briefcase",
+      "title": "The Lost Briefcase",
+      "category": "ESPIONAGE",
+      "weight": 5,
+      "text": "A staff major left his briefcase on the Aldmark–Kestrel Cross express. It held the deployment plan for the whole southern flank. The briefcase has not been found.",
+      "choices": [
+        {
+          "id": "redraw",
+          "label": "Redraw every plan",
+          "hint": "Weeks of work, but safe.",
+          "effects": {
+            "army_morale": -2,
+            "military_morale": -1
+          }
+        },
+        {
+          "id": "assume",
+          "label": "Assume it went into a ditch",
+          "hint": "Nobody could have found it.",
+          "effects": {},
+          "follow_ups": [
+            {
+              "delay_weeks": 2,
+              "chance": 0.5,
+              "outcomes": [
+                {
+                  "card": "plans_exploited",
+                  "weight": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plans_exploited",
+      "title": "The Vosk Knew",
+      "category": "MILITARY",
+      "weight": 5,
+      "text": "The Vosk attack came exactly where the lost plans said our line was thinnest. Our divisions were caught reshuffling.",
+      "choices": [
+        {
+          "id": "purge_staff",
+          "label": "Purge the General Staff",
+          "hint": "Heads for every stolen page.",
+          "effects": {
+            "military_morale": -3,
+            "army_morale": -2
+          }
+        },
+        {
+          "id": "bad_luck",
+          "label": "Call it bad luck",
+          "hint": "Nothing can be proved.",
+          "effects": {
+            "army_morale": -4
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "radio_karzan",
+      "title": "Radio Karzan",
+      "category": "ESPIONAGE",
+      "weight": 5,
+      "text": "Every night Radio Karzan broadcasts the names of Kestrian prisoners, dance music and a honeyed voice asking Kestrian soldiers why they are dying for the Lord Protector.",
+      "choices": [
+        {
+          "id": "jam",
+          "label": "Jam the broadcasts",
+          "hint": "Transmitters on every hill.",
+          "effects": {
+            "treasury": -20000,
+            "morale": 1
+          }
+        },
+        {
+          "id": "answer",
+          "label": "Answer with Radio Aldmark",
+          "hint": "Our own voice, our own music.",
+          "effects": {
+            "treasury": -10000,
+            "morale": 2
+          }
+        },
+        {
+          "id": "ignore",
+          "label": "Ignore it",
+          "hint": "Nobody believes enemy propaganda.",
+          "effects": {
+            "morale": -2,
+            "army_morale": -1
+          }
+        }
+      ]
+    },
+    {
+      "id": "greywater_dam",
+      "title": "Cracks in the Greywater Dam",
+      "category": "CRISIS",
+      "weight": 5,
+      "text": "Engineers report cracks spreading across the face of the great Greywater dam, weakened by the winter frosts. If it goes, the valley floods from the reservoir to the sea.",
+      "choices": [
+        {
+          "id": "repair",
+          "label": "Emergency repairs",
+          "hint": "Every engineer and every sack of cement.",
+          "effects": {
+            "treasury": -45000
+          }
+        },
+        {
+          "id": "evacuate",
+          "label": "Evacuate the valley",
+          "hint": "Save the people, abandon the farms.",
+          "effects": {
+            "morale": -2,
+            "city_morale": {
+              "Greywater": -10
+            },
+            "stockpiles": {
+              "grain": -3000
+            }
+          }
+        },
+        {
+          "id": "hope",
+          "label": "Hope it holds",
+          "hint": "The engineers are always pessimists.",
+          "effects": {},
+          "follow_ups": [
+            {
+              "delay_weeks": 3,
+              "chance": 0.45,
+              "outcomes": [
+                {
+                  "card": "dam_burst",
+                  "weight": 1
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "conditions": {
+        "seasons": [
+          "Winter",
+          "Spring"
+        ]
+      }
+    },
+    {
+      "id": "dam_burst",
+      "title": "THE GREYWATER DAM HAS BURST",
+      "category": "CRISIS",
+      "weight": 5,
+      "text": "At dawn the Greywater dam gave way. A wall of water is roaring down the valley toward the sea.",
+      "choices": [
+        {
+          "id": "lead",
+          "label": "The Lord Protector goes to the valley",
+          "hint": "Be seen among the survivors.",
+          "effects": {
+            "morale": 1,
+            "disaster": {
+              "kind": "severe_flooding",
+              "region": "greywater"
+            }
+          }
+        },
+        {
+          "id": "blame",
+          "label": "Blame the engineers",
+          "hint": "Somebody should have warned us.",
+          "effects": {
+            "morale": -2,
+            "disaster": {
+              "kind": "severe_flooding",
+              "region": "greywater"
+            }
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "barracks_flu",
+      "title": "Influenza in the Training Depots",
+      "category": "CRISIS",
+      "weight": 5,
+      "text": "A virulent influenza is sweeping the recruit depots around Aldmark. Recruits are dying before they ever see a trench.",
+      "choices": [
+        {
+          "id": "quarantine",
+          "label": "Close the depots",
+          "hint": "No new men for a month.",
+          "effects": {
+            "manpower": -3000,
+            "treasury": -20000
+          }
+        },
+        {
+          "id": "carry_on",
+          "label": "Keep training",
+          "hint": "The front needs every man.",
+          "effects": {},
+          "follow_ups": [
+            {
+              "delay_weeks": 2,
+              "chance": 0.7,
+              "outcomes": [
+                {
+                  "card": "barracks_flu_spreads",
+                  "weight": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "barracks_flu_spreads",
+      "title": "The Depot Fever Reaches the City",
+      "category": "CRISIS",
+      "weight": 5,
+      "text": "The influenza has escaped the barracks: the Aldmark tenements are full of it.",
+      "choices": [
+        {
+          "id": "ministry",
+          "label": "Put the Ministry of Health in charge",
+          "hint": "Doctors, not generals.",
+          "effects": {
+            "treasury": -15000,
+            "outbreak": {
+              "disease": "industrial_flu",
+              "city": "Aldmark"
+            }
+          }
+        },
+        {
+          "id": "army",
+          "label": "Put the army in charge",
+          "hint": "Cordons and curfews.",
+          "effects": {
+            "military_morale": -1,
+            "outbreak": {
+              "disease": "industrial_flu",
+              "city": "Aldmark"
+            }
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "ironvale_firedamp",
+      "title": "Firedamp at Ironvale",
+      "category": "CRISIS",
+      "weight": 5,
+      "text": "The mine inspectors have found firedamp gas building up in the deep galleries of the Ironvale colliery. Closing the pit means no coal for the steelworks for a month.",
+      "choices": [
+        {
+          "id": "close",
+          "label": "Close the pit",
+          "hint": "Safety first.",
+          "effects": {
+            "modifier": {
+              "key": "factory_efficiency",
+              "value": -0.08,
+              "weeks": 4
+            }
+          }
+        },
+        {
+          "id": "dig",
+          "label": "Keep digging",
+          "hint": "Ventilate as best they can.",
+          "effects": {},
+          "follow_ups": [
+            {
+              "delay_weeks": 2,
+              "chance": 0.5,
+              "outcomes": [
+                {
+                  "card": "ironvale_explosion",
+                  "weight": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ironvale_explosion",
+      "title": "Explosion in the Ironvale Galleries",
+      "category": "CRISIS",
+      "weight": 5,
+      "text": "The firedamp has exploded. The main shaft is choked and the colliery railway torn up.",
+      "choices": [
+        {
+          "id": "rescue",
+          "label": "Everything for the rescue",
+          "hint": "The whole nation holds its breath.",
+          "effects": {
+            "treasury": -20000,
+            "morale": 1,
+            "disaster": {
+              "kind": "mine_collapse",
+              "region": "ironvale"
+            }
+          }
+        },
+        {
+          "id": "seal",
+          "label": "Seal the galleries",
+          "hint": "The fire must not spread.",
+          "effects": {
+            "morale": -3,
+            "disaster": {
+              "kind": "mine_collapse",
+              "region": "ironvale"
+            }
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "aldmark_water",
+      "title": "Something in the Water",
+      "category": "CRISIS",
+      "weight": 5,
+      "text": "The Aldmark waterworks report a sewage main has burst into the city's filter beds. The chief engineer wants to chlorinate the whole supply at once, at great cost.",
+      "choices": [
+        {
+          "id": "chlorinate",
+          "label": "Chlorinate at once",
+          "hint": "Expensive, and safe.",
+          "effects": {
+            "treasury": -20000
+          }
+        },
+        {
+          "id": "deny",
+          "label": "Deny there is a problem",
+          "hint": "Panic would be worse than the water.",
+          "effects": {},
+          "follow_ups": [
+            {
+              "delay_weeks": 2,
+              "chance": 0.6,
+              "outcomes": [
+                {
+                  "card": "aldmark_cholera",
+                  "weight": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "aldmark_cholera",
+      "title": "Cholera in the Capital",
+      "category": "CRISIS",
+      "weight": 5,
+      "text": "The first cases of cholera have appeared in the Aldmark river wards.",
+      "choices": [
+        {
+          "id": "admit",
+          "label": "Admit the failure",
+          "hint": "The truth, and the doctors.",
+          "effects": {
+            "morale": -1,
+            "outbreak": {
+              "disease": "cholera",
+              "city": "Aldmark"
+            }
+          }
+        },
+        {
+          "id": "scapegoat",
+          "label": "Arrest the waterworks engineers",
+          "hint": "Somebody must pay.",
+          "effects": {
+            "morale": -3,
+            "outbreak": {
+              "disease": "cholera",
+              "city": "Aldmark"
+            }
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "summer_fires",
+      "title": "Fires in the Stonereach",
+      "category": "CRISIS",
+      "weight": 5,
+      "text": "A dry summer has set the Stonereach forests alight. The fires are racing toward the villages and the Stanhope rail tunnel.",
+      "choices": [
+        {
+          "id": "army",
+          "label": "Send the army to fight the fires",
+          "hint": "Soldiers with shovels, not rifles.",
+          "effects": {
+            "army_morale": -2,
+            "morale": 2
+          }
+        },
+        {
+          "id": "burn",
+          "label": "Let it burn out",
+          "hint": "The mountains will recover.",
+          "effects": {
+            "morale": -2,
+            "stockpiles": {
+              "grain": -2000
+            }
+          }
+        }
+      ],
+      "conditions": {
+        "seasons": [
+          "Summer"
+        ]
+      }
+    },
+    {
+      "id": "war_orphans",
+      "title": "The War Orphans",
+      "category": "CRISIS",
+      "weight": 5,
+      "text": "The charities can no longer cope with the children of the dead: orphans are sleeping under the railway arches of every city.",
+      "choices": [
+        {
+          "id": "orphanages",
+          "label": "State orphanages",
+          "hint": "Every child fed and schooled.",
+          "effects": {
+            "treasury": -25000,
+            "morale": 2
+          }
+        },
+        {
+          "id": "adoption",
+          "label": "A national adoption drive",
+          "hint": "Every family can take one more.",
+          "effects": {
+            "morale": 1
+          }
+        },
+        {
+          "id": "nothing",
+          "label": "The state cannot afford it",
+          "hint": "The war comes first.",
+          "effects": {
+            "morale": -3
+          }
+        }
+      ],
+      "conditions": {
+        "min_turn": 12
+      }
+    },
+    {
+      "id": "gemini_tax_revolt",
+      "title": "BREAD AND BULLETS",
+      "category": "DOMESTIC",
+      "weight": 5,
+      "text": "The Oppressive tax rate has broken the back of the working class. Riots have erupted in the industrial sector of Aldmark. The mob has seized a munitions depot and is demanding immediate tax relief, or they will detonate the stockpile.",
+      "choices": [
+        {
+          "id": "option_1",
+          "label": "[CONCEDE] Lower the taxes to High.",
+          "hint": "",
+          "effects": {
+            "tax_policy": "high",
+            "morale": 10
+          }
+        },
+        {
+          "id": "option_2",
+          "label": "[CRUSH THEM] Send the military police.",
+          "hint": "",
+          "effects": {
+            "morale": -15,
+            "military_morale": -5
+          },
+          "follow_ups": [
+            {
+              "card": "gemini_tax_revolt_aftermath",
+              "delay_weeks": 1
+            }
+          ]
+        }
+      ],
+      "conditions": {
+        "tax_policies": [
+          "oppressive"
+        ]
+      }
+    },
+    {
+      "id": "gemini_tax_revolt_aftermath",
+      "title": "ALDMARK MUNITIONS BLAST",
+      "category": "DOMESTIC",
+      "weight": 5,
+      "text": "During the military crackdown, a stray bullet struck a volatile artillery shell casing. The resulting explosion leveled three city blocks and severed the central rail line.",
+      "choices": [
+        {
+          "id": "option_1",
+          "label": "A tragic miscalculation.",
+          "hint": "",
+          "effects": {
+            "disaster": {
+              "kind": "earthquake",
+              "region": "aldmark"
+            },
+            "morale": -10
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "gemini_vosk_defector",
+      "title": "THE VOSK SCIENTIST",
+      "category": "ESPIONAGE",
+      "weight": 5,
+      "text": "A high-ranking Vosk engineer has defected across the frozen Frontier. He offers the complete blueprints for their experimental Cold-Weather Equipment, but demands 150,000 CR to start a new life in neutral Oakhaven.",
+      "choices": [
+        {
+          "id": "option_1",
+          "label": "Pay the man. We need that tech.",
+          "hint": "",
+          "effects": {
+            "treasury": -150000
+          },
+          "follow_ups": [
+            {
+              "card": "gemini_vosk_defector_success",
+              "delay_weeks": 2
+            }
+          ]
+        },
+        {
+          "id": "option_2",
+          "label": "Throw him in a black site and extract it.",
+          "hint": "",
+          "effects": {
+            "morale": -2
+          },
+          "follow_ups": [
+            {
+              "card": "gemini_vosk_defector_dead",
+              "delay_weeks": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gemini_vosk_defector_success",
+      "title": "R&D BREAKTHROUGH: WINTER GEAR",
+      "category": "ESPIONAGE",
+      "weight": 5,
+      "text": "The defector arrived safely in Oakhaven. True to his word, our agents recovered a dead-drop containing the schematics. Our R&D department can now mass-produce Winter Gear.",
+      "choices": [
+        {
+          "id": "option_1",
+          "label": "Issue it to the men immediately.",
+          "hint": "",
+          "effects": {
+            "tech": "winter_warfare",
+            "military_morale": 10
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "gemini_vosk_defector_dead",
+      "title": "DEFECTOR FOUND DEAD",
+      "category": "ESPIONAGE",
+      "weight": 5,
+      "text": "The Vosk scientist died during our 'enhanced interrogation'. The blueprints were in his head, and now they are gone forever. The intelligence community is shaken.",
+      "choices": [
+        {
+          "id": "option_1",
+          "label": "Clean up the mess.",
+          "hint": "",
+          "effects": {
+            "military_morale": -5
+          }
+        }
+      ],
+      "chain_only": true
+    },
+    {
+      "id": "gemini_plague_ship",
+      "title": "THE GHOST SHIP",
+      "category": "CRISIS",
+      "weight": 5,
+      "text": "A Kestrian merchant marine vessel has drifted into the port of Brenmouth. The crew is dead or dying from a horrific, highly contagious strain of Cholera. Port authorities beg you to sink the ship before it docks.",
+      "choices": [
+        {
+          "id": "option_1",
+          "label": "Sink the ship. God rest their souls.",
+          "hint": "",
+          "effects": {
+            "military_morale": -5,
+            "morale": -5
+          }
+        },
+        {
+          "id": "option_2",
+          "label": "We cannot murder our own citizens. Quarantine them.",
+          "hint": "",
+          "effects": {
+            "treasury": -50000
+          },
+          "follow_ups": [
+            {
+              "card": "gemini_plague_ship_spread",
+              "delay_weeks": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gemini_plague_ship_spread",
+      "title": "QUARANTINE BREACHED",
+      "category": "CRISIS",
+      "weight": 5,
+      "text": "The port quarantine failed. Desperate sailors bribed the guards and escaped into Brenmouth. The infection is now spreading rapidly through the coastal population.",
+      "choices": [
+        {
+          "id": "option_1",
+          "label": "We should have sunk it.",
+          "hint": "",
+          "effects": {
+            "outbreak": {
+              "disease": "cholera",
+              "city": "Brenmouth"
+            },
+            "morale": -10
+          }
+        }
+      ],
+      "chain_only": true
     }
   ]
 }

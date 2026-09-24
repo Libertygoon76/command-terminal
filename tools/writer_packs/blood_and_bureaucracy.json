@@ -1,0 +1,143 @@
+[
+  {
+    "id": "gemini_tax_revolt",
+    "category": "DOMESTIC",
+    "title": "BREAD AND BULLETS",
+    "description": "The Oppressive tax rate has broken the back of the working class. Riots have erupted in the industrial sector of Aldmark. The mob has seized a munitions depot and is demanding immediate tax relief, or they will detonate the stockpile.",
+    "condition": {
+      "tax_policy_condition": "Oppressive"
+    },
+    "choices": [
+      {
+        "label": "[CONCEDE] Lower the taxes to High.",
+        "effects": {
+          "change_tax_policy": "High",
+          "civil_morale": 10
+        }
+      },
+      {
+        "label": "[CRUSH THEM] Send the military police.",
+        "effects": {
+          "civil_morale": -15,
+          "military_morale": -5
+        },
+        "follow_up": {
+          "event_id": "gemini_tax_revolt_aftermath",
+          "delay_weeks": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "gemini_tax_revolt_aftermath",
+    "title": "ALDMARK MUNITIONS BLAST",
+    "is_chain_only": true,
+    "description": "During the military crackdown, a stray bullet struck a volatile artillery shell casing. The resulting explosion leveled three city blocks and severed the central rail line.",
+    "choices": [
+      {
+        "label": "A tragic miscalculation.",
+        "effects": {
+          "trigger_disaster": "Earthquake",
+          "civil_morale": -10
+        }
+      }
+    ]
+  },
+  {
+    "id": "gemini_vosk_defector",
+    "category": "ESPIONAGE",
+    "title": "THE VOSK SCIENTIST",
+    "description": "A high-ranking Vosk engineer has defected across the frozen Frontier. He offers the complete blueprints for their experimental Cold-Weather Equipment, but demands 150,000 CR to start a new life in neutral Oakhaven.",
+    "choices": [
+      {
+        "label": "Pay the man. We need that tech.",
+        "effects": {
+          "treasury": -150000
+        },
+        "follow_up": {
+          "event_id": "gemini_vosk_defector_success",
+          "delay_weeks": 2
+        }
+      },
+      {
+        "label": "Throw him in a black site and extract it.",
+        "effects": {
+          "civil_morale": -2
+        },
+        "follow_up": {
+          "event_id": "gemini_vosk_defector_dead",
+          "delay_weeks": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "gemini_vosk_defector_success",
+    "title": "R&D BREAKTHROUGH: WINTER GEAR",
+    "is_chain_only": true,
+    "description": "The defector arrived safely in Oakhaven. True to his word, our agents recovered a dead-drop containing the schematics. Our R&D department can now mass-produce Winter Gear.",
+    "choices": [
+      {
+        "label": "Issue it to the men immediately.",
+        "effects": {
+          "grant_technology": "Cold-Weather Equipment",
+          "military_morale": 10
+        }
+      }
+    ]
+  },
+  {
+    "id": "gemini_vosk_defector_dead",
+    "title": "DEFECTOR FOUND DEAD",
+    "is_chain_only": true,
+    "description": "The Vosk scientist died during our 'enhanced interrogation'. The blueprints were in his head, and now they are gone forever. The intelligence community is shaken.",
+    "choices": [
+      {
+        "label": "Clean up the mess.",
+        "effects": {
+          "military_morale": -5
+        }
+      }
+    ]
+  },
+  {
+    "id": "gemini_plague_ship",
+    "category": "CRISIS",
+    "title": "THE GHOST SHIP",
+    "description": "A Kestrian merchant marine vessel has drifted into the port of Brenmouth. The crew is dead or dying from a horrific, highly contagious strain of Cholera. Port authorities beg you to sink the ship before it docks.",
+    "choices": [
+      {
+        "label": "Sink the ship. God rest their souls.",
+        "effects": {
+          "military_morale": -5,
+          "civil_morale": -5
+        }
+      },
+      {
+        "label": "We cannot murder our own citizens. Quarantine them.",
+        "effects": {
+          "treasury": -50000
+        },
+        "follow_up": {
+          "event_id": "gemini_plague_ship_spread",
+          "delay_weeks": 2
+        }
+      }
+    ]
+  },
+  {
+    "id": "gemini_plague_ship_spread",
+    "title": "QUARANTINE BREACHED",
+    "is_chain_only": true,
+    "description": "The port quarantine failed. Desperate sailors bribed the guards and escaped into Brenmouth. The infection is now spreading rapidly through the coastal population.",
+    "choices": [
+      {
+        "label": "We should have sunk it.",
+        "effects": {
+          "start_outbreak": "Cholera",
+          "civil_morale": -10
+        }
+      }
+    ]
+  }
+]

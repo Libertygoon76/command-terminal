@@ -583,7 +583,7 @@ status bar shows it (`WX`), and a **METEOROLOGICAL BULLETIN** arrives each new s
 - The campaign opens on 2 January 1984, in the dead of winter.
 
 ### 4.21 The Event Deck: Classified Dilemmas `[P7]`
-Module `src/engine/dilemmas.py`, data `data/events_deck.json` (16 cards). Last in each tick, from week 3,
+Module `src/engine/dilemmas.py`, data `data/events_deck.json` (92 cards since the deck expansion, see 4.21a). Last in each tick, from week 3,
 if no card has come up in the last 3 weeks, a card is drawn with a **16%** chance. Eligible cards are
 weighted and filtered by conditions: season (the frozen convoy in winter, General Mud in the Rasputitsa,
 the bumper harvest in summer and autumn), minimum week, a running research project, a battle in progress,
@@ -601,6 +601,41 @@ and story flags. Cards are not repeated unless `repeatable`.
   factory output +15% for 4 weeks. [2] Concede: −60,000 CR, civil morale +5. [3] Arbitrate: −20,000 CR,
   morale +1, factory output −10% for 3 weeks.
 - Debug: `python main.py --event worker_strike` forces a card at the next week; `--list-events` lists them.
+
+### 4.21a The Expanded Deck & Event Chains `[Content]`
+`tools/generate_massive_deck.py` builds the deck: it keeps every existing card, adds (or replaces, by id) its own
+hard-coded cards, normalises categories to **DOMESTIC · MILITARY · DIPLOMACY · ESPIONAGE · CRISIS** (plus the older
+ECONOMY/RESEARCH), validates everything and writes the JSON atomically. Re-running it is safe. **92 cards**, 30 of them
+the second acts of **25 event-chain links**.
+
+- **Event chains**: a choice may carry `follow_ups`, the same schema as email follow-ups with `card` for `email`:
+  ```json
+  "follow_ups": [{"card": "defector_designs", "delay_weeks": 2}]
+  "follow_ups": [{"delay_weeks": 3, "chance": 0.7,
+                  "outcomes": [{"card": "agent_gold", "weight": 50}, {"card": "agent_betrayed", "weight": 50}]}]
+  ```
+  The follow-up is stored in `state.card_schedule` (saved with the game) and arrives as a modal `delay_weeks` later,
+  ahead of the random draw. A card marked `"chain_only": true` is never drawn at random. The loader rejects a
+  follow-up to an unknown card.
+- **New condition** `tax_policies: [...]`; **new effect keys** `tech` (acquire a technology), `tax_policy`, `outbreak`
+  `{disease, city}` and `disaster` `{kind, region}`.
+- Example: *A Vosk Engineer Defects*. [1] Pay him → 2 weeks later *The Dornsk Blueprints* (Medium Tank Chassis).
+  [2] Interrogate him → 1 week later *Died in Custody*. [3] Send him back (tension −6).
+- Hooks into Expansion 1.1: *Oakhaven Threatens an Embargo* (High/Oppressive taxes with an Oakhaven treaty: lower
+  taxes, refuse, or promise reform → an Oakhaven inspection 4 weeks later); *Tor Offers Cheap Artillery* (recognise
+  Tor's annexation); *Refugees on the Greywater Road* (build a hospital, or tent camps → typhus); *The Oakhaven War
+  Loan* (+250,000 now, 300,000 due 8 weeks later, or default); *The Hospital Petition*; chains that end in a real
+  cholera outbreak, a dam burst or a mine collapse.
+- **Writer packs** (`tools/writer_packs/*.json`): the Head Writer (Gemini) writes cards in their own schema
+  (`description`, `follow_up.event_id`, `is_chain_only`, `civil_morale`, `change_tax_policy`, `grant_technology` by
+  name, `start_outbreak` / `trigger_disaster` by name). The generator translates them, resolves names to ids, infers
+  the city or region from the card text (or the card that leads to it), merges them last and removes the
+  placeholders they supersede (`RETIRED`: the placeholder defector chain). Unknown keys, techs or diseases stop the
+  build. A chain-only card may have a single "acknowledge" choice.
+- First pack, *Blood & Bureaucracy*: Bread and Bullets (→ the Aldmark munitions blast), The Vosk Scientist (→ winter
+  gear, or dead in custody), The Ghost Ship (→ cholera in Brenmouth).
+- **Writing credit:** the other cards in the generator are the programmer's placeholder drafts; writer packs
+  replace them over time.
 
 ### 4.22 5.56mm Re-arming `[P7]`
 Templates may `modernize` kit when a tech is known. **Intermediate Cartridge** (20 weeks) re-arms
@@ -877,7 +912,7 @@ command-terminal/
 │   ├── map/world.json       # War Room grid (240×80): base art, region_rows, sea zones, features, harbours, transport
 │   ├── weather.json         # seasons, conditions, monthly weights, storms
 │   ├── air.json             # air wings
-│   ├── events_deck.json     # CLASSIFIED DILEMMA cards
+│   ├── events_deck.json     # CLASSIFIED DILEMMA cards (built by tools/generate_massive_deck.py)
 │   ├── commanders.json      # commander traits, starting assignments, replacement pool, cost of relieving
 │   ├── crises.json          # epidemics (diseases, spread, quarantine) and natural disasters
 │   ├── diplomacy.json       # off-map powers: alignment, trade, lend-lease (X1.1)
@@ -1015,6 +1050,7 @@ SVG screenshots from the UI tests.
 | **7** | **Continental war**: 240×80 map at 10 miles per cell with oceans, 50 settlements and ports; miles-per-day marching; navies (destroyers, battleships, submarines) with PATROL / BLOCKADE / BOMBARD, naval battles and blockades of trade and supply; artillery fire support; abstract air wings and air superiority; weather and seasons (Rasputitsa, frostbite, Cold-Weather Kits, storms); the CLASSIFIED DILEMMA event deck; 5.56mm re-arming. ✅ |
 | **8** | **The home front, human friction and the endgame**: epidemics (Trench Typhus, Industrial Influenza, Cholera) with spread, quarantine, cordons and Field Medicine; natural disasters wrecking infrastructure with CRITICAL EMERGENCY choices (fund relief, deploy the military, ignore); commanders with hidden traits and insubordination, relieving command; electronic warfare and loss of signal; scorched earth and combat engineers; victory by capitulation (occupy Karzan, or bankrupt and demoralise the Hegemony); save/load. ✅ |
 | **X1.1** | **The living world**: three off-map powers (Oakhaven, Tor, Vael) with one alignment axis, envoys, trade agreements, lend-lease convoys through open ports and past wolfpacks, the Vosk foreign ministry; 26 living cities with population, local morale, hospitals, bunkers and new industry; the local news wire; the Vosk Hotline (ceasefire, surrender terms, ultimatum, armistice); six new event cards; medical supplies. ✅ |
+| **Deck** | **Expanded event deck**: 92 cards in five categories, 25 event-chain links, writer packs (`follow_ups`, `chain_only`), tax/tech/outbreak/disaster effects, generated by `tools/generate_massive_deck.py`. ✅ |
 | 9 | Strategic bombing of factories (air wings over industrial centres), amphibious landings, multiple research slots. |
 | 10 | Domestic Politics & the Draft (§7.4): war weariness, rationing, conscription laws, factions. |
 | 11 | Diplomacy, balance pass. |
@@ -1079,8 +1115,8 @@ a formation, and the home front pays for all of it.
 ## 8. Open Questions
 - Real-time-with-pause, or strictly turn-based? (Currently strictly turn-based.)
 - Should a SYSTEM PURGE offer "start new campaign" in-app, or only by relaunching?
-- Balance: the scripted event deck runs out after about 8 weeks. The AI and SIGINT now generate steady pressure,
-  but the economy is still a placeholder. Recurring and triggered events should add more.
+- Balance: the deck now holds 62 drawable cards (about 16% a week from week 3), enough for a year or more of play.
+  Should the most common cards become `repeatable` for very long campaigns?
 - Casualty and consumption rates are first-pass numbers (see the balance note in §4.10). Tune after real play.
 - Overproduction piles up in depots (rifle and ammunition stockpiles grow fast). Should stockpiles cost upkeep, or spoil?
 - Civil morale drifts down over a campaign even at Normal taxes (about 62 → 39 in 40 weeks, from expired dispatches

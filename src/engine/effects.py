@@ -22,6 +22,10 @@ Supported keys (all deltas):
     ceasefire                             weeks  (Hotline) the enemy holds its fire
     armistice                             true   (Hotline) the war ends in a negotiated victory
     withdraw_frontier                     true   (Hotline) our divisions pull out of the Frontier trenches
+    tech                                  "<tech id>"  the technology is acquired at once (unlocks, upgrades)
+    tax_policy                            "<policy id>"  the tax policy changes (low | normal | high | oppressive)
+    outbreak                              {disease, city}  an epidemic breaks out (raises its emergency)
+    disaster                              {kind, region}  a natural disaster strikes (raises its emergency)
 """
 
 from __future__ import annotations
@@ -41,7 +45,7 @@ NATION_EFFECTS: dict[str, tuple[str, str, str]] = {
 }
 SPECIAL_EFFECTS = {"stockpiles", "flags", "ai_tension", "equipment", "army_morale", "modifier", "research_weeks",
                    "quarantine", "relief_unit", "relations", "rival_relations", "build", "city_morale", "ceasefire",
-                   "armistice", "withdraw_frontier"}
+                   "armistice", "withdraw_frontier", "tech", "tax_policy", "outbreak", "disaster"}
 MODIFIER_LABELS = {"factory_efficiency": ("FACTORY OUTPUT", "pct")}
 VALID_EFFECT_KEYS = set(NATION_EFFECTS) | SPECIAL_EFFECTS
 
@@ -68,6 +72,12 @@ def validate_effects(effects: dict[str, Any], where: str, resource_ids: set[str]
                 raise ValueError(f"{where}: {key} effect needs an object, got {value!r}")
         elif key in ("armistice", "withdraw_frontier"):
             continue
+        elif key in ("tech", "tax_policy"):
+            if not isinstance(value, str):
+                raise ValueError(f"{where}: {key} effect needs an id string, got {value!r}")
+        elif key in ("outbreak", "disaster"):
+            if not isinstance(value, dict):
+                raise ValueError(f"{where}: {key} effect needs an object, got {value!r}")
         elif key != "flags" and not isinstance(value, (int, float)):
             raise ValueError(f"{where}: effect {key!r} must be a number, got {value!r}")
 
@@ -188,6 +198,27 @@ def apply_effects(state: GameState, effects: dict[str, Any]) -> list[str]:
 
             moved = withdraw_from_frontier(state)
             changes.append(f"{len(moved)} FORMATION(S) ORDERED OUT OF THE FRONTIER")
+        elif key == "tech":
+            from src.engine.research import complete, techs
+
+            if value not in nation.known_techs:
+                complete(state, nation, value)
+                changes.append(f"TECHNOLOGY ACQUIRED: {techs(state)[value]['name'].upper()}")
+        elif key == "tax_policy":
+            from src.engine.economy_engine import set_tax_policy
+
+            policy = set_tax_policy(state, nation.id, value)
+            changes.append(f"TAX POLICY: {policy['name'].upper()} ({policy['rate']:.0%})")
+        elif key == "outbreak":
+            from src.engine.crisis_engine import disease, start_outbreak
+
+            if start_outbreak(state, value["disease"], f"city:{value['city']}"):
+                changes.append(f"{disease(state, value['disease'])['name'].upper()} BREAKS OUT IN {value['city'].upper()}")
+        elif key == "disaster":
+            from src.engine.crisis_engine import start_disaster
+
+            if start_disaster(state, value["kind"], value.get("region")):
+                changes.append(f"{value['kind'].replace('_', ' ').upper()} STRIKES")
     return changes
 
 
@@ -237,6 +268,12 @@ def preview_effects(state: GameState, effects: dict[str, Any]) -> list[str]:
             lines.append(f"NEW {buildings(state)[value['building']]['name'].upper()} IN {value['city'].upper()} (FREE)")
         elif key == "city_morale":
             lines += [describe(f"{c.upper()} LOCAL MORALE", d, "points", state.currency) for c, d in value.items() if d]
+        elif key == "tech":
+            from src.engine.research import techs
+
+            lines.append(f"TECHNOLOGY: {techs(state).get(value, {}).get('name', value).upper()}")
+        elif key == "tax_policy":
+            lines.append(f"TAX POLICY → {value.upper()}")
     return lines
 
 

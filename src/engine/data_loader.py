@@ -255,9 +255,18 @@ def validate_deck(deck: dict[str, Any], resource_ids: set[str], equipment_ids: s
             raise ValueError(f"{where}: duplicate card id")
         seen.add(card["id"])
         choices = card.get("choices", [])
-        if not 2 <= len(choices) <= 3:
-            raise ValueError(f"{where}: a dilemma needs 2 or 3 choices")
+        if not (1 if card.get("chain_only") else 2) <= len(choices) <= 3:
+            raise ValueError(f"{where}: a dilemma needs 2 or 3 choices (a chain-only card may have 1)")
         if len({c["id"] for c in choices}) != len(choices):
             raise ValueError(f"{where}: duplicate choice ids")
         for choice in choices:
             validate_effects(choice.get("effects", {}), f"{where} choice {choice['id']!r}", resource_ids, equipment_ids)
+    ids = {c["id"] for c in deck.get("cards", [])}
+    for card in deck.get("cards", []):  # event chains must point at cards that exist
+        for choice in card.get("choices", []):
+            for follow in choice.get("follow_ups", []):
+                targets = [follow["card"]] if "card" in follow else [o["card"] for o in follow.get("outcomes", [])]
+                missing = [t for t in targets if t not in ids]
+                if missing or not targets:
+                    raise ValueError(f"events_deck.json [{card['id']}] choice {choice['id']!r}: follow-up to unknown "
+                                     f"card(s) {missing or '(none)'}")
