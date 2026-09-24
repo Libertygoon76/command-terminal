@@ -1,0 +1,82 @@
+{
+  "_comment": "ASCII strategic map. Owner codes in brackets are colored by the UI using legend.",
+  "legend": {
+    "K": "kestria",
+    "V": "vosk",
+    "N": "neutral",
+    "-": "contested"
+  },
+  "ascii": [
+    " ~ ~ ~ ~ ~ ~ ~ ~   N O R T H E R N   S E A   ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~",
+    " ~ ~ ~ ┌──────────────┬───────────────┐ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~",
+    " ~ ~ ~ │ PORT CASSEL  │   HARROWFEN   ├───────────┬───────────────┐",
+    " ~ ~ ~ │     [K]      │      [K]      │STONEREACH │    KARZAN     │",
+    " ~ ~ ~ ├──────────────┴───────┬───────┤    [K]    │     [V] *     │",
+    " ~ ~ ~ │                      │       ├─────╫─────┼───────────────┤",
+    " ~ ~ ~ │    ALDMARK * [K]     │ GREY- │     ╫     │               │",
+    " ~ ~ ~ │      (CAPITAL)       │ WATER │ FRONTIER  │  VOSK PLAINS  │",
+    " ~ ~ ~ │                      │  [K]  │   [ - ]   │      [V]      │",
+    " ~ ~ ~ └──────────────────────┴───────┴───────────┴───────────────┘",
+    " ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~   I R E N   S T R A I T S  [N]  ~ ~ ~ ~ ~ ~ ~",
+    "",
+    "  [K] KESTRIA   [V] VOSK   [N] NEUTRAL   [ - ] CONTESTED   * CAPITAL   ╫ RAIL"
+  ],
+  "regions": [
+    {
+      "id": "aldmark",
+      "name": "Aldmark",
+      "owner": "kestria",
+      "terrain": "urban",
+      "capital": true
+    },
+    {
+      "id": "port_cassel",
+      "name": "Port Cassel",
+      "owner": "kestria",
+      "terrain": "coastal"
+    },
+    {
+      "id": "harrowfen",
+      "name": "Harrowfen",
+      "owner": "kestria",
+      "terrain": "marsh"
+    },
+    {
+      "id": "greywater",
+      "name": "Greywater",
+      "owner": "kestria",
+      "terrain": "river"
+    },
+    {
+      "id": "stonereach",
+      "name": "Stonereach",
+      "owner": "kestria",
+      "terrain": "mountain"
+    },
+    {
+      "id": "frontier",
+      "name": "The Frontier",
+      "owner": "contested",
+      "terrain": "plains"
+    },
+    {
+      "id": "karzan",
+      "name": "Karzan",
+      "owner": "vosk",
+      "terrain": "urban",
+      "capital": true
+    },
+    {
+      "id": "vosk_plains",
+      "name": "Vosk Plains",
+      "owner": "vosk",
+      "terrain": "plains"
+    },
+    {
+      "id": "iren_straits",
+      "name": "Iren Straits",
+      "owner": "neutral",
+      "terrain": "sea"
+    }
+  ]
+}

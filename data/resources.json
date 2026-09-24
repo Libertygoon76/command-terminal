@@ -1,0 +1,16 @@
+{
+  "resources": [
+    { "id": "grain",     "name": "Grain",     "category": "raw",          "unit": "t",      "base_price": 12 },
+    { "id": "coal",      "name": "Coal",      "category": "raw",          "unit": "t",      "base_price": 18 },
+    { "id": "iron_ore",  "name": "Iron Ore",  "category": "raw",          "unit": "t",      "base_price": 25 },
+    { "id": "crude_oil", "name": "Crude Oil", "category": "raw",          "unit": "bbl",    "base_price": 40 },
+    { "id": "steel",     "name": "Steel",     "category": "manufactured", "unit": "t",      "base_price": 95,
+      "recipe": { "iron_ore": 2, "coal": 1 } },
+    { "id": "fuel",      "name": "Fuel",      "category": "manufactured", "unit": "kL",     "base_price": 70,
+      "recipe": { "crude_oil": 2 } },
+    { "id": "munitions", "name": "Munitions", "category": "manufactured", "unit": "crate",  "base_price": 140,
+      "recipe": { "steel": 1, "coal": 1 } },
+    { "id": "rations",   "name": "Rations",   "category": "manufactured", "unit": "crate",  "base_price": 30,
+      "recipe": { "grain": 3 } }
+  ]
+}

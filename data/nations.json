@@ -1,0 +1,46 @@
+{
+  "nations": [
+    {
+      "id": "kestria",
+      "name": "Commonwealth of Kestria",
+      "leader_title": "Lord Protector",
+      "capital": "Aldmark",
+      "treasury": 1250000,
+      "manpower": 48000,
+      "morale": 62,
+      "population": 8400000,
+      "tax_rate": 0.18,
+      "stockpiles": {
+        "grain": 42000,
+        "coal": 18000,
+        "iron_ore": 9500,
+        "crude_oil": 6000,
+        "steel": 2400,
+        "fuel": 3100,
+        "munitions": 1800,
+        "rations": 5200
+      }
+    },
+    {
+      "id": "vosk",
+      "name": "Vosk Hegemony",
+      "leader_title": "Supreme Chairman",
+      "capital": "Karzan",
+      "treasury": 2100000,
+      "manpower": 91000,
+      "morale": 48,
+      "population": 13100000,
+      "tax_rate": 0.27,
+      "stockpiles": {
+        "grain": 30000,
+        "coal": 41000,
+        "iron_ore": 22000,
+        "crude_oil": 15000,
+        "steel": 6100,
+        "fuel": 7400,
+        "munitions": 5200,
+        "rations": 4100
+      }
+    }
+  ]
+}

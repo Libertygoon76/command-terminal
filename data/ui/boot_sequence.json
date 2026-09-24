@@ -1,0 +1,101 @@
+{
+  "_comment": "Boot screen script. style: title | dim | ok | warn | alert | text. {nation}, {leader_title}, {designation}, {date} are substituted.",
+  "lines": [
+    {
+      "text": "AEGIS BIOS v4.11  (C) MINISTRY OF DEFENCE — SIGNALS DIRECTORATE",
+      "style": "dim"
+    },
+    {
+      "text": "MEMORY TEST ........ 65536K OK",
+      "style": "dim"
+    },
+    {
+      "text": "",
+      "style": "text"
+    },
+    {
+      "text": "  ╔════════════════════════════════════════════════════════╗",
+      "style": "title"
+    },
+    {
+      "text": "  ║    C O M M A N D   T E R M I N A L                     ║",
+      "style": "title"
+    },
+    {
+      "text": "  ║    STRATEGIC COMMAND & CONTROL SYSTEM - MK. IV         ║",
+      "style": "title"
+    },
+    {
+      "text": "  ╚════════════════════════════════════════════════════════╝",
+      "style": "title"
+    },
+    {
+      "text": "",
+      "style": "text"
+    },
+    {
+      "text": "[ OK ] Mounting encrypted volume /dev/crypt0",
+      "style": "ok"
+    },
+    {
+      "text": "[ OK ] Loading kernel module: STRATCOM-7",
+      "style": "ok"
+    },
+    {
+      "text": "[ OK ] Initializing teletype relay .............. 12 channels",
+      "style": "ok"
+    },
+    {
+      "text": "[ OK ] Establishing uplink: {designation}",
+      "style": "ok"
+    },
+    {
+      "text": "[WARN] Carrier signal degraded on eastern trunk line — rerouting",
+      "style": "warn"
+    },
+    {
+      "text": "[ OK ] Cryptographic handshake (KX-9 one-time pad) ....... VERIFIED",
+      "style": "ok"
+    },
+    {
+      "text": "[ OK ] Synchronizing national ledger ............. {nation}",
+      "style": "ok"
+    },
+    {
+      "text": "[ OK ] Synchronizing chronometer ................. {date}",
+      "style": "ok"
+    },
+    {
+      "text": "[ OK ] Decrypting dispatch queue",
+      "style": "ok"
+    },
+    {
+      "text": "",
+      "style": "text"
+    },
+    {
+      "text": "  RETINAL SCAN ........... MATCH",
+      "style": "text"
+    },
+    {
+      "text": "  VOICEPRINT ............. MATCH",
+      "style": "text"
+    },
+    {
+      "text": "  CLEARANCE .............. LEVEL OMEGA",
+      "style": "text"
+    },
+    {
+      "text": "",
+      "style": "text"
+    },
+    {
+      "text": "  WELCOME, {leader_title}. ALL ACCESS IS MONITORED AND LOGGED.",
+      "style": "alert"
+    },
+    {
+      "text": "  UNAUTHORIZED USE IS AN ACT OF TREASON.",
+      "style": "alert"
+    }
+  ]
+}

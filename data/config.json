@@ -1,0 +1,9 @@
+{
+  "game_title": "COMMAND TERMINAL",
+  "terminal_designation": "NODE-7 // AEGIS SECURE NET",
+  "start_date": "1984-01-02",
+  "days_per_turn": 7,
+  "currency": "CR",
+  "player_nation": "kestria",
+  "boot_line_interval_seconds": 0.07
+}

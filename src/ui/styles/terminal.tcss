@@ -1,0 +1,194 @@
+/* COMMAND TERMINAL — phosphor CRT theme */
+
+$ct-phosphor: #33ff66;
+$ct-phosphor-dim: #1f8f3f;
+$ct-phosphor-bright: #eaffea;
+$ct-amber: #ffb000;
+$ct-bg: #040804;
+$ct-surface: #081008;
+$ct-panel: #0c1a0e;
+$ct-cursor: #1f6b30;
+$ct-cursor-blur: #0f2e16;
+
+Screen {
+    background: $ct-bg;
+    color: $ct-phosphor;
+}
+
+/* ---------- boot ---------- */
+
+BootScreen {
+    background: #000000;
+    align: center top;
+}
+
+#boot-container {
+    width: 96;
+    max-width: 100%;
+    height: 100%;
+    padding: 1 2;
+    scrollbar-size: 0 0;
+}
+
+#boot-log {
+    height: auto;
+}
+
+#boot-prompt {
+    width: 100%;
+    height: 1;
+    margin-top: 1;
+    content-align: center middle;
+    color: $ct-amber;
+    text-style: bold;
+}
+
+/* ---------- status bar ---------- */
+
+#status-bar {
+    height: 3;
+    background: $ct-panel;
+    border: heavy $ct-phosphor-dim;
+}
+
+#sb-title {
+    width: 1fr;
+    padding: 0 1;
+}
+
+.sb-cell {
+    width: auto;
+    padding: 0 2;
+    border-left: vkey $ct-phosphor-dim;
+}
+
+/* ---------- workspace ---------- */
+
+#workspace {
+    height: 1fr;
+}
+
+#sidebar {
+    width: 28;
+    background: $ct-surface;
+    border: heavy $ct-phosphor-dim;
+    border-title-color: $ct-amber;
+    border-title-style: bold;
+}
+
+#nav-list {
+    height: auto;
+    margin-bottom: 1;
+}
+
+#sys-info {
+    padding: 1 1;
+    border-top: dashed $ct-phosphor-dim;
+}
+
+#main-view {
+    width: 1fr;
+    border: heavy $ct-phosphor-dim;
+    border-title-color: $ct-amber;
+    border-title-style: bold;
+}
+
+#comms-log {
+    height: 1;
+    background: $ct-panel;
+}
+
+/* ---------- lists ---------- */
+
+ListView {
+    background: transparent;
+}
+
+ListItem {
+    background: transparent;
+    padding: 0 1;
+    border-left: blank;
+}
+
+ListView > ListItem.-highlight {
+    background: $ct-cursor-blur;
+    border-left: outer $ct-phosphor-dim;
+}
+
+ListView:focus > ListItem.-highlight {
+    background: $ct-cursor-blur;
+    border-left: outer $ct-amber;
+    color: $ct-phosphor-bright;
+}
+
+/* ---------- inbox ---------- */
+
+#mail-list {
+    width: 52;
+    height: 100%;
+    border-right: heavy $ct-phosphor-dim;
+    border-title-color: $ct-phosphor-dim;
+}
+
+#mail-list > MailItem {
+    height: 2;
+    margin-bottom: 1;
+}
+
+#mail-reader {
+    width: 1fr;
+    padding: 1 2;
+}
+
+/* ---------- panels ---------- */
+
+EconomyView, MilitaryView, MapView {
+    padding: 1 2;
+}
+
+.summary {
+    height: auto;
+    padding: 1 2;
+    background: $ct-panel;
+    border: round $ct-phosphor-dim;
+}
+
+.section-title {
+    margin-top: 1;
+    height: 1;
+}
+
+.module-status {
+    margin-top: 1;
+    height: auto;
+}
+
+#map-ascii {
+    height: auto;
+    padding: 1 0;
+}
+
+DataTable {
+    height: auto;
+    max-height: 20;
+    background: transparent;
+    margin-top: 1;
+}
+
+DataTable > .datatable--header {
+    background: $ct-panel;
+    color: $ct-amber;
+    text-style: bold;
+}
+
+DataTable > .datatable--cursor {
+    background: $ct-cursor;
+    color: $ct-phosphor-bright;
+}
+
+/* ---------- toasts ---------- */
+
+Toast {
+    background: $ct-panel;
+    border-left: outer $ct-amber;
+}

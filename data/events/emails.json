@@ -1,0 +1,60 @@
+{
+  "_comment": "Scheduled classified emails. classification: UNCLASSIFIED | CONFIDENTIAL | SECRET | TOP SECRET. 'effects' on options are recorded but not applied until Phase 2.",
+  "emails": [
+    {
+      "id": "brief_001",
+      "arrives_turn": 1,
+      "sender": "Gen. Aurel Vance, Chief of the Defence Staff",
+      "subject": "Transfer of Command — Initial Briefing",
+      "classification": "TOP SECRET",
+      "body": "{leader_title},\n\nOn behalf of the Defence Staff, congratulations on your investiture. As of 0600 this morning, the terminal you are reading this on is the single point of command for the armed forces and civil administration of the {nation}.\n\nThe situation you inherit is not a comfortable one:\n\n  - The Treasury is solvent, but only just. The previous administration financed its road programme on short-term credit.\n  - Civil morale is holding. The dockyards in Port Cassel are restless over wages.\n  - The Vosk Hegemony continues to mass formations near the Frontier. Their intentions are unclear.\n\nOur standing army is small and under-equipped. Understand that nothing moves quickly: a division raised today will not be fit for the line for at least two months, and every soldier in the field must be fed, fuelled and supplied every single week.\n\nYour ministers will report through this inbox. I recommend you read each dispatch carefully before committing.\n\nFor the Commonwealth.\n\n— A. VANCE"
+    },
+    {
+      "id": "treasury_001",
+      "arrives_turn": 1,
+      "sender": "Ministry of the Treasury",
+      "subject": "Weekly Ledger Summary — Week 1",
+      "classification": "CONFIDENTIAL",
+      "body": "LEDGER SUMMARY\n\nCash reserves are adequate for approximately 20 weeks at current expenditure. The standing tax rate of 18% is below the regional average.\n\nThe Treasury advises against any tax increase while the dockyard dispute remains unresolved, and against any decrease while the Frontier situation persists.\n\nDetailed revenue forecasting is not yet available.\n\n— Office of the Chancellor"
+    },
+    {
+      "id": "intel_001",
+      "arrives_turn": 1,
+      "sender": "Directorate of Military Intelligence",
+      "subject": "Vosk Troop Concentrations — Frontier Sector",
+      "classification": "SECRET",
+      "body": "SOURCE RELIABILITY: B (usually reliable)\n\nAerial reconnaissance and a well-placed source report at least four Vosk infantry divisions and one armored formation within 40 km of the Frontier line. Rail traffic into Karzan has doubled in the last fortnight — consistent with stockpiling of fuel and munitions.\n\nAssessment: exercise or preparation for a limited offensive. Confidence LOW.\n\nWe request authority to expand agent networks inside the Hegemony.",
+      "options": [
+        { "id": "fund", "label": "Authorize expansion of agent networks (-40,000 CR)", "effects": { "treasury": -40000 } },
+        { "id": "watch", "label": "Maintain current surveillance posture", "effects": {} },
+        { "id": "leak", "label": "Leak the report to the press to rally the public", "effects": { "morale": 4 } }
+      ]
+    },
+    {
+      "id": "strike_001",
+      "arrives_turn": 2,
+      "sender": "Ministry of the Interior",
+      "subject": "Port Cassel Dockworkers Threaten Strike",
+      "classification": "CONFIDENTIAL",
+      "body": "The Port Cassel Dockworkers' Union has issued an ultimatum: a 12% wage increase within two weeks or a general walkout.\n\nPort Cassel handles the majority of our crude oil imports. A prolonged strike would choke fuel production within a month.\n\nAwaiting your direction.",
+      "options": [
+        { "id": "concede", "label": "Meet their demands (-60,000 CR, +morale)", "effects": { "treasury": -60000, "morale": 3 } },
+        { "id": "negotiate", "label": "Open negotiations — offer 5%", "effects": { "treasury": -25000 } },
+        { "id": "suppress", "label": "Declare the strike illegal; deploy gendarmerie", "effects": { "morale": -6 } }
+      ]
+    },
+    {
+      "id": "harvest_001",
+      "arrives_turn": 3,
+      "sender": "Ministry of Agriculture",
+      "subject": "Blight Reported in Harrowfen Grain Belt",
+      "classification": "UNCLASSIFIED",
+      "body": "Agronomists report a fungal blight spreading through the Harrowfen lowlands. If unchecked, projected grain output for the season could fall by up to 30%.\n\nGrain is the base input for military rations.",
+      "options": [
+        { "id": "treat", "label": "Fund emergency crop treatment (-35,000 CR)", "effects": { "treasury": -35000 } },
+        { "id": "ration", "label": "Begin civilian rationing to protect reserves", "effects": { "morale": -4 } },
+        { "id": "ignore", "label": "Take no action", "effects": {} }
+      ]
+    }
+  ]
+}
