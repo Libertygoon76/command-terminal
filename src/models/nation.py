@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+from src.models.military import Unit
+
 MORALE_MIN = 0.0
 MORALE_MAX = 100.0
 
@@ -45,6 +47,7 @@ class Nation:
     population: int
     tax_rate: float  # 0.0-1.0
     stockpiles: dict[str, int] = field(default_factory=dict)
+    units: list[Unit] = field(default_factory=list)  # formations in the field
 
     def __post_init__(self) -> None:
         self.morale = _clamp(float(self.morale), MORALE_MIN, MORALE_MAX)
@@ -84,6 +87,10 @@ class Nation:
     @property
     def military_morale_band(self) -> str:
         return morale_band(self.military_morale)
+
+    @property
+    def total_deployed(self) -> int:
+        return sum(u.strength for u in self.units)
 
     @property
     def in_debt(self) -> bool:

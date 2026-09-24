@@ -1,0 +1,40 @@
+{
+  "_comment": [
+    "Order of battle at game start. location = [x, y] map cell (see data/map/world.json).",
+    "The unit's [symbol] is drawn centred on that cell (x-1 .. x+1). Units sharing a cell, or whose symbols overlap, draw as a stack [*].",
+    "type = template id in units.json. stance = stance id in units.json. Vosk values are ground truth: the player only sees estimates."
+  ],
+  "units": [
+    { "id": "kes_1_inf", "designation": "K-01", "name": "1st Kestrian Infantry Division", "nation": "kestria", "type": "infantry_division",
+      "location": [69, 8], "strength": 9400, "morale": 78, "supply": 100, "stance": "trench_warfare", "commander": "Maj. Gen. Oskar Hale" },
+    { "id": "kes_3_inf", "designation": "K-02", "name": "3rd Kestrian Infantry Division", "nation": "kestria", "type": "infantry_division",
+      "location": [69, 15], "strength": 8800, "morale": 71, "supply": 92, "stance": "trench_warfare", "commander": "Maj. Gen. Ilse Varga" },
+    { "id": "kes_2_inf", "designation": "K-03", "name": "2nd Kestrian Infantry Division", "nation": "kestria", "type": "infantry_division",
+      "location": [69, 21], "strength": 9100, "morale": 74, "supply": 96, "stance": "trench_warfare", "commander": "Maj. Gen. Piet Aldren" },
+    { "id": "kes_aldmark_militia", "designation": "K-04", "name": "Aldmark Volunteer Militia Battalion", "nation": "kestria", "type": "militia_battalion",
+      "location": [69, 21], "strength": 1100, "morale": 55, "supply": 80, "stance": "trench_warfare", "commander": "Col. (Res.) Maren Tolle" },
+    { "id": "kes_7_arm", "designation": "K-05", "name": "7th Armored Brigade", "nation": "kestria", "type": "armored_brigade",
+      "location": [60, 21], "strength": 3200, "morale": 82, "supply": 88, "stance": "defense_in_depth", "commander": "Brig. Konrad Wess" },
+    { "id": "kes_12_art", "designation": "K-06", "name": "12th Artillery Regiment", "nation": "kestria", "type": "artillery_regiment",
+      "location": [62, 12], "strength": 2400, "morale": 80, "supply": 100, "stance": "trench_warfare", "commander": "Col. Anja Brecht" },
+    { "id": "kes_frontier_hq", "designation": "K-07", "name": "Frontier Army Headquarters", "nation": "kestria", "type": "hq_logistics",
+      "location": [55, 27], "strength": 3800, "morale": 85, "supply": 100, "stance": "defense_in_depth", "commander": "Gen. Aurel Vance" },
+
+    { "id": "vosk_4_rifle", "designation": "V-4R", "name": "4th Rifle Division", "nation": "vosk", "type": "infantry_division",
+      "location": [78, 7], "strength": 10500, "morale": 64, "supply": 81, "stance": "trench_warfare", "commander": "Gen.-Maj. Yuri Dolgan" },
+    { "id": "vosk_9_rifle", "designation": "V-9R", "name": "9th Rifle Division", "nation": "vosk", "type": "infantry_division",
+      "location": [78, 13], "strength": 9800, "morale": 60, "supply": 77, "stance": "trench_warfare", "commander": "Gen.-Maj. Arkady Senn" },
+    { "id": "vosk_5_rifle", "designation": "V-5R", "name": "5th Rifle Division", "nation": "vosk", "type": "infantry_division",
+      "location": [78, 20], "strength": 11200, "morale": 66, "supply": 84, "stance": "trench_warfare", "commander": "Gen.-Maj. Lev Orsk" },
+    { "id": "vosk_17_rifle", "designation": "V-17R", "name": "17th Rifle Division", "nation": "vosk", "type": "infantry_division",
+      "location": [78, 20], "strength": 8600, "morale": 58, "supply": 70, "stance": "trench_warfare", "commander": "Col. Dmitri Hask" },
+    { "id": "vosk_1_gtank", "designation": "V-1GT", "name": "1st Guards Tank Brigade", "nation": "vosk", "type": "armored_brigade",
+      "location": [88, 12], "strength": 3900, "morale": 81, "supply": 72, "stance": "blitzkrieg", "commander": "Gen.-Lt. Vera Kolchak" },
+    { "id": "vosk_21_art", "designation": "V-21A", "name": "21st Artillery Brigade", "nation": "vosk", "type": "artillery_regiment",
+      "location": [86, 19], "strength": 2700, "morale": 69, "supply": 88, "stance": "trench_warfare", "commander": "Col. Pavel Ruske" },
+    { "id": "vosk_west_hq", "designation": "V-WF", "name": "Western Front Command", "nation": "vosk", "type": "hq_logistics",
+      "location": [92, 22], "strength": 4400, "morale": 75, "supply": 95, "stance": "defense_in_depth", "commander": "Marshal Timur Ostrakov" },
+    { "id": "vosk_3_gtank", "designation": "V-3GT", "name": "3rd Guards Tank Brigade", "nation": "vosk", "type": "armored_brigade",
+      "location": [101, 27], "strength": 3600, "morale": 77, "supply": 90, "stance": "blitzkrieg", "commander": "Gen.-Maj. Sasha Rudin" }
+  ]
+}

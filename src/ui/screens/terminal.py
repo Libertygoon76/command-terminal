@@ -55,7 +55,7 @@ class TerminalScreen(Screen):
         self.query_one("#main-view", ContentSwitcher).current = view_id
         self._set_view_title(view_id)
         self.query_one(Sidebar).highlight(view_id)
-        focus_target = self.query_one(f"#{view_id}").query("ListView, DataTable").first()
+        focus_target = self.query_one(f"#{view_id}").query(".primary-focus, ListView, DataTable").first()
         focus_target.focus()
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:

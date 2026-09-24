@@ -1,7 +1,7 @@
 # COMMAND TERMINAL — Game Design Document
 
 > Living document. Update it whenever a system is designed, changed, or cut.
-> Last major revision: Phase 2 (inbox loop, event chains, fail states), 2026-09-23.
+> Last major revision: Phase 3 (War Room tactical map), 2026-09-24.
 
 ---
 
@@ -162,8 +162,70 @@ and cannot be sent twice. Replies with a deadline show "REPLY BY WK n", or "DUE 
   **while still claiming the same certainty**. The truth is stored hidden in `email.intel_truth`,
   for later "the report was wrong" reveals.
 
-### 4.8 Map `[P1 static]` → War Room `[P3]`
-- Phase 1: a static ASCII map plus a region table. Phase 3 turns this into the War Room (§4.9 once built).
+### 4.8 War Room — Tactical Situation Map `[P3]`
+A digitized staff situation map in the style of WWII Eastern Front and Desert Storm operational
+maps: terrain, national territory washes, trench lines, rail, and NATO-style unit symbols.
+
+**Map data: an exact character grid** (`data/map/world.json`, model `src/models/world_map.py`)
+- `width` × `height` (currently 128 × 42) terminal cells. Coordinates are **x = column, y = row**, with 0,0 at top-left.
+- `base`: the rendered background, `height` rows of exactly `width` characters. It holds borders
+  (`│─┼…`), terrain glyphs (`^` mountains, `≈` river/marsh, `#` urban, `.` plains), rail `═║`,
+  trenches `┆`, settlements `★` capital, `◉` city, `⊕` port, plus labels, compass and scale bar.
+- `regions[]`: `{id, name, owner, terrain, label:[x,y], rects:[[x0,y0,x1,y1], …]}`, with inclusive rects
+  and later regions winning on overlap. Cells outside every region are sea. `WorldMap.region_at(x, y)`,
+  `owner_at`, and `is_national_border` are exact per-cell lookups.
+- `terrain_types{}`: glyph, `movement` and `defense` multipliers, and a description. Shown in the readout
+  now, and used by logistics and combat later.
+- `features[]`: settlements with exact X/Y.
+- Every row must be exactly `width` **single-cell** characters. Emoji and wide glyphs are forbidden
+  (checked in tests). `tools/generate_world_map.py` can regenerate the whole map, but it **overwrites** the file.
+
+**Units on the map** (`src/models/military.py`, data `data/orbat.json`)
+- `Unit{id, designation, name, nation, type, location:[x,y], strength, morale, supply, stance, commander}`.
+  Each `Nation` holds its `units`. Locations are validated at load: in bounds, not at sea, room for the symbol.
+
+**Terminal NATO symbology** (`symbol` per template in `units.json`)
+
+| Symbol | Type |
+|--------|------|
+| `[X]` | Infantry |
+| `[O]` | Armor |
+| `[•]` | Artillery |
+| `[H]` | HQ / Logistics |
+| `[m]` | Militia |
+| `[*]` | **Stack**: 2+ formations in the same cell, or whose symbols would overlap |
+
+- A symbol is 3 cells wide and centred on the unit's `location` (x−1 … x+1).
+- Friendly (player) symbols are **cyan**, hostile symbols **red**. A stack holding both sides is **amber** (contact/engagement).
+  Colors are in config `map`.
+- Overlap rule (`engine/map_overlay.py`): any unit whose symbol would touch an existing marker joins
+  it as a stack. The layout can never break, because no two markers share a cell.
+
+**Rendering** (`src/ui/widgets/map_canvas.py`)
+- `MapCanvas` is a Textual **Line-API `ScrollView`**. It paints only the visible rows, so the map can be
+  any size and pans with the mouse wheel (shift+wheel scrolls horizontally) and the scrollbars.
+- Layers, bottom to top: owner background wash (Kestria green-black, Vosk red-black, contested amber, sea blue),
+  terrain glyph colors, national borders in amber, the unit overlay, then the crosshair and cursor.
+- Cursor: arrows (shift ×5), `[` / `]` to cycle units, `c` to centre, and click to select. The view follows the cursor.
+
+**Sector Readout / Intelligence panel** (right 30%)
+- Cursor on a friendly unit: exact data (strength vs establishment, morale, supply, stance, commander, grid).
+- Cursor on a hostile unit: **fog of war** (below).
+- Cursor on a stack: every formation in it.
+- Always shown: the sector's grid ref, control, terrain modifiers, and force counts.
+- The **Order of Battle** list mirrors the map. Highlighting a unit jumps the cursor to it, and vice versa.
+
+**Fog of war on the map** (`intel.unit_report`)
+- Recon accuracy = `base_accuracy` (0.45), + `frontline_bonus` (0.15) if any friendly formation is within
+  `frontline_range` cells, + flag bonuses (e.g. `network_lantern` +0.2), capped at `max_accuracy`.
+- Strength is shown as a **range with certainty**. Morale, supply and commander read **UNKNOWN**.
+  The same misinformation rules apply as for email intel, so the range can be entirely wrong.
+- **Identification**: with probability = accuracy the designation is known ("4th Rifle Division (PROBABLE)").
+  Otherwise the unit is an anonymous "CONTACT H-nn", and it may be **misclassified**: the map itself
+  shows the wrong symbol (e.g. a tank brigade drawn as `[H]`).
+- Reports are rolled **once per unit per week** from a seed of (campaign, unit, week). Re-inspecting
+  cannot average toward the truth, looking at the map never disturbs the campaign RNG, and a seeded
+  campaign always produces the same reports.
 
 ---
 
@@ -190,17 +252,19 @@ command-terminal/
 ├── data/
 │   ├── config.json          # dates, economy coefficients, fail-state thresholds, intel, seed
 │   ├── nations.json         # starting stats (incl. military_morale)
+│   ├── orbat.json           # starting formations with exact map locations
 │   ├── resources.json, units.json
 │   ├── events/emails.json   # email templates + event chains
 │   ├── events/system_alerts.json  # SYSTEM PURGE texts per loss cause
-│   ├── map/world.json
+│   ├── map/world.json       # War Room grid: base art, regions (rects), terrain types, features
 │   └── ui/boot_sequence.json
 ├── src/
-│   ├── models/              # nation.py, inbox.py (Email, EmailOption, FollowUp), game_state.py
+│   ├── models/              # nation.py, inbox.py, game_state.py, military.py (Unit), world_map.py (WorldMap)
 │   ├── engine/
 │   │   ├── data_loader.py   # new_game(), content validation
 │   │   ├── effects.py       # effect interpreter
-│   │   ├── intel.py         # fog-of-war estimates
+│   │   ├── intel.py         # fog-of-war estimates (emails + weekly enemy-unit reports)
+│   │   ├── map_overlay.py   # unit markers, stacking, per-cell lookups
 │   │   ├── event_manager.py # delivery, respond(), deadlines, follow-ups
 │   │   ├── economy_engine.py# placeholder ledger
 │   │   ├── reports.py       # weekly status report
@@ -210,9 +274,10 @@ command-terminal/
 │   └── ui/
 │       ├── app.py           # owns GameState + TickEngine, `revision` reactive
 │       ├── screens/         # boot.py, terminal.py, confirm.py (reply confirmation modal)
-│       ├── widgets/         # status_bar.py (reactive), sidebar.py (nav + ADVANCE WEEK)
-│       └── views/           # inbox.py, economy.py, military.py, map.py
-└── tests/                   # test_engine.py (incl. fuzzed playthroughs), test_ui.py (headless)
+│       ├── widgets/         # status_bar.py (reactive), sidebar.py (nav + ADVANCE WEEK), map_canvas.py (War Room)
+│       └── views/           # inbox.py, economy.py, military.py, map.py (War Room + intel panel)
+├── tools/generate_world_map.py  # optional: regenerate world.json (overwrites it)
+└── tests/                   # test_engine.py (fuzzed playthroughs), test_ui.py, test_war_room.py (headless)
 ```
 
 ### 5.3 Tick order
@@ -230,6 +295,9 @@ command-terminal/
 | `↑ ↓ Enter`, `Tab` | Navigate lists / move focus |
 | `a`–`d` | Reply to the open dispatch with option A–D (asks to confirm: `y` / `n`) |
 | `h` | Hide / show archived dispatches |
+| Map: arrows / shift+arrows | Move the cursor 1 / 5 cells (the view follows) |
+| Map: `[` `]` | Previous / next unit |
+| Map: `c`, click, wheel | Centre on the cursor, select a cell, pan |
 | `n` or **▶ ADVANCE WEEK** | Advance one week |
 | `q` | Log out |
 
@@ -246,7 +314,7 @@ revolution lock). Set `CT_SCREENSHOTS=<dir>` to save SVG screenshots from the UI
 |-------|-------|
 | **1** | Foundation: structure, models, data, TUI shell, boot screen, turn advance, email delivery. ✅ |
 | **2** | Inbox loop: replies with effects, confirmation, event chains, deadlines, weekly report, placeholder ledger, fail states, fog-of-war estimates, reactive TUI. ✅ |
-| 3 | **War Room map**: X/Y grid map, NATO-style unit symbology, unit overlay and stacking, pannable map, sector/intel readout with fog of war. |
+| **3** | **War Room**: X/Y grid map, NATO-style symbology, overlay and stacking, pannable Line-API map, sector/intel readout, fog of war on units, and misidentification. ✅ |
 | 4 | Economy engine: production chains, stockpiles, markets, trade. |
 | 5 | Military: recruitment/training queues, formations, equipment. |
 | 6 | Logistics: supply lines on the map grid, consumption, attrition. |

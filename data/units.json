@@ -1,49 +1,147 @@
 {
+  "_comment": "Unit templates. `symbol` is the terminal NATO-style map glyph, drawn as [symbol]: X infantry, O armor, • artillery, H HQ/logistics, m militia. Stacks draw as [*].",
   "units": [
     {
       "id": "infantry_division",
       "name": "Infantry Division",
+      "symbol": "X",
+      "role": "infantry",
       "manpower": 10000,
       "recruit_cost": 60000,
       "training_weeks": 8,
-      "equipment": { "steel": 300, "munitions": 400 },
-      "upkeep": { "rations": 350, "fuel": 20, "munitions": 60, "treasury": 9000 },
-      "combat": { "attack": 4, "defense": 6, "breakthrough": 2, "speed": 1 }
+      "equipment": {
+        "steel": 300,
+        "munitions": 400
+      },
+      "upkeep": {
+        "rations": 350,
+        "fuel": 20,
+        "munitions": 60,
+        "treasury": 9000
+      },
+      "combat": {
+        "attack": 4,
+        "defense": 6,
+        "breakthrough": 2,
+        "speed": 1
+      }
     },
     {
       "id": "armored_brigade",
       "name": "Armored Brigade",
+      "symbol": "O",
+      "role": "armor",
       "manpower": 3500,
       "recruit_cost": 180000,
       "training_weeks": 14,
-      "equipment": { "steel": 1400, "munitions": 300 },
-      "upkeep": { "rations": 120, "fuel": 260, "munitions": 80, "treasury": 21000 },
-      "combat": { "attack": 9, "defense": 5, "breakthrough": 9, "speed": 3 }
+      "equipment": {
+        "steel": 1400,
+        "munitions": 300
+      },
+      "upkeep": {
+        "rations": 120,
+        "fuel": 260,
+        "munitions": 80,
+        "treasury": 21000
+      },
+      "combat": {
+        "attack": 9,
+        "defense": 5,
+        "breakthrough": 9,
+        "speed": 3
+      }
     },
     {
       "id": "artillery_regiment",
       "name": "Artillery Regiment",
+      "symbol": "•",
+      "role": "artillery",
       "manpower": 2500,
       "recruit_cost": 95000,
       "training_weeks": 10,
-      "equipment": { "steel": 700, "munitions": 900 },
-      "upkeep": { "rations": 90, "fuel": 60, "munitions": 220, "treasury": 12000 },
-      "combat": { "attack": 8, "defense": 3, "breakthrough": 4, "speed": 1 }
+      "equipment": {
+        "steel": 700,
+        "munitions": 900
+      },
+      "upkeep": {
+        "rations": 90,
+        "fuel": 60,
+        "munitions": 220,
+        "treasury": 12000
+      },
+      "combat": {
+        "attack": 8,
+        "defense": 3,
+        "breakthrough": 4,
+        "speed": 1
+      }
     },
     {
       "id": "militia_battalion",
       "name": "Militia Battalion",
+      "symbol": "m",
+      "role": "militia",
       "manpower": 1200,
       "recruit_cost": 8000,
       "training_weeks": 2,
-      "equipment": { "steel": 20, "munitions": 40 },
-      "upkeep": { "rations": 40, "fuel": 0, "munitions": 5, "treasury": 600 },
-      "combat": { "attack": 1, "defense": 3, "breakthrough": 0, "speed": 1 }
+      "equipment": {
+        "steel": 20,
+        "munitions": 40
+      },
+      "upkeep": {
+        "rations": 40,
+        "fuel": 0,
+        "munitions": 5,
+        "treasury": 600
+      },
+      "combat": {
+        "attack": 1,
+        "defense": 3,
+        "breakthrough": 0,
+        "speed": 1
+      }
+    },
+    {
+      "id": "hq_logistics",
+      "name": "HQ / Logistics Group",
+      "symbol": "H",
+      "role": "hq",
+      "manpower": 4000,
+      "recruit_cost": 70000,
+      "training_weeks": 6,
+      "equipment": {
+        "steel": 150,
+        "munitions": 50
+      },
+      "upkeep": {
+        "rations": 140,
+        "fuel": 90,
+        "munitions": 10,
+        "treasury": 11000
+      },
+      "combat": {
+        "attack": 0,
+        "defense": 2,
+        "breakthrough": 0,
+        "speed": 2
+      }
     }
   ],
   "stances": [
-    { "id": "trench_warfare",   "name": "Trench Warfare",    "description": "Dig in. Defense up sharply; heavy attrition on both sides." },
-    { "id": "blitzkrieg",       "name": "Blitzkrieg",        "description": "Concentrated armored thrust. Breakthrough up; fuel use and overextension risk up." },
-    { "id": "defense_in_depth", "name": "Defense in Depth",  "description": "Trade space for time. Reduces enemy breakthrough at the cost of ground." }
+    {
+      "id": "trench_warfare",
+      "name": "Trench Warfare",
+      "description": "Dig in. Defense up sharply; heavy attrition on both sides."
+    },
+    {
+      "id": "blitzkrieg",
+      "name": "Blitzkrieg",
+      "description": "Concentrated armored thrust. Breakthrough up; fuel use and overextension risk up."
+    },
+    {
+      "id": "defense_in_depth",
+      "name": "Defense in Depth",
+      "description": "Trade space for time. Reduces enemy breakthrough at the cost of ground."
+    }
   ]
 }

@@ -88,6 +88,7 @@ BootScreen {
 
 #main-view {
     width: 1fr;
+    height: 100%;
     border: heavy $ct-phosphor-dim;
     border-title-color: $ct-amber;
     border-title-style: bold;
@@ -142,7 +143,7 @@ ListView:focus > ListItem.-highlight {
 
 /* ---------- panels ---------- */
 
-EconomyView, MilitaryView, MapView {
+EconomyView, MilitaryView {
     padding: 1 2;
 }
 
@@ -163,9 +164,70 @@ EconomyView, MilitaryView, MapView {
     height: auto;
 }
 
-#map-ascii {
+/* ---------- war room ---------- */
+
+MapView {
+    height: 100%;
+}
+
+#map-pane {
+    width: 70%;
+    height: 100%;
+}
+
+#map-canvas {
+    height: 1fr;
+    background: #02070c;
+    scrollbar-size: 1 1;
+    scrollbar-color: #1f5f30;
+    scrollbar-color-hover: $ct-phosphor-dim;
+    scrollbar-color-active: $ct-amber;
+    scrollbar-background: #02070c;
+}
+
+#map-canvas:focus {
+    background-tint: $ct-amber 3%;
+}
+
+#map-legend {
+    height: 4;
+    padding: 0 1;
+    background: $ct-panel;
+    border-top: solid $ct-phosphor-dim;
+}
+
+#intel-pane {
+    width: 30%;
+    height: 100%;
+    border-left: heavy $ct-phosphor-dim;
+    border-title-color: $ct-amber;
+    border-title-style: bold;
+}
+
+#intel-scroll {
+    height: 1fr;
+    padding: 0 1;
+}
+
+#intel-readout {
     height: auto;
-    padding: 1 0;
+}
+
+#orbat-list {
+    height: 16;
+    background: $ct-surface;
+    border: none;
+    border-top: heavy $ct-phosphor-dim;
+    border-title-color: $ct-amber;
+    border-title-style: bold;
+}
+
+#orbat-list > .option-list--option-highlighted {
+    background: $ct-cursor-blur;
+}
+
+#orbat-list:focus > .option-list--option-highlighted {
+    background: #3a2a00;
 }
 
 DataTable {

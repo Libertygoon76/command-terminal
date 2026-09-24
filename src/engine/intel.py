@@ -17,7 +17,7 @@ import random
 from dataclasses import dataclass
 from typing import Any
 
-from src.models import GameState
+from src.models import GameState, Unit
 
 
 @dataclass(frozen=True)
@@ -71,3 +71,69 @@ def generate_readings(state: GameState, specs: dict[str, dict[str, Any]]) -> dic
         chance = float(spec.get("misinformation_chance", base_chance * (1 - accuracy) * 2))
         readings[name] = estimate(state.rng, resolve_true_value(state, spec), accuracy, chance)
     return readings
+
+
+# --- enemy formations on the map ----------------------------------------------
+
+
+@dataclass(frozen=True)
+class UnitIntel:
+    """What Kestrian intelligence believes about a hostile formation this week.
+
+    Rolled once per unit per week from a seed of (campaign, unit, week): looking at the
+    map never disturbs the main RNG, and re-inspecting a unit cannot be used to average
+    estimates toward the truth. The report changes only when a new week begins.
+    """
+
+    turn: int
+    accuracy: float
+    strength: IntelReading
+    reported_type: str  # may differ from the real type (misidentification)
+    identified: bool  # whether the formation's designation is known
+    misidentified: bool
+
+
+def recon_accuracy(state: GameState, unit: Unit) -> float:
+    cfg = state.config.get("intel", {}).get("unit_recon", {})
+    accuracy = float(cfg.get("base_accuracy", 0.45))
+    frontline = int(cfg.get("frontline_range", 12))
+    friendly = state.player.units
+    if any(abs(f.x - unit.x) + abs(f.y - unit.y) <= frontline for f in friendly):
+        accuracy += float(cfg.get("frontline_bonus", 0.15))
+    for flag, bonus in cfg.get("flag_bonuses", {}).items():
+        if state.flags.get(flag):
+            accuracy += float(bonus)
+    return min(float(cfg.get("max_accuracy", 0.9)), accuracy)
+
+
+def unit_report(state: GameState, unit: Unit) -> UnitIntel:
+    cached = state.unit_intel.get(unit.id)
+    if cached is not None and cached.turn == state.clock.turn:
+        return cached
+
+    cfg = state.config.get("intel", {})
+    rng = random.Random(f"{state.intel_seed}:{unit.id}:{state.clock.turn}")
+    accuracy = recon_accuracy(state, unit)
+    base_chance = float(cfg.get("misinformation_base_chance", 0.15))
+    reading = estimate(rng, unit.strength, accuracy, base_chance * (1 - accuracy) * 2)
+
+    # A formation we can name, we can also type. Only unidentified contacts get misclassified.
+    identified = rng.random() < accuracy
+    templates = [u["id"] for u in state.catalog["units"]["units"]]
+    misidentify = not identified and rng.random() < (1 - accuracy) * float(
+        cfg.get("unit_recon", {}).get("misidentify_factor", 0.35)
+    )
+    reported_type = unit.unit_type
+    if misidentify:
+        reported_type = rng.choice([t for t in templates if t != unit.unit_type])
+
+    report = UnitIntel(
+        turn=state.clock.turn,
+        accuracy=accuracy,
+        strength=reading,
+        reported_type=reported_type,
+        identified=identified,
+        misidentified=misidentify,
+    )
+    state.unit_intel[unit.id] = report
+    return report

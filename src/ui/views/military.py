@@ -14,6 +14,8 @@ class MilitaryView(VerticalScroll):
 
     def compose(self) -> ComposeResult:
         yield Static(id="mil-summary", classes="summary")
+        yield Static(Text("FORMATIONS IN THE FIELD", style=f"bold {palette.AMBER}"), classes="section-title")
+        yield DataTable(id="mil-formations", cursor_type="row")
         yield Static(Text("UNIT TEMPLATES", style=f"bold {palette.AMBER}"), classes="section-title")
         yield DataTable(id="mil-units", cursor_type="row")
         yield Static(Text("DOCTRINE — TACTICAL STANCES", style=f"bold {palette.AMBER}"), classes="section-title")
@@ -24,6 +26,9 @@ class MilitaryView(VerticalScroll):
         )
 
     def on_mount(self) -> None:
+        self.query_one("#mil-formations", DataTable).add_columns(
+            "ID", "FORMATION", "TYPE", "STRENGTH", "MORALE", "SUPPLY", "STANCE", "GRID"
+        )
         table = self.query_one("#mil-units", DataTable)
         table.add_columns("FORMATION", "MEN", "COST", "TRAIN", "RATIONS/WK", "FUEL/WK", "AMMO/WK", "ATK", "DEF", "BRK")
         cur = self.app.game.currency
@@ -66,9 +71,31 @@ class MilitaryView(VerticalScroll):
             f"{nation.military_morale:.0f} / 100  {palette.meter(nation.military_morale)}  "
             f"{nation.military_morale_band}  (COUP AT {coup_at})", style=mil_style)))
         summary.append("\n")
-        summary.append_text(label_value("ACTIVE FORMATIONS ", "0"))
+        units = nation.units
+        summary.append_text(label_value("ACTIVE FORMATIONS ", f"{len(units)}  ({nation.total_deployed:,} MEN DEPLOYED)"))
         summary.append("\n")
         summary.append_text(label_value("IN TRAINING       ", "0"))
         summary.append("\n")
-        summary.append_text(label_value("SUPPLY STATUS     ", "NO FORMATIONS DEPLOYED", palette.PHOSPHOR_DIM))
+        low_supply = sum(1 for u in units if u.supply < 75)
+        supply_text = f"{low_supply} FORMATION(S) BELOW 75%" if low_supply else "ALL FORMATIONS ADEQUATELY SUPPLIED"
+        summary.append_text(label_value("SUPPLY STATUS     ", supply_text,
+                                        palette.AMBER if low_supply else palette.PHOSPHOR_BRIGHT))
         self.query_one("#mil-summary", Static).update(summary)
+
+        game = self.app.game
+        templates = {t["id"]: t for t in game.catalog["units"]["units"]}
+        stances = {s["id"]: s["name"] for s in game.catalog["units"].get("stances", [])}
+        table = self.query_one("#mil-formations", DataTable)
+        table.clear()
+        for unit in sorted(units, key=lambda u: u.designation):
+            template = templates[unit.unit_type]
+            table.add_row(
+                unit.designation,
+                unit.name.upper(),
+                Text(f"[{template['symbol']}] {template['name'].upper()}"),
+                f"{unit.strength:,}",
+                f"{unit.morale:.0f}%",
+                Text(f"{unit.supply:.0f}%", style=palette.PHOSPHOR_BRIGHT if unit.supply >= 75 else palette.AMBER),
+                stances.get(unit.stance, unit.stance).upper(),
+                f"{unit.x:03d}-{unit.y:03d}",
+            )

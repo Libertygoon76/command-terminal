@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from src.engine.effects import validate_effects
-from src.models import Email, GameClock, GameState, Nation, ScheduledEmail
+from src.models import Email, GameClock, GameState, Nation, ScheduledEmail, Unit, WorldMap
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
@@ -54,6 +54,32 @@ def validate_email_library(library: dict[str, Email], resource_ids: set[str]) ->
                         raise ValueError(f"{where} option {option.id!r}: follow-up email {target!r} does not exist")
 
 
+def load_orbat(nations: dict[str, Nation], world: WorldMap, units_catalog: dict[str, Any],
+               data_dir: Path = DATA_DIR) -> None:
+    """Load starting formations onto their nations, validating every map coordinate."""
+    templates = {u["id"] for u in units_catalog["units"]}
+    stances = {s["id"] for s in units_catalog.get("stances", [])}
+    seen: set[str] = set()
+    for raw in load_json("orbat.json", data_dir)["units"]:
+        unit = Unit.from_dict(raw)
+        where = f"orbat.json [{unit.id}]"
+        if unit.id in seen:
+            raise ValueError(f"{where}: duplicate unit id")
+        seen.add(unit.id)
+        if unit.nation_id not in nations:
+            raise ValueError(f"{where}: unknown nation {unit.nation_id!r}")
+        if unit.unit_type not in templates:
+            raise ValueError(f"{where}: unknown unit type {unit.unit_type!r}")
+        if unit.stance not in stances:
+            raise ValueError(f"{where}: unknown stance {unit.stance!r}")
+        x, y = unit.location
+        if not (1 <= x < world.width - 1 and 0 <= y < world.height):
+            raise ValueError(f"{where}: location {unit.location} is off the map (symbol needs x-1..x+1)")
+        if world.is_sea(x, y):
+            raise ValueError(f"{where}: location {unit.location} is at sea")
+        nations[unit.nation_id].units.append(unit)
+
+
 def new_game(data_dir: Path = DATA_DIR, seed: int | None = None) -> GameState:
     """Build a fresh GameState from the JSON data files."""
     from src.engine.event_manager import deliver_due_emails  # avoid import cycle
@@ -78,9 +104,10 @@ def new_game(data_dir: Path = DATA_DIR, seed: int | None = None) -> GameState:
     catalog = {
         "resources": load_json("resources.json", data_dir)["resources"],
         "units": load_json("units.json", data_dir),
-        "map": load_json("map/world.json", data_dir),
         "alerts": alerts,
     }
+    world = WorldMap.from_dict(load_json("map/world.json", data_dir))
+    load_orbat(nations, world, catalog["units"], data_dir)
 
     library = load_email_library(data_dir)
     validate_email_library(library, {r["id"] for r in catalog["resources"]})
@@ -92,6 +119,7 @@ def new_game(data_dir: Path = DATA_DIR, seed: int | None = None) -> GameState:
     if seed is None:
         seed = config.get("random_seed")
 
+    rng = random.Random(seed)
     state = GameState(
         clock=clock,
         player=nations[player_id],
@@ -100,7 +128,9 @@ def new_game(data_dir: Path = DATA_DIR, seed: int | None = None) -> GameState:
         schedule=schedule,
         config=config,
         catalog=catalog,
-        rng=random.Random(seed),
+        rng=rng,
+        world_map=world,
+        intel_seed=rng.getrandbits(32),
     )
     deliver_due_emails(state)
     return state

@@ -6,7 +6,9 @@ from datetime import date, timedelta
 from typing import Any
 
 from src.models.inbox import Email, Inbox
+from src.models.military import Unit
 from src.models.nation import Nation
+from src.models.world_map import WorldMap
 
 
 @dataclass
@@ -82,6 +84,18 @@ class GameState:
     last_ledger: Ledger | None = None
     weeks_insolvent: int = 0  # consecutive weeks with a negative treasury
     game_over: GameOver | None = None
+    world_map: WorldMap | None = None
+    unit_intel: dict[str, Any] = field(default_factory=dict)  # unit id -> cached fog-of-war report
+    intel_seed: int = 0  # seeds per-unit weekly intel rolls independently of `rng`
+
+    def all_units(self) -> list[Unit]:
+        return [unit for nation in self.nations.values() for unit in nation.units]
+
+    def unit(self, unit_id: str) -> Unit | None:
+        return next((u for u in self.all_units() if u.id == unit_id), None)
+
+    def is_friendly(self, nation_id: str) -> bool:
+        return nation_id == self.player.id
 
     @property
     def currency(self) -> str:

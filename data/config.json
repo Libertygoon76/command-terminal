@@ -7,7 +7,6 @@
   "player_nation": "kestria",
   "boot_line_interval_seconds": 0.07,
   "random_seed": null,
-
   "economy": {
     "_comment": "Phase 2 placeholder economy. Weekly tax = population x tax_rate x per_capita x productivity(morale).",
     "tax_revenue_per_capita_weekly": 0.042,
@@ -18,20 +17,35 @@
     "tax_discontent_factor": 20,
     "unpaid_military_morale_penalty": 3
   },
-
   "fail_states": {
     "revolution_morale": 0,
     "coup_military_morale": 10,
     "bankruptcy_grace_weeks": 8,
     "collapse_debt_limit": -1500000
   },
-
   "intel": {
     "_comment": "Chance a report is flatly wrong = base x (1 - accuracy) x 2, unless the spec overrides misinformation_chance.",
-    "misinformation_base_chance": 0.15
+    "misinformation_base_chance": 0.15,
+    "unit_recon": {
+      "_comment": "Accuracy of enemy-unit estimates on the map, re-rolled once per week.",
+      "base_accuracy": 0.45,
+      "frontline_bonus": 0.15,
+      "frontline_range": 12,
+      "flag_bonuses": {
+        "network_lantern": 0.2
+      },
+      "max_accuracy": 0.9,
+      "misidentify_factor": 0.35
+    }
   },
-
   "reports": {
     "status_sender": "Ministry of the Treasury — Automated Ledger"
+  },
+  "map": {
+    "_comment": "War Room rendering. Friendly = player nation; everyone else is hostile.",
+    "friendly_color": "#4fd8ff",
+    "hostile_color": "#ff3b3b",
+    "mixed_stack_color": "#ffb000",
+    "stack_symbol": "*"
   }
 }
