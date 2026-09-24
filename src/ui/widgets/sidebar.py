@@ -97,6 +97,15 @@ class Sidebar(Vertical):
             info.append(f"{len(dark)} FORMATION(S) DARK\n\n", style=f"bold {palette.RED}")
         else:
             info.append("ALL STATIONS IN CONTACT\n\n", style=palette.PHOSPHOR)
+        from src.engine.crisis_engine import outbreaks
+
+        running = outbreaks(game)
+        info.append("PUBLIC HEALTH\n", style=palette.PHOSPHOR_DIM)
+        if running:
+            sites = sum(len(s) for s in running.values())
+            info.append(f"{len(running)} EPIDEMIC(S) · {sites} SITE(S)\n\n", style=f"bold {palette.RED}")
+        else:
+            info.append("NO OUTBREAKS\n\n", style=palette.PHOSPHOR)
         info.append("INSOLVENCY\n", style=palette.PHOSPHOR_DIM)
         if game.weeks_insolvent:
             grace = game.config.get("fail_states", {}).get("bankruptcy_grace_weeks", 8)

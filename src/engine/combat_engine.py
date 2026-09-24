@@ -89,8 +89,11 @@ def set_stance(state: GameState, unit_id: str, stance: str, *, nation_id: str | 
     from src.engine.electronic_warfare import require_signal
     from src.engine.movement import OrderError
 
+    from src.engine.crisis_engine import require_available
+
     try:
         require_signal(state, unit)
+        require_available(state, unit)
     except OrderError as error:
         raise StanceError(str(error)) from None
     if unit.stance != stance:
@@ -420,6 +423,8 @@ def fight_round(state: GameState, battle: Battle, group: set[str], report: TickR
             if unit.supply < float(state.config.get("logistics", {}).get("low_supply_threshold", 25)):
                 mult *= float(cfg.get("low_supply_factor", 0.6))
             mult *= _weather_combat(state, unit)
+            if unit.relief_weeks:
+                mult *= 0.2  # scattered across the disaster zone digging out survivors
             mult *= rng.uniform(lo, hi)
             soft += fire.soft * mult
             hard += fire.hard * mult

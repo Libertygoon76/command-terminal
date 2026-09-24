@@ -217,9 +217,11 @@ def issue_move_order(state: GameState, unit_id: str, target: tuple[int, int], *,
         raise OrderError(f"{unit.designation} is not under your command.")
     if unit.routing:
         raise OrderError(f"{unit.designation} is routing and will not answer orders for {unit.routing_weeks} week(s).")
+    from src.engine.crisis_engine import require_available
     from src.engine.electronic_warfare import require_signal
 
     require_signal(state, unit)
+    require_available(state, unit)
     target = (int(target[0]), int(target[1]))
     grid = f"{target[0]:03d}-{target[1]:03d}"
     if not state.world_map.in_bounds(*target):
@@ -300,7 +302,7 @@ def resolve_movement(state: GameState) -> list[tuple[Unit, Unit]]:
     domains = {u.id: state.domain(u) for u in units}
 
     for unit in units:
-        if unit.active_order is None or unit.routing:
+        if unit.active_order is None or unit.routing or unit.relief_weeks:
             continue
         route = plan_route(state, unit, unit.active_order.target)
         if route is None or not route.path:

@@ -32,8 +32,12 @@ class DilemmaScreen(ModalScreen[str]):
         game = self.app.game
         entry = card(game, self.card_id)
         self.choices = entry["choices"]
+        self.emergency = bool(entry.get("emergency"))
+        if self.emergency:
+            self.add_class("-emergency")
         header = Text()
-        header.append(f" {entry.get('category', 'CLASSIFIED')} ", style=f"bold #000000 on {palette.AMBER}")
+        chip = f"bold {palette.PHOSPHOR_BRIGHT} on #8b0000" if entry.get("emergency") else f"bold #000000 on {palette.AMBER}"
+        header.append(f" {entry.get('category', 'CLASSIFIED')} ", style=chip)
         header.append(f"  WEEK {game.clock.turn:03d} · {game.clock.date_str}", style=palette.PHOSPHOR_DIM)
         with Vertical(id="dilemma-dialog"):
             yield Static(header, id="dilemma-meta")
@@ -53,7 +57,8 @@ class DilemmaScreen(ModalScreen[str]):
                               + " or click an option.", style=palette.PHOSPHOR_DIM), id="dilemma-footer")
 
     def on_mount(self) -> None:
-        self.query_one("#dilemma-dialog").border_title = "▲ CLASSIFIED DILEMMA — EYES ONLY"
+        self.query_one("#dilemma-dialog").border_title = (
+            "⚠ CRITICAL EMERGENCY — THE HOME FRONT" if self.emergency else "▲ CLASSIFIED DILEMMA — EYES ONLY")
         self.query(Button).first().focus()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:

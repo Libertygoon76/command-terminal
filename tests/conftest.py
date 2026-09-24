@@ -1,15 +1,15 @@
 """Shared test setup.
 
 Phase 7 added two sources of friction that the older, focused tests were not written for: the weekly
-weather (winter frostbite, mud) and the CLASSIFIED DILEMMA event deck (which pauses the game until
-answered). Unless a test is marked `live`, the weather is held clear and no event cards are drawn, so
+weather (winter frostbite, mud), the CLASSIFIED DILEMMA event deck (which pauses the game until
+answered) and, since Phase 8, random epidemics and natural disasters. Unless a test is marked `live`, the weather is held clear and no event cards are drawn, so
 those tests keep measuring exactly what they were written to measure. Tests marked `live` (the fuzzed
 campaigns and the Phase 7 tests) run with the world exactly as the player gets it.
 """
 
 import pytest
 
-from src.engine import dilemmas, weather_engine
+from src.engine import crisis_engine, dilemmas, weather_engine
 
 
 def pytest_configure(config):
@@ -27,10 +27,13 @@ def calm_world(request, monkeypatch):
         return
     monkeypatch.setattr(dilemmas.DilemmaSystem, "on_tick", lambda self, state, report: None)
     monkeypatch.setattr(weather_engine, "roll_weather", _clear_weather)
+    # No random epidemics or disasters either (relief duty still counts down).
+    monkeypatch.setattr(crisis_engine.CrisisSystem, "on_tick",
+                        lambda self, state, report: crisis_engine.run_relief(state, report))
 
 
 def settle_dilemma(state, rng=None):
-    """Answer a pending dilemma (first option, or a random one) so a live campaign can go on."""
-    if state.pending_dilemma:
+    """Answer every pending dilemma or emergency (first option, or a random one) so a live campaign can go on."""
+    while state.pending_dilemma:
         choices = dilemmas.card(state, state.pending_dilemma)["choices"]
         dilemmas.resolve(state, (rng.choice(choices) if rng else choices[0])["id"])

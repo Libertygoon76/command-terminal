@@ -153,6 +153,8 @@ class TerminalScreen(Screen):
             self.app.state_changed()
             self._log(f"DECISION RECORDED: {title.upper()}.")
             self.notify("\n".join(changes) or "No immediate consequences.", title=f"DECISION: {title.upper()}")
+            if game.pending_dilemma:  # another emergency is waiting behind this one
+                self.call_after_refresh(self.show_dilemma)
 
         self.app.push_screen(DilemmaScreen(game.pending_dilemma), decided)
 

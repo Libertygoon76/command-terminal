@@ -68,7 +68,10 @@ def assign_factories(state: GameState, nation_id: str, item_id: str, delta: int)
 def forecast(state: GameState, nation: Nation, item_id: str) -> float:
     """Planned weekly output of a line at its current efficiency (ignoring input shortages)."""
     item = equipment_by_id(state)[item_id]
-    bonus = max(0.0, 1.0 + nation.modifier("factory_efficiency"))  # Assembly-Line Retooling, strikes, martial law
+    from src.engine.crisis_engine import output_penalty
+
+    # Assembly-Line Retooling, strikes, martial law, mine collapses — and workers sick in their beds.
+    bonus = max(0.0, 1.0 + nation.modifier("factory_efficiency") - output_penalty(state, nation))
     return nation.production.get(item_id, 0) * weekly_rate(state, item) * nation.line_efficiency.get(item_id, 0.0) * bonus
 
 

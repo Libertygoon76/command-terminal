@@ -60,6 +60,7 @@ GHOST_COLOR = "#8a3a3a"
 LOST_COLOR = "#2f7f90"  # our own formations out of contact (jammed)
 JAM_BG = "#1a0a24"  # jamming zones
 WRECK = Style(color="#d05030", bold=True)  # destroyed rail / road
+INFECTED = Style(color="#e040e0", bold=True)  # a settlement in the grip of an epidemic
 DESTINATION_GLYPH = "◇"
 ROUTE_GLYPH = "·"
 
@@ -191,6 +192,12 @@ class MapCanvas(ScrollView, can_focus=True):
                     if scaled_distance(game, (x, y), (cx, cy)) <= r:
                         ch, style = rows[y][x]
                         rows[y][x] = (ch, style + Style(bgcolor=JAM_BG))
+        for site in game.infections:  # infected settlements glow a sickly violet
+            if site.startswith("city:"):
+                feature = world.feature_named(site[5:])
+                if feature and (feature.x, feature.y) not in occupied:
+                    bg = OWNER_BG.get(world.owner_at(feature.x, feature.y), OWNER_BG[None])
+                    rows[feature.y][feature.x] = (rows[feature.y][feature.x][0], INFECTED + Style(bgcolor=bg))
         for port in world.ports():  # blockaded harbours glow red
             if port.name in game.blockades and (port.x, port.y) not in occupied:
                 bg = OWNER_BG.get(world.owner_at(port.x, port.y), OWNER_BG[None])

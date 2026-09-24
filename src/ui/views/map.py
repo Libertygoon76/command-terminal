@@ -152,6 +152,15 @@ def friendly_block(game: GameState, unit: Unit) -> Text:
 
     _row(text, "SPEED / RECON", f"{pace_mpd(game, unit):.0f} MI/DAY · SEES {miles(game, template.get('detection_radius', 5)):.0f} MI")
     _row(text, "COMMANDER", commander_text(game, unit))
+    from src.engine.crisis_engine import disease, infection_of
+
+    infection = infection_of(game, unit)
+    if infection:
+        state_text = "QUARANTINED" if infection["cure_in"] is not None else ("CORDONED" if infection["cordon"] else "SPREADING")
+        _row(text, "HEALTH", f"[INFECTED] {disease(game, infection['disease'])['name'].upper()} · {state_text}",
+             f"bold {palette.RED}")
+    if unit.relief_weeks:
+        _row(text, "DUTY", f"DISASTER RELIEF · {unit.relief_weeks} WK · CANNOT MOVE OR FIGHT", f"bold {palette.AMBER}")
     if unit.pending_orders:
         _row(text, "ORDERS", "SENT — AWAITING ACKNOWLEDGEMENT (next week)", palette.AMBER)
     if template.get("role") == "engineer":
@@ -227,6 +236,13 @@ def sector_block(game: GameState, x: int, y: int) -> Text:
     feature = next((f for f in world.features if f.x == x and f.y == y), None)
     if feature:
         _row(text, "SETTLEMENT", f"{feature.name.upper()} ({feature.type.upper()})")
+        from src.engine.crisis_engine import disease, infection_of
+
+        infection = infection_of(game, feature.name)
+        if infection:
+            state_text = "QUARANTINED" if infection["cure_in"] is not None else ("CORDONED" if infection["cordon"] else "SPREADING")
+            _row(text, "EPIDEMIC", f"[INFECTED] {disease(game, infection['disease'])['name'].upper()} · {state_text}",
+                 f"bold {palette.RED}")
         if feature.type == "port":
             _row(text, "OVERSEAS TRADE", f"{feature.trade:,} {game.currency}/WK")
             holder = game.blockades.get(feature.name)
@@ -545,6 +561,10 @@ class MapView(Horizontal):
             prompt.append(unit.name, style=palette.PHOSPHOR)
             if game.domain(unit) == SEA:
                 prompt.append(f"  {unit.mission.upper()}", style=MISSION_STYLE.get(unit.mission, palette.PHOSPHOR))
+            if f"unit:{unit.id}" in game.infections:
+                prompt.append("  [INFECTED]", style=f"bold {palette.RED}")
+            if unit.relief_weeks:
+                prompt.append(f"  RELIEF {unit.relief_weeks}WK", style=f"bold {palette.AMBER}")
             if unit.supply_state != "supplied":
                 prompt.append(f"  {unit.supply_state.upper()}", style=SUPPLY_STATE_STYLE[unit.supply_state])
             if unit.routing:

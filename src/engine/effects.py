@@ -13,6 +13,8 @@ Supported keys (all deltas):
     modifier                              {key, value, weeks}  temporary nation modifier, e.g.
                                           factory_efficiency +0.15 for 4 weeks (weeks omitted = permanent)
     research_weeks                        float, weeks of progress on the current research project
+    quarantine                            {outbreak, mode}  contain an epidemic (mode fund | cordon)
+    relief_unit                           {unit, weeks}  pull a formation off the line for disaster relief
 """
 
 from __future__ import annotations
@@ -30,7 +32,8 @@ NATION_EFFECTS: dict[str, tuple[str, str, str]] = {
     "military_morale": ("MILITARY MORALE", "adjust_military_morale", "points"),
     "tax_rate": ("TAX RATE", "adjust_tax_rate", "rate"),
 }
-SPECIAL_EFFECTS = {"stockpiles", "flags", "ai_tension", "equipment", "army_morale", "modifier", "research_weeks"}
+SPECIAL_EFFECTS = {"stockpiles", "flags", "ai_tension", "equipment", "army_morale", "modifier", "research_weeks",
+                   "quarantine", "relief_unit"}
 MODIFIER_LABELS = {"factory_efficiency": ("FACTORY OUTPUT", "pct")}
 VALID_EFFECT_KEYS = set(NATION_EFFECTS) | SPECIAL_EFFECTS
 
@@ -52,6 +55,9 @@ def validate_effects(effects: dict[str, Any], where: str, resource_ids: set[str]
         elif key == "modifier":
             if not isinstance(value, dict) or "key" not in value or not isinstance(value.get("value"), (int, float)):
                 raise ValueError(f"{where}: modifier effect needs {{key, value[, weeks]}}, got {value!r}")
+        elif key in ("quarantine", "relief_unit"):
+            if not isinstance(value, dict):
+                raise ValueError(f"{where}: {key} effect needs an object, got {value!r}")
         elif key != "flags" and not isinstance(value, (int, float)):
             raise ValueError(f"{where}: effect {key!r} must be a number, got {value!r}")
 
@@ -124,6 +130,18 @@ def apply_effects(state: GameState, effects: dict[str, Any]) -> list[str]:
             if project and value:
                 nation.research_progress[project] = nation.research_progress.get(project, 0.0) + float(value)
                 changes.append(f"RESEARCH {_sign(value)}{abs(value):g} WEEKS ON THE CURRENT PROJECT")
+        elif key == "quarantine":
+            from src.engine.crisis_engine import quarantine
+
+            sites = quarantine(state, value["outbreak"], value.get("mode", "fund"))
+            what = "QUARANTINE PROTOCOLS" if value.get("mode", "fund") == "fund" else "MILITARY CORDON"
+            changes.append(f"{what}: {len(sites)} SITE(S) CONTAINED")
+        elif key == "relief_unit":
+            from src.engine.crisis_engine import assign_relief
+
+            unit = assign_relief(state, value["unit"], int(value.get("weeks", 3)))
+            if unit is not None:
+                changes.append(f"{unit.designation} ON RELIEF DUTY FOR {value.get('weeks', 3)} WEEKS (CANNOT MOVE OR FIGHT)")
     return changes
 
 
@@ -155,6 +173,13 @@ def preview_effects(state: GameState, effects: dict[str, Any]) -> list[str]:
             lines.append(describe_modifier(value))
         elif key == "research_weeks" and value:
             lines.append(f"RESEARCH {_sign(value)}{abs(value):g} WEEKS")
+        elif key == "quarantine":
+            lines.append("EPIDEMIC CLEARED IN 2 WEEKS, SPREAD STOPPED" if value.get("mode", "fund") == "fund"
+                         else "SPREAD STOPPED (NO CURE)")
+        elif key == "relief_unit":
+            unit = state.unit(value["unit"])
+            label = unit.designation if unit else value["unit"]
+            lines.append(f"{label} CANNOT MOVE OR FIGHT FOR {value.get('weeks', 3)} WEEKS")
     return lines
 
 

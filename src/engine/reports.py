@@ -67,6 +67,13 @@ def build_status_body(state: GameState) -> str:
     wrecked = [c for c in damaged_cells(state) if world.owner_at(*c) == nation.id]
     if wrecked:
         lines.append(_stat("Wrecked rail/road", f"{len(wrecked)} section(s) in our territory"))
+    from src.engine.crisis_engine import health_summary
+
+    for line in health_summary(state):
+        lines.append(_stat("EPIDEMIC", line))
+    relief = [u.designation for u in nation.units if u.relief_weeks]
+    if relief:
+        lines.append(_stat("On relief duty", ", ".join(relief)))
     in_training = [o for o in state.training if o.nation_id == nation.id]
     lines.append(_stat("In training", ", ".join(f"{o.designation} ({o.weeks_left} wk)" for o in in_training) or "none"))
     awaiting = state.inbox.awaiting_response()

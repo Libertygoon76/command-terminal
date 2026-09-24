@@ -59,6 +59,7 @@ class Unit:
     traits: list[str] = field(default_factory=list)  # hidden commander traits (data/commanders.json)
     traits_known: bool = False  # revealed by a refusal or the commander's first week in battle
     pending_orders: list[str] = field(default_factory=list)  # orders not yet acknowledged: "stance", "move"
+    relief_weeks: int = 0  # weeks left on disaster relief duty (cannot move or fight)
     # --- orders & status ---
     active_order: MoveOrder | None = None
     move_points: float = 0.0  # unspent movement carried into next week (for slow terrain)

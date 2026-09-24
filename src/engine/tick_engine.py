@@ -65,6 +65,7 @@ def build_default_engine(state: GameState) -> TickEngine:
     from src.engine.air_engine import AirSystem
     from src.engine.combat_engine import CombatSystem
     from src.engine.command import CommandSystem
+    from src.engine.crisis_engine import CrisisSystem
     from src.engine.electronic_warfare import EWSystem
     from src.engine.engineering import EngineeringSystem
     from src.engine.dilemmas import DilemmaSystem
@@ -98,6 +99,7 @@ def build_default_engine(state: GameState) -> TickEngine:
             LogisticsEngine(),  # supply lines, fuel, resupply from the stockpile, attrition
             EngineeringSystem(),  # combat engineers rebuild wrecked railways and roads
             FrostSystem(),  # frostbite for formations without winter kit
+            CrisisSystem(),  # the home front: epidemics, natural disasters, relief duty (CRITICAL EMERGENCY)
             EconomyEngine(),  # taxes, trade (minus blockaded ports), expenses
             EventManager(),  # dispatches, deadlines
             EWSystem(),  # jamming ticks down; last reports of formations still in contact

@@ -35,6 +35,8 @@ def cards(state: GameState) -> dict[str, dict]:
 
 
 def card(state: GameState, card_id: str) -> dict:
+    if card_id in state.crisis_cards:  # CRITICAL EMERGENCIES built at runtime by the crisis engine
+        return state.crisis_cards[card_id]
     table = cards(state)
     if card_id not in table:
         raise DilemmaError(f"Unknown event card {card_id!r}")
@@ -106,7 +108,8 @@ def resolve(state: GameState, choice_id: str) -> list[str]:
     if choice is None:
         raise DilemmaError(f"The dilemma has no option {choice_id!r}.")
     changes = apply_effects(state, choice.get("effects", {}))
-    state.pending_dilemma = None
+    state.crisis_cards.pop(entry["id"], None)
+    state.pending_dilemma = state.dilemma_queue.pop(0) if state.dilemma_queue else None
     body = [
         card_text(state, entry),
         "",

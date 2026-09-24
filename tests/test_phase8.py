@@ -214,7 +214,7 @@ def test_engineers_rebuild_wrecked_track(quiet):
     destroyed = sabotage(state, state.unit("kes_frontier_hq"), (106, 36), 1.0)
     report = TickReport(2, "")
     EngineeringSystem().on_tick(state, report)
-    assert len(set(damaged_cells(state)) - rubble) == len(destroyed) - 2  # two sections a week
+    assert len(set(damaged_cells(state)) - rubble) == max(0, len(destroyed) - 3)  # three sections a week
     for _ in range(3):
         EngineeringSystem().on_tick(state, report)
     assert set(damaged_cells(state)) == rubble and not state.map_damage

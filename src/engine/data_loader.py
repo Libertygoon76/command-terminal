@@ -149,6 +149,7 @@ def new_game(data_dir: Path = DATA_DIR, seed: int | None = None) -> GameState:
     catalog["weather"] = load_json("weather.json", data_dir)
     catalog["events_deck"] = load_json("events_deck.json", data_dir)
     catalog["commanders"] = load_json("commanders.json", data_dir)
+    catalog["crises"] = load_json("crises.json", data_dir)
     equipment_ids = {e["id"] for e in catalog["equipment"]}
     for nation in nations.values():
         if not nation.known_techs:

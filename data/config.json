@@ -230,7 +230,7 @@
   },
   "engineering": {
     "_comment": "Combat Engineers (template role 'engineer') holding position in supply repair repair_per_week destroyed cells (nearest first) within repair_range rows each week.",
-    "repair_per_week": 2,
+    "repair_per_week": 3,
     "repair_range": 2.5
   },
   "victory": {

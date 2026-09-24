@@ -21,6 +21,7 @@ from src.engine.tick_engine import MILES_PER_CELL, DilemmaPendingError, build_de
 from src.engine.weather_engine import FrostSystem, apply_frost, season_of, winter_kitted
 from src.models import MOVING
 from src.models.ai import PROBE
+from tests.conftest import settle_dilemma
 
 
 @pytest.fixture
@@ -303,8 +304,7 @@ def test_weather_rolls_every_week_and_opens_with_a_winter_bulletin():
     engine = build_default_engine(state)
     seen = set()
     for _ in range(16):
-        if state.pending_dilemma:
-            resolve(state, dilemmas.card(state, state.pending_dilemma)["choices"][0]["id"])
+        settle_dilemma(state)
         engine.advance()
         seen.add(state.weather["condition"])
     assert seen & {"snow", "blizzard"} and "mud" in seen  # winter, then the spring Rasputitsa

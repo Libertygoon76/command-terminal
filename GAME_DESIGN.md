@@ -1,7 +1,7 @@
 # COMMAND TERMINAL — Game Design Document
 
 > Living document. Update it whenever a system is designed, changed, or cut.
-> Last major revision: Phase 8 (chain of command & insubordination, electronic warfare, scorched earth & combat engineers, victory by capitulation, save/load), 2026-09-24.
+> Last major revision: Phase 8 (the home front: epidemics and natural disasters with CRITICAL EMERGENCY choices; chain of command & insubordination, electronic warfare, scorched earth & combat engineers, victory by capitulation, save/load), 2026-09-24.
 
 ---
 
@@ -670,8 +670,10 @@ Module `src/engine/engineering.py`, config `scorched_earth` and `engineering`.
   cost tables and routes.
 - **Combat Engineers** (`combat_engineers`, symbol **`[E]`**, 1,200 men, 35,000 CR, 4 weeks' training; Kestria
   starts with **K-E1**, the 1st Kestrian Combat Engineer Battalion, near Kestrel Cross). An engineer battalion
-  **holding position inside its supply net** rebuilds the **2 nearest wrecked sections a week within 2.5 rows**,
-  including the rubble rail bed across no-man's-land. Its readout shows the work in reach.
+  **holding position inside its supply net** rebuilds the **3 nearest wrecked sections a week within 2.5 rows**,
+  including the rubble rail bed across no-man's-land. Order it onto a ruined stretch (`m` in the War Room) and a
+  disaster's damage is repaired in 2–3 weeks. Its readout shows the work in reach; recruit more on the Military screen.
+- Natural disasters (§4.29) wreck infrastructure the same way.
 
 ### 4.26 Victory: Enemy Capitulation `[P8]`
 Checked every week after the loss conditions (`fail_states.check_victory`, config `victory`):
@@ -689,12 +691,57 @@ Module `src/engine/savegame.py`.
 - **`CTRL+S`** (or `F5`) anywhere on the desktop saves the whole campaign to `savegame.json` in the game folder
   (written atomically). **`python main.py --load`** resumes it; `--load other.json` names a file.
 - Saved: every piece of dynamic state (clock, nations, formations and inventories, orders, commanders and hidden
-  traits, the inbox with read/reply state, scheduled follow-ups, flags, the campaign RNG's exact state, the AI's
+  traits, **epidemics (every infected site and its quarantine), relief duty, emergency cards on screen or queued**, the inbox with read/reply state, scheduled follow-ups, flags, the campaign RNG's exact state, the AI's
   hidden posture and tension, contacts, engagements, battles, training, air wings, weather, blockades, jamming,
   map damage, pending dilemmas, the victory counter). Rebuilt from `data/`: config, catalog, email templates, the
   world map (damage re-applied) and derived caches. A loaded campaign continues **exactly** as the original
   would have — the tests check that two copies stay identical for weeks after a save.
 - Format: JSON with small tags for tuples, sets, non-string dict keys, dates and model classes; `version` 1.
+
+### 4.28 The Home Front: Epidemics `[P8]`
+Module `src/engine/crisis_engine.py`, data `data/crises.json`. A nation does not stop suffering because it is at
+war. From week 4, each week has a **6%** chance of a new outbreak (3% once Field Medicine is known):
+
+| Disease | Breaks out in | Per infected settlement / week | Per infected formation / week | Spreads (chance, reach) |
+|---------|---------------|-------------------------------|-------------------------------|------------------------|
+| **Trench Typhus** | a front-line formation | civil morale −1, output −3% | **3% of its men die**, morale −3 | 35%, 2.5 rows from troops |
+| **Industrial Influenza** | an industrial centre | civil morale −1.5, output **−8%** | 1.2%, morale −2 | 30%, 14 rows from towns |
+| **Cholera** | a city, port or capital | civil morale **−2**, output −5% | 2.5%, morale −3 | 25%, 12 rows from towns |
+
+- Output losses double in industrial centres and are capped at −50% (they apply to every production line through
+  `production.forecast`). Sites: `state.infections["city:<name>" | "unit:<id>"]`, shown as **`[INFECTED]`** in the
+  Order of Battle, the unit and sector readouts, the Military screen, and as violet settlements on the map. The
+  sidebar counts epidemics and sites; the weekly report lists them.
+- **Spread:** each week every unchecked site may infect its nearest clean neighbour — the next town, or the
+  formations marching through. Infections burn out on their own only slowly (4–6% a week).
+- **The cure** is a choice, not a timer. A new outbreak raises a **CRITICAL EMERGENCY** modal (red, the game is
+  paused until you decide), and it comes back every 3 weeks while the outbreak keeps spreading unchecked:
+  1. **Fund Quarantine Protocols:** 30,000 + 8,000 CR per infected site. Every site stops spreading and is cleared within **2 weeks**.
+  2. **Military Cordon:** civil morale −4, military morale −2. The spread stops, but nobody is cured.
+  3. **Leave It to the Doctors:** civil morale −2. It may burn out; it may not.
+- **Field Medicine** (Research tab, 12 weeks, 6,000 CR/week) clears every infection within 2 weeks, forever after,
+  and halves the chance of new outbreaks.
+- Survey (10 campaigns of 40 weeks, choices made at random): 0–3 outbreaks and 0–4 disasters per campaign. Two
+  campaigns ended in revolution, one after an outbreak left unchecked reached 10 sites.
+
+### 4.29 The Home Front: Natural Disasters `[P8]`
+From week 4, each week has a **5%** chance that a disaster strikes a Kestrian region of matching terrain:
+
+| Disaster | Strikes | Damage |
+|----------|---------|--------|
+| **Severe Flooding** | river, coastal and marsh regions | 5–9 sections of rail/road wrecked, ~6,000 dead, civil morale −2 |
+| **Earthquake** | mountains and hills | 6–10 sections wrecked, ~9,000 dead, civil morale −3 |
+| **Mine Collapse** | hills (the Ironvale coalfield) | 3–6 sections wrecked, ~1,500 dead, factory output −10% for 4 weeks |
+
+- The wrecked cells (`[=]` becomes `x`) give no movement or supply bonus **at once**, so the supply lines through the region
+  are cut until Combat Engineers rebuild them (§4.25).
+- An immediate **CRITICAL EMERGENCY** modal forces the hard choice:
+  1. **Fund Relief:** −50,000 CR, civil morale +2.
+  2. **Deploy the Military:** the nearest formation not in battle (named on the button) is pulled off the line for
+     relief work. For **3 weeks** it cannot move, change stance or fight (firepower ×0.2 if attacked). Civil morale +4.
+  3. **Ignore:** civil morale **−8**, a long step toward Protocol Zero.
+- Two emergencies in one week queue up: the second modal appears as soon as the first is answered.
+- Debug: `python main.py --crisis outbreak` (or `disaster`) forces one at the first week.
 
 ---
 
@@ -734,6 +781,7 @@ command-terminal/
 │   ├── air.json             # air wings
 │   ├── events_deck.json     # CLASSIFIED DILEMMA cards
 │   ├── commanders.json      # commander traits, starting assignments, replacement pool, cost of relieving
+│   ├── crises.json          # epidemics (diseases, spread, quarantine) and natural disasters
 │   └── ui/boot_sequence.json
 ├── src/
 │   ├── models/              # nation.py, inbox.py, game_state.py, military.py (Unit, MoveOrder, Contact), battle.py,
@@ -757,6 +805,7 @@ command-terminal/
 │   │   ├── electronic_warfare.py  # jamming zones, loss of signal
 │   │   ├── engineering.py   # scorched earth sabotage, combat engineer repairs, map damage
 │   │   ├── savegame.py      # save / load (JSON codec for the whole GameState)
+│   │   ├── crisis_engine.py # the home front: epidemics, natural disasters, relief duty, emergency cards
 │   │   ├── recon.py         # detection radius, contacts, ghosts (active fog of war)
 │   │   ├── ai_director.py   # Vosk DEFEND / PROBE / ASSAULT state machine
 │   │   ├── sigint.py        # intercepts of major AI orders
@@ -791,6 +840,7 @@ command-terminal/
 11. **Logistics**: land and sea supply nets, fuel burn (mud ×2 for armor), supply, attrition, resupply, re-arming turn-in, replacements
 11a. **Engineering**: combat engineers rebuild wrecked track
 12. **Frost**: frostbite for formations without winter kit
+12a. **Crises**: relief duty counts down; epidemics take their toll, clear, spread (and nag); new outbreaks and disasters raise CRITICAL EMERGENCY modals
 13. **Economy**: ledger for every nation (taxes, trade, overseas trade minus blockaded ports, factories, research), timed modifiers expire
 14. **Events**: expire overdue dispatches (apply `on_expire`), deliver due emails (apply `on_arrival`)
 14a. **Electronic warfare**: jamming zones tick down (SIGNAL RESTORED), natural interference, last reports logged
@@ -821,12 +871,13 @@ command-terminal/
 | Dilemma: `1`–`3` or click | Choose (the week cannot advance until you do) |
 | Military: `f` | Relieve the highlighted formation's commander (−6 military morale) |
 | `ctrl+s` / `F5` | Save the campaign (`python main.py --load` resumes it) |
+| Emergency: `1`–`3` or click | Answer a CRITICAL EMERGENCY (outbreak or disaster); the game waits for you |
 | Game over: `r` / `q` | Restart the campaign / exit |
 | `n` or **▶ ADVANCE WEEK** | Advance one week |
 | `q` | Log out |
 
 ### 5.5 Testing
-`python -m pytest` (about 190 tests, 5–8 min) runs engine tests, fuzzed campaigns (random replies and random
+`python -m pytest` (about 200 tests, 3–7 min) runs engine tests, fuzzed campaigns (random replies and random
 move orders, with invariants checked every week) and headless Textual tests that drive the real UI:
 replies, advance week, the War Room overlay at several terminal sizes, issuing and cancelling orders,
 a live seeded campaign until SIGINT and a border clash arrive, factory assignment on the Economy
@@ -854,7 +905,7 @@ SVG screenshots from the UI tests.
 | **5** | **Meatgrinder**: military factories and production lines, national stockpile, physical resupply pipeline, combat driven by inventory (ammo and fuel), stances, trench fortification, routs and destruction, SITREP / After Action Reports. ✅ |
 | **6** | **The backbone of the state**: tax policies and trade income, bankruptcy spiral, recruitment and training (muster under-equipped), R&D with breakthroughs, unlocks, establishment upgrades and tech effects, Protocol Zero lock with restart. ✅ |
 | **7** | **Continental war**: 240×80 map at 10 miles per cell with oceans, 50 settlements and ports; miles-per-day marching; navies (destroyers, battleships, submarines) with PATROL / BLOCKADE / BOMBARD, naval battles and blockades of trade and supply; artillery fire support; abstract air wings and air superiority; weather and seasons (Rasputitsa, frostbite, Cold-Weather Kits, storms); the CLASSIFIED DILEMMA event deck; 5.56mm re-arming. ✅ |
-| **8** | **Human friction and the endgame**: commanders with hidden traits and insubordination, relieving command; electronic warfare and loss of signal; scorched earth and combat engineers; victory by capitulation (occupy Karzan, or bankrupt and demoralise the Hegemony); save/load. ✅ |
+| **8** | **The home front, human friction and the endgame**: epidemics (Trench Typhus, Industrial Influenza, Cholera) with spread, quarantine, cordons and Field Medicine; natural disasters wrecking infrastructure with CRITICAL EMERGENCY choices (fund relief, deploy the military, ignore); commanders with hidden traits and insubordination, relieving command; electronic warfare and loss of signal; scorched earth and combat engineers; victory by capitulation (occupy Karzan, or bankrupt and demoralise the Hegemony); save/load. ✅ |
 | 9 | Strategic bombing of factories (air wings over industrial centres), amphibious landings, multiple research slots. |
 | 10 | Domestic Politics & the Draft (§7.4): war weariness, rationing, conscription laws, factions. |
 | 11 | Diplomacy, balance pass. |
@@ -934,5 +985,8 @@ a formation, and the home front pays for all of it.
 - Should Vosk armies also suffer insubordination (their commanders refusing the AI), or is friction the player's burden?
 - Jamming is frequent in PROBE/ASSAULT (roughly every 5–8 weeks in a survey). Tune once real campaigns are played.
 - Can Kestria jam back (its own EW brigade blinding the Vosk AI's knowledge)? Currently the AI has perfect information.
+- Should the Vosk also suffer epidemics and disasters (a plague behind their lines as an opportunity)? Currently only
+  the home front suffers them.
+- Crises are harsh when ignored: two in ten random-choice campaigns ended in revolution. Is that the right pressure?
 - Should the player see a supply-flow projection (who will be OVEREXTENDED if a move order completes) before
   confirming an order?

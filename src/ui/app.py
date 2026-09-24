@@ -41,7 +41,8 @@ class CommandTerminalApp(App):
     revision: reactive[int] = reactive(0)
 
     def __init__(self, skip_boot: bool = False, seed: int | None = None, reveal: bool = False,
-                 event: str | None = None, load: str | None = None, save_path: str | None = None) -> None:
+                 event: str | None = None, load: str | None = None, save_path: str | None = None,
+                 crisis: str | None = None) -> None:
         super().__init__()
         self._reveal = reveal
         self._forced_event = event
@@ -55,6 +56,8 @@ class CommandTerminalApp(App):
             self.tick_engine = build_default_engine(self.game)
         else:
             self._new_campaign(seed)
+        if crisis:  # main.py --crisis: forced at the next week
+            self.game.flags["forced_crisis"] = crisis
         self._skip_boot = skip_boot
 
     def _new_campaign(self, seed: int | None = None) -> None:

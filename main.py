@@ -8,6 +8,7 @@ Usage:
     python main.py --list-events           # list the event deck
     python main.py --load                  # resume the campaign saved with CTRL+S (savegame.json)
     python main.py --load my_war.json      # resume from a particular save file
+    python main.py --crisis outbreak       # debug: an epidemic breaks out at the first week (or: disaster)
 """
 
 import argparse
@@ -23,6 +24,8 @@ def main() -> None:
     parser.add_argument("--event", default=None, metavar="CARD_ID",
                         help="draw this event card (data/events_deck.json) when the next week is advanced")
     parser.add_argument("--list-events", action="store_true", help="list the event deck and exit")
+    parser.add_argument("--crisis", choices=["outbreak", "disaster"], default=None,
+                        help="debug: start an epidemic or a natural disaster when the first week is advanced")
     parser.add_argument("--load", nargs="?", const="", default=None, metavar="SAVEFILE",
                         help="resume a saved campaign (default savegame.json in the game folder)")
     args = parser.parse_args()
@@ -44,7 +47,7 @@ def main() -> None:
         except SaveError as error:
             parser.exit(1, f"{error}\n")
     CommandTerminalApp(skip_boot=args.skip_boot, seed=args.seed, reveal=args.reveal, event=args.event,
-                       load=args.load).run()
+                       load=args.load, crisis=args.crisis).run()
 
 
 if __name__ == "__main__":

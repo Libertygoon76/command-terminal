@@ -224,7 +224,9 @@ class MilitaryView(VerticalScroll):
                 Text(f"{ready:.0%}", style=palette.PHOSPHOR_BRIGHT if ready >= 0.75 else palette.AMBER),
                 Text(unit.supply_state.upper(),
                      style=palette.PHOSPHOR if unit.supply_state == "supplied" else f"bold {palette.RED}"),
-                Text(unit.status.upper(), style=f"bold {palette.RED}" if unit.engaged else palette.PHOSPHOR),
+                Text(("RELIEF DUTY" if unit.relief_weeks else unit.status.upper())
+                     + (" [INFECTED]" if f"unit:{unit.id}" in game.infections else ""),
+                     style=f"bold {palette.RED}" if unit.engaged or f"unit:{unit.id}" in game.infections else palette.PHOSPHOR),
                 unit.mission.upper() if template.get("domain") == "sea" else unit.stance.upper(),
                 commander_text(game, unit),
                 (f"MOVE → {unit.active_order.x:03d}-{unit.active_order.y:03d}" if unit.active_order else "HOLD"),

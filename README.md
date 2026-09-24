@@ -38,6 +38,10 @@ Air Assets (`6`): highlight a wing → `[` / `]` move it between sectors · `0` 
 Classified Dilemmas pop up between weeks: press `1`–`3` (or click) to decide. The week cannot advance until you do.
 `python main.py --event worker_strike` forces a card at the next week; `python main.py --list-events` lists the deck.
 
+**The home front:** epidemics and natural disasters raise a red CRITICAL EMERGENCY modal (`1`–`3`): fund
+quarantine or relief, send in the troops, or ignore it and pay in morale. Research Field Medicine against disease;
+send Combat Engineers to rebuild wrecked railways. `python main.py --crisis outbreak` (or `disaster`) forces one.
+
 **Save / load:** `ctrl+s` (or `F5`) saves the campaign to `savegame.json`; `python main.py --load` resumes it.
 
 `python main.py --reveal` lifts the fog of war and shows the AI's hidden posture (debug).

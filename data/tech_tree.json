@@ -13,7 +13,8 @@
     "industry",
     "doctrine",
     "naval",
-    "air"
+    "air",
+    "medicine"
   ],
   "known_at_start": [
     "standard_rifle_762",
@@ -213,6 +214,16 @@
         "winter_gear"
       ],
       "notes": "Insulated boots, parkas, stove kits and ski troops. Formations with a kit for every man do not freeze in winter."
+    },
+    {
+      "id": "field_medicine",
+      "name": "Field Medicine",
+      "branch": "medicine",
+      "weeks": 12,
+      "weekly_cost": 6000,
+      "requires": [],
+      "unlocks": [],
+      "notes": "Sulfa drugs, delousing stations, mobile field hospitals and water purification. Clears every epidemic within two weeks and halves the chance of new outbreaks."
     }
   ]
 }

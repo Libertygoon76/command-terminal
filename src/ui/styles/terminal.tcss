@@ -514,3 +514,15 @@ GameOverScreen.-victory #gameover-dialog {
     border: double $ct-amber;
     border-title-color: $ct-amber;
 }
+
+/* ---------- critical emergency (crises) ---------- */
+
+DilemmaScreen.-emergency {
+    background: rgba(40, 0, 0, 0.8);
+}
+
+DilemmaScreen.-emergency #dilemma-dialog {
+    background: #120404;
+    border: double #ff3b3b;
+    border-title-color: #ff3b3b;
+}

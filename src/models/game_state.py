@@ -112,6 +112,9 @@ class GameState:
     jammed: dict[str, dict[str, Any]] = field(default_factory=dict)  # zone id -> {center, radius, weeks, sector}
     signal_log: dict[str, dict[str, Any]] = field(default_factory=dict)  # unit id -> last report before the jam
     occupation_weeks: int = 0  # consecutive weeks Kestrian troops have held the enemy capital
+    infections: dict[str, dict[str, Any]] = field(default_factory=dict)  # "city:<name>" / "unit:<id>" -> infection
+    crisis_cards: dict[str, dict[str, Any]] = field(default_factory=dict)  # runtime CRITICAL EMERGENCY cards
+    dilemma_queue: list[str] = field(default_factory=list)  # modal cards waiting behind the one on screen
 
     def template(self, unit_type: str) -> dict[str, Any]:
         """Unit template (units.json) by id."""
