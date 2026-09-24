@@ -31,6 +31,8 @@ from src.engine.logistics_engine import SUPPLIED
 from src.engine.movement import OrderError, issue_move_order, plan_route
 from src.engine.sigint import maybe_intercept
 from src.engine.systems import SimulationSystem, TickReport
+from src.models import ASSAULT as STANCE_ASSAULT
+from src.models import DEFEND as STANCE_DEFEND
 from src.models import AIState, GameState, Unit
 from src.models.ai import ASSAULT, DEFEND, PROBE
 
@@ -115,6 +117,10 @@ class AIDirector(SimulationSystem):
             except OrderError:
                 continue
             ai.log.append(f"WK {state.clock.turn:03d}: {unit.designation} -> {target} ({ai.posture})")
+            # Probes and assault groups go in attacking; everything else digs in where it stops.
+            attacking = unit.id in ai.assault_group or target in {u.location for u in state.player.units} \
+                or target[0] < int(cfg["front_line_x"][0])
+            unit.stance = STANCE_ASSAULT if attacking else STANCE_DEFEND
             intercept = maybe_intercept(state, unit, target, route.eta_weeks, sigint_cfg, sent)
             if intercept is not None:
                 sent += 1
@@ -142,7 +148,8 @@ class AIDirector(SimulationSystem):
         return set(ai.config["home_regions"]) | {ai.config["front_region"]}
 
     def _idle(self, state: GameState, ai: AIState) -> list[Unit]:
-        units = [u for u in state.nations[ai.nation_id].units if u.active_order is None and not u.engaged]
+        units = [u for u in state.nations[ai.nation_id].units
+                 if u.active_order is None and not u.engaged and not u.routing]
         state.rng.shuffle(units)  # unpredictable within each priority class
         return sorted(units, key=lambda u: ROLE_PRIORITY.get(_role(state, u), 5))
 
@@ -154,7 +161,7 @@ class AIDirector(SimulationSystem):
         threshold = float(ai.config.get("resupply_threshold", 25))
         orders = []
         for unit in state.nations[ai.nation_id].units:
-            if unit.supply >= threshold or unit.supply_state == SUPPLIED or unit.engaged:
+            if unit.supply >= threshold or unit.supply_state == SUPPLIED or unit.engaged or unit.routing:
                 continue
             if unit.active_order and unit.active_order.target in info["network"]:
                 continue  # already falling back
@@ -268,7 +275,7 @@ class AIDirector(SimulationSystem):
         # Recruits are re-tasked even if they are still executing an older (PROBE) order.
         recruits: set[str] = set()
         candidates = sorted(
-            (u for u in units.values() if not u.engaged and u.id not in ai.assault_group
+            (u for u in units.values() if not u.engaged and not u.routing and u.id not in ai.assault_group
              and _role(state, u) in ("armor", "infantry") and u.supply_state == SUPPLIED),
             key=lambda u: (ROLE_PRIORITY[_role(state, u)], u.active_order is not None, rng.random()),
         )
@@ -279,7 +286,7 @@ class AIDirector(SimulationSystem):
             recruits.add(unit.id)
         for unit_id, index in list(ai.assault_group.items()):
             unit = units.get(unit_id)
-            if unit is None or unit.engaged or (unit.active_order is not None and unit_id not in recruits):
+            if unit is None or unit.engaged or unit.routing or (unit.active_order is not None and unit_id not in recruits):
                 continue
             while index < len(waypoints) - 1 and abs(unit.x - waypoints[index][0]) + abs(unit.y - waypoints[index][1]) <= 2:
                 index += 1  # reached this waypoint: head for the next

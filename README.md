@@ -23,7 +23,9 @@ Use Windows Terminal (not the legacy console) for correct colors and box-drawing
 `1`–`4` switch views · arrows / Enter navigate · `Tab` moves focus · `a`–`d` reply to the open dispatch · `h` hides archived mail · `n` advances the week · `q` logs out.
 
 War Room (`4`): select a friendly unit (cursor or Order of Battle) → `m` → move the cursor → `Enter`
-to issue a move order (`Esc` aborts) · `g` type a grid reference · `x` cancel an order · `s` supply overlay.
+to issue a move order (`Esc` aborts) · `g` type a grid reference · `x` cancel an order · `s` supply overlay. · `t` cycle combat stance (DEFEND / ASSAULT / WITHDRAW).
+
+Economy (`2`): highlight a production line → `+` / `-` assign or remove a military factory · `0` close the line.
 
 `python main.py --reveal` lifts the fog of war and shows the AI's hidden posture (debug).
 

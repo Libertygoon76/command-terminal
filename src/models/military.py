@@ -6,6 +6,12 @@ from typing import Any
 HOLDING = "holding"
 MOVING = "moving"
 ENGAGED = "engaged"
+ROUTING = "routing"
+
+DEFEND = "defend"
+ASSAULT = "assault"
+WITHDRAW = "withdraw"
+STANCES = (DEFEND, ASSAULT, WITHDRAW)
 
 
 @dataclass
@@ -41,12 +47,13 @@ class Unit:
     strength: int  # current manpower
     morale: float = 70.0  # 0-100
     supply: float = 100.0  # 0-100, % of weekly needs met
-    stance: str = "trench_warfare"
+    stance: str = DEFEND  # combat stance: defend | assault | withdraw
     commander: str = ""
     # --- orders & status ---
     active_order: MoveOrder | None = None
     move_points: float = 0.0  # unspent movement carried into next week (for slow terrain)
-    status: str = HOLDING  # holding | moving | engaged
+    status: str = HOLDING  # holding | moving | engaged | routing
+    routing_weeks: int = 0  # weeks left before a routed unit rallies
     supply_state: str = "supplied"  # supplied | overextended | isolated (set by logistics each week)
     engaged_with: list[str] = field(default_factory=list)  # unit ids in contact
     # Physical inventory: equipment id (data/equipment.json) -> count. Placeholder for the future
@@ -65,6 +72,10 @@ class Unit:
     def engaged(self) -> bool:
         return self.status == ENGAGED
 
+    @property
+    def routing(self) -> bool:
+        return self.status == ROUTING
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Unit:
         x, y = data["location"]
@@ -78,7 +89,7 @@ class Unit:
             strength=int(data["strength"]),
             morale=float(data.get("morale", 70)),
             supply=float(data.get("supply", 100)),
-            stance=data.get("stance", "trench_warfare"),
+            stance=data.get("stance", DEFEND),
             commander=data.get("commander", ""),
             equipment_inventory={k: int(v) for k, v in data.get("equipment_inventory", {}).items()},
         )

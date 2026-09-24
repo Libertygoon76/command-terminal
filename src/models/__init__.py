@@ -2,13 +2,32 @@
 
 from src.models.game_state import GameClock, GameOver, GameState, Ledger, ScheduledEmail
 from src.models.ai import AIState
-from src.models.military import ENGAGED, HOLDING, MOVING, Contact, MoveOrder, Unit
+from src.models.battle import Battle
+from src.models.military import (
+    ASSAULT,
+    DEFEND,
+    ENGAGED,
+    HOLDING,
+    MOVING,
+    ROUTING,
+    STANCES,
+    WITHDRAW,
+    Contact,
+    MoveOrder,
+    Unit,
+)
 from src.models.world_map import MapFeature, MapRegion, WorldMap
 from src.models.inbox import EXPIRED_RESPONSE, Email, EmailOption, FollowUp, Inbox
 from src.models.nation import Nation
 
 __all__ = [
+    "ASSAULT",
     "AIState",
+    "Battle",
+    "DEFEND",
+    "ROUTING",
+    "STANCES",
+    "WITHDRAW",
     "Contact",
     "ENGAGED",
     "HOLDING",

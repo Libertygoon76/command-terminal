@@ -46,8 +46,15 @@ class Nation:
     military_morale: float  # 0-100 armed forces loyalty; too low = coup
     population: int
     tax_rate: float  # 0.0-1.0
-    stockpiles: dict[str, int] = field(default_factory=dict)
+    stockpiles: dict[str, int] = field(default_factory=dict)  # raw & manufactured resources (resources.json)
     units: list[Unit] = field(default_factory=list)  # formations in the field
+    # --- war economy ---
+    military_factories: int = 0
+    production: dict[str, int] = field(default_factory=dict)  # equipment id -> factories assigned
+    line_efficiency: dict[str, float] = field(default_factory=dict)  # equipment id -> 0..1
+    national_stockpile: dict[str, int] = field(default_factory=dict)  # finished equipment in depots
+    resource_output: dict[str, int] = field(default_factory=dict)  # resources produced per week
+    known_techs: set[str] = field(default_factory=set)
 
     def __post_init__(self) -> None:
         self.morale = _clamp(float(self.morale), MORALE_MIN, MORALE_MAX)
@@ -89,6 +96,14 @@ class Nation:
         return morale_band(self.military_morale)
 
     @property
+    def assigned_factories(self) -> int:
+        return sum(self.production.values())
+
+    @property
+    def free_factories(self) -> int:
+        return self.military_factories - self.assigned_factories
+
+    @property
     def total_deployed(self) -> int:
         return sum(u.strength for u in self.units)
 
@@ -112,6 +127,11 @@ class Nation:
             population=int(data["population"]),
             tax_rate=float(data["tax_rate"]),
             stockpiles=dict(data.get("stockpiles", {})),
+            military_factories=int(data.get("military_factories", 0)),
+            production={k: int(v) for k, v in data.get("production", {}).items() if int(v) > 0},
+            national_stockpile={k: int(v) for k, v in data.get("national_stockpile", {}).items()},
+            resource_output={k: int(v) for k, v in data.get("resource_output", {}).items()},
+            known_techs=set(data.get("known_techs") or []),
         )
 
     def to_dict(self) -> dict[str, Any]:

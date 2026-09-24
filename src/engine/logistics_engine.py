@@ -23,6 +23,15 @@ Supply states:
   ISOLATED      no path at all: cut off.
 At 0% supply a formation suffers attrition (manpower and morale) and cannot advance; it may
 only move to a cell inside its own supply network (fall back).
+
+Equipment pipeline (Phase 5): the generic supply % stands for food, spares and general stores.
+Weapons, ammunition and fuel are PHYSICAL: each formation carries an equipment_inventory, burns
+fuel every week (template `fuel_use` by status) and ammunition in combat. SUPPLIED formations
+draw from the nation's national_stockpile toward their establishment (template loadout scaled
+by current strength). Engaged formations are served first; delivery per week is capped by the
+length of the supply line (config logistics.resupply). An empty depot delivers nothing.
+Supplied formations out of combat also receive replacement troops from the manpower pool and
+slowly recover morale.
 """
 
 from __future__ import annotations
@@ -34,7 +43,7 @@ from src.engine.event_manager import deliver
 from src.engine.movement import passable, scaled_distance, step_cost
 from src.engine.systems import SimulationSystem, TickReport
 from src.engine.text import fill
-from src.models import ENGAGED, MOVING, Email, GameState, Unit
+from src.models import ENGAGED, MOVING, ROUTING, Email, GameState, Nation, Unit
 
 SUPPLIED = "supplied"
 OVEREXTENDED = "overextended"
@@ -64,6 +73,14 @@ def zoc_cells(state: GameState, nation_id: str) -> set[tuple[int, int]]:
 
 
 def supply_sources(state: GameState, nation_id: str) -> set[tuple[int, int]]:
+    """Cities/capitals/ports the nation owns, plus its home map edge. Static, so cached."""
+    key = ("supply_sources", nation_id)
+    if key not in state.cost_cache:
+        state.cost_cache[key] = frozenset(_find_sources(state, nation_id))
+    return set(state.cost_cache[key])
+
+
+def _find_sources(state: GameState, nation_id: str) -> set[tuple[int, int]]:
     world = state.world_map
     cfg = _cfg(state)
     sources = {
@@ -136,7 +153,8 @@ def compute_network(state: GameState, nation_id: str) -> dict:
     zoc = zoc_cells(state, nation_id)
     blocked = {u.location for u in _enemies_of(state, nation_id)}
 
-    primary = trace(state, nation_id, {c: 0.0 for c in supply_sources(state, nation_id) if c not in blocked}, blocked, zoc)
+    starts = {c: 0.0 for c in supply_sources(state, nation_id) if c not in blocked}
+    primary = trace(state, nation_id, starts, blocked, zoc, limit=source_range)
     templates = {t["id"]: t for t in state.catalog["units"]["units"]}
     depots = {
         u.location: 0.0 for u in state.nations[nation_id].units
@@ -146,7 +164,8 @@ def compute_network(state: GameState, nation_id: str) -> dict:
 
     network = {c for c, d in primary.items() if d <= source_range} | set(forward)
     info = {"primary": primary, "forward": forward, "network": network, "zoc": zoc,
-            "source_range": source_range, "hq_range": hq_range}
+            "source_range": source_range, "hq_range": hq_range,
+            "starts": set(starts), "blocked": blocked, "connected": None}
     state.supply_networks[nation_id] = info
     return info
 
@@ -158,9 +177,89 @@ def supply_status(state: GameState, unit: Unit, info: dict) -> tuple[str, float]
     if d1 <= info["source_range"] or d2 <= info["hq_range"]:
         reach = min(d1 / info["source_range"], d2 / info["hq_range"])
         return SUPPLIED, reach
-    if d1 < math.inf:
+    if unit.location in _connected(state, info):
         return OVEREXTENDED, 1.0
     return ISOLATED, 1.0
+
+
+def _connected(state: GameState, info: dict) -> set[tuple[int, int]]:
+    """Every cell any supply path could reach at all (ignoring range): a cheap flood fill, computed
+    only when some formation is outside the ranged net. Same ZOC rule as `trace`."""
+    if info["connected"] is None:
+        world_ok = entry_costs(state, next(iter(state.nations)))  # passable cells (keys are nation-independent)
+        zoc, blocked = info["zoc"], info["blocked"]
+        seen = set(info["starts"])
+        stack = list(seen)
+        while stack:
+            x, y = stack.pop()
+            if (x, y) in zoc and (x, y) not in info["starts"]:
+                continue
+            for nxt in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                if nxt in world_ok and nxt not in blocked and nxt not in seen:
+                    seen.add(nxt)
+                    stack.append(nxt)
+        info["connected"] = seen
+    return info["connected"]
+
+
+def _template(state: GameState, unit: Unit) -> dict:
+    return next(t for t in state.catalog["units"]["units"] if t["id"] == unit.unit_type)
+
+
+def establishment(state: GameState, unit: Unit) -> dict[str, int]:
+    """What the formation should carry: its template loadout scaled by current strength."""
+    template = _template(state, unit)
+    share = unit.strength / max(1, template["manpower"])
+    return {item: int(round(qty * share)) for item, qty in template.get("loadout", {}).items()}
+
+
+def fill_ratio(state: GameState, unit: Unit, categories: tuple[str, ...] = ("ammunition",)) -> float:
+    """Inventory / establishment for items in the given categories (1.0 if it needs none)."""
+    items = {e["id"]: e for e in state.catalog["equipment"]}
+    have = want = 0
+    for item_id, wanted in establishment(state, unit).items():
+        if items.get(item_id, {}).get("category") in categories:
+            want += wanted
+            have += min(wanted, unit.equipment_inventory.get(item_id, 0))
+    return have / want if want else 1.0
+
+
+def burn_fuel(state: GameState, unit: Unit) -> None:
+    use = _template(state, unit).get("fuel_use", {})
+    drums = int(use.get(unit.status, use.get("holding", 0)))
+    if drums:
+        unit.equipment_inventory["fuel_drums"] = max(0, unit.equipment_inventory.get("fuel_drums", 0) - drums)
+
+
+def resupply_nation(state: GameState, nation: Nation, info: dict) -> None:
+    """Move equipment from the national stockpile to supplied formations, neediest-and-fighting first."""
+    cfg = _cfg(state).get("resupply", {})
+    items = {e["id"]: e for e in state.catalog["equipment"]}
+    hi, lo = float(cfg.get("consumable_max", 0.6)), float(cfg.get("consumable_min", 0.25))
+    heavy = float(cfg.get("heavy_rate", 0.12))
+    queue = [u for u in nation.units if u.supply_state == SUPPLIED and u.status != ROUTING]
+    queue.sort(key=lambda u: (not u.engaged, fill_ratio(state, u)))
+    for unit in queue:
+        _, reach = supply_status(state, unit, info)
+        for item_id, wanted in establishment(state, unit).items():
+            gap = wanted - unit.equipment_inventory.get(item_id, 0)
+            if gap <= 0:
+                continue
+            consumable = items.get(item_id, {}).get("category") in ("ammunition", "consumable")
+            cap = wanted * ((hi - (hi - lo) * reach) if consumable else heavy)
+            take = int(min(gap, max(1, cap), nation.national_stockpile.get(item_id, 0)))
+            if take > 0:
+                nation.national_stockpile[item_id] -= take
+                unit.equipment_inventory[item_id] = unit.equipment_inventory.get(item_id, 0) + take
+        # Replacements and rest for formations out of the line.
+        if not unit.engaged:
+            template = _template(state, unit)
+            gap = template["manpower"] - unit.strength
+            men = int(min(gap, template["manpower"] * float(cfg.get("replacement_rate", 0.04)), nation.manpower))
+            if men > 0:
+                unit.strength += men
+                nation.adjust_manpower(-men)
+            unit.morale = min(float(cfg.get("morale_ceiling", 85)), unit.morale + float(cfg.get("morale_recovery", 2)))
 
 
 def update_supply(state: GameState) -> list[Unit]:
@@ -172,6 +271,7 @@ def update_supply(state: GameState) -> list[Unit]:
     for nation_id, nation in state.nations.items():
         info = compute_network(state, nation_id)
         for unit in nation.units:
+            burn_fuel(state, unit)
             status, reach = supply_status(state, unit, info)
             if status == ISOLATED and unit.supply_state != ISOLATED and state.is_friendly(nation_id):
                 newly_isolated.append(unit)
@@ -191,6 +291,7 @@ def update_supply(state: GameState) -> list[Unit]:
                 loss = max(1, round(unit.strength * float(cfg.get("attrition_rate", 0.04))))
                 unit.strength = max(floor, unit.strength - loss)
                 unit.morale = max(0.0, unit.morale - float(cfg.get("attrition_morale", 5)))
+        resupply_nation(state, nation, info)
     return newly_isolated
 
 
@@ -232,9 +333,13 @@ def can_advance(state: GameState, unit: Unit) -> bool:
 
 def speed_factor(state: GameState, unit: Unit) -> float:
     cfg = _cfg(state)
+    factor = 1.0
     if unit.supply < float(cfg.get("low_supply_threshold", 25)):
-        return float(cfg.get("low_supply_speed_factor", 0.5))
-    return 1.0
+        factor *= float(cfg.get("low_supply_speed_factor", 0.5))
+    needs_fuel = _template(state, unit).get("fuel_use", {}).get("moving", 0) > 0
+    if needs_fuel and unit.equipment_inventory.get("fuel_drums", 0) <= 0:
+        factor *= 0.25  # out of fuel: trucks and tanks stand still, men walk
+    return factor
 
 
 def isolation_email(state: GameState, unit: Unit) -> Email:

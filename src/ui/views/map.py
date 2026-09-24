@@ -3,6 +3,7 @@
 Orders: select a friendly formation (cursor or Order of Battle list), press M to enter
 targeting mode, move the cursor to the destination (the route and ETA preview live), and press
 ENTER to issue. G types an exact grid reference instead. X cancels a standing order.
+T cycles the selected formation's combat stance (DEFEND -> ASSAULT -> WITHDRAW).
 """
 
 from __future__ import annotations
@@ -14,7 +15,9 @@ from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.widgets import OptionList, Static
 from textual.widgets.option_list import Option, OptionDoesNotExist
 
+from src.engine.combat_engine import StanceError, set_stance
 from src.engine.event_manager import GameOverError
+from src.engine.logistics_engine import establishment, fill_ratio
 from src.engine.intel import unit_report
 from src.engine.map_overlay import (
     Marker,
@@ -33,7 +36,10 @@ from src.ui.screens.coordinates import CoordinatesScreen
 from src.ui.widgets.map_canvas import MapCanvas
 
 RULE = "─" * 34
-STATUS_STYLE = {"holding": palette.PHOSPHOR, "moving": "#4fd8ff", "engaged": f"bold {palette.RED}"}
+STATUS_STYLE = {"holding": palette.PHOSPHOR, "moving": "#4fd8ff", "engaged": f"bold {palette.RED}",
+                "routing": f"bold {palette.AMBER}"}
+STANCE_STYLE = {"defend": palette.PHOSPHOR_BRIGHT, "assault": f"bold {palette.RED}", "withdraw": palette.AMBER}
+STANCE_CYCLE = ("defend", "assault", "withdraw")
 SUPPLY_STATE_STYLE = {"supplied": palette.PHOSPHOR_BRIGHT, "overextended": palette.AMBER, "isolated": f"bold {palette.RED}"}
 
 
@@ -71,13 +77,17 @@ def _order_text(game: GameState, unit: Unit) -> str:
 def friendly_block(game: GameState, unit: Unit) -> Text:
     friendly, _ = _colors(game)
     template = _templates(game)[unit.unit_type]
-    stance = _stances(game).get(unit.stance, {}).get("name", unit.stance)
     region = game.world_map.region_at(unit.x, unit.y)
     full = template["manpower"]
     text = Text()
     text.append(f"■ FRIENDLY FORMATION  {unit.designation}\n", style=f"bold {friendly}")
     text.append(f"{unit.name.upper()}\n", style=f"bold {palette.PHOSPHOR_BRIGHT}")
-    _row(text, "STATUS", unit.status.upper(), STATUS_STYLE.get(unit.status, palette.PHOSPHOR))
+    status = unit.status.upper() + (f" ({unit.routing_weeks} WK TO RALLY)" if unit.routing else "")
+    _row(text, "STATUS", status, STATUS_STYLE.get(unit.status, palette.PHOSPHOR))
+    _row(text, "STANCE", unit.stance.upper() + "  [T]", STANCE_STYLE.get(unit.stance, palette.PHOSPHOR))
+    battle = next((b for b in game.battles.values() if b.active and unit.id in b.participants), None)
+    if battle is not None:
+        _row(text, "IN BATTLE", f"{battle.name.upper()} · WEEK {battle.weeks}", f"bold {palette.RED}")
     _row(text, "ORDER", _order_text(game, unit), "#4fd8ff" if unit.active_order else palette.PHOSPHOR)
     _row(text, "TYPE", f"{template['name'].upper()}  [{template['symbol']}]")
     _row(text, "STRENGTH", f"{unit.strength:,} / {full:,}  ({unit.strength / full:.0%})")
@@ -86,10 +96,19 @@ def friendly_block(game: GameState, unit: Unit) -> Text:
     _row(text, "SUPPLY", _bar(unit.supply), supply_style)
     line = unit.supply_state.upper() + (" · NO SUPPLY: ATTRITION, CANNOT ADVANCE" if unit.supply <= 0 else "")
     _row(text, "SUPPLY LINE", line, SUPPLY_STATE_STYLE.get(unit.supply_state, palette.PHOSPHOR))
+    ammo = fill_ratio(game, unit)
+    ammo_style = palette.PHOSPHOR_BRIGHT if ammo >= 0.5 else (palette.AMBER if ammo >= 0.25 else f"bold {palette.RED}")
+    _row(text, "AMMUNITION", _bar(ammo * 100), ammo_style)
     _row(text, "SPEED / RECON", f"{template.get('move_speed', 4)} ROWS/WK · {template.get('detection_radius', 5)} ROWS")
-    _row(text, "STANCE", stance.upper())
     _row(text, "COMMANDER", unit.commander or "—")
     _row(text, "POSITION", f"GRID {grid_ref(unit.x, unit.y)} · {region.name.upper() if region else 'AT SEA'}")
+    text.append("LOADOUT  carried / establishment\n", style=palette.PHOSPHOR_DIM)
+    items = {e["id"]: e for e in game.catalog["equipment"]}
+    for item_id, wanted in establishment(game, unit).items():
+        have = unit.equipment_inventory.get(item_id, 0)
+        style = palette.PHOSPHOR if have >= wanted * 0.5 else (palette.AMBER if have >= wanted * 0.25 else palette.RED)
+        name = items.get(item_id, {}).get("name", item_id)
+        text.append(f" {name[:17]:<17}{have:>7,}/{wanted:<6,}\n", style=style)
     return text
 
 
@@ -104,6 +123,8 @@ def hostile_block(game: GameState, unit: Unit) -> Text:
     text.append(f"{title}\n", style=f"bold {palette.PHOSPHOR_BRIGHT}")
     if unit.engaged:
         _row(text, "STATUS", "ENGAGED WITH OUR FORCES", f"bold {palette.RED}")
+    elif unit.routing:
+        _row(text, "STATUS", "ROUTING — BROKEN", f"bold {palette.AMBER}")
     _row(text, "TYPE (REPORTED)", f"{template.get('name', '?').upper()}  [{template.get('symbol', '?')}]")
     _row(text, "EST. STRENGTH", f"{report.strength.low:,} – {report.strength.high:,}", palette.AMBER)
     _row(text, "CERTAINTY", f"{report.accuracy:.0%}  {palette.meter(report.accuracy * 100)}", palette.AMBER)
@@ -192,6 +213,7 @@ class MapView(Horizontal):
         Binding("g", "grid_order", "Order to Grid"),
         Binding("x", "cancel_order", "Cancel Order"),
         Binding("s", "toggle_supply", "Supply Overlay"),
+        Binding("t", "cycle_stance", "Stance"),
         Binding("enter", "confirm_order", "Confirm", show=False),
         Binding("escape", "abort_targeting", "Abort", show=False),
     ]
@@ -279,7 +301,8 @@ class MapView(Horizontal):
                 bar.append(" SELECTED ", style=f"bold #000000 on {palette.PHOSPHOR_DIM}")
                 bar.append(f" {unit.designation} {unit.name.upper()}  ", style=palette.PHOSPHOR_BRIGHT)
                 bar.append(_order_text(game, unit), style="#4fd8ff" if unit.active_order else palette.PHOSPHOR_DIM)
-                bar.append("   M move · G grid · X cancel", style=palette.PHOSPHOR_DIM)
+                bar.append(f"  STANCE {unit.stance.upper()}", style=STANCE_STYLE.get(unit.stance, palette.PHOSPHOR))
+                bar.append("   M move · G grid · X cancel · T stance", style=palette.PHOSPHOR_DIM)
             else:
                 bar.append(" NO FORMATION SELECTED ", style=f"{palette.PHOSPHOR_DIM}")
                 bar.append("  place the cursor on a friendly [symbol] or pick one in the Order of Battle",
@@ -375,6 +398,20 @@ class MapView(Horizontal):
         self.app.state_changed()
         self.notify(f"{unit.designation} will hold position.", title="ORDER CANCELLED")
 
+    def action_cycle_stance(self) -> None:
+        unit = self._order_guard()
+        if unit is None:
+            return
+        nxt = STANCE_CYCLE[(STANCE_CYCLE.index(unit.stance) + 1) % len(STANCE_CYCLE)] if unit.stance in STANCE_CYCLE else "defend"
+        try:
+            set_stance(self.app.game, unit.id, nxt)
+        except StanceError as error:
+            self.notify(str(error), title="STANCE", severity="warning")
+            return
+        self.app.state_changed()
+        description = _stances(self.app.game).get(nxt, {}).get("description", "")
+        self.notify(f"{unit.designation} → {nxt.upper()}. {description}", title="STANCE ORDER")
+
     def action_toggle_supply(self) -> None:
         canvas = self.canvas
         canvas.supply_overlay = not canvas.supply_overlay
@@ -403,8 +440,10 @@ class MapView(Horizontal):
             prompt.append(unit.name, style=palette.PHOSPHOR)
             if unit.supply_state != "supplied":
                 prompt.append(f"  {unit.supply_state.upper()}", style=SUPPLY_STATE_STYLE[unit.supply_state])
-            if unit.engaged:
-                prompt.append("  ENGAGED", style=f"bold {palette.RED}")
+            if unit.routing:
+                prompt.append("  ROUTING", style=f"bold {palette.AMBER}")
+            elif unit.engaged:
+                prompt.append(f"  ENGAGED · {unit.stance.upper()}", style=f"bold {palette.RED}")
             elif unit.active_order:
                 prompt.append(f"  → {grid_ref(unit.active_order.x, unit.active_order.y)}", style="#4fd8ff")
             options.append(Option(prompt, id=unit.id))

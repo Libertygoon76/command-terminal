@@ -1,7 +1,7 @@
 # COMMAND TERMINAL — Game Design Document
 
 > Living document. Update it whenever a system is designed, changed, or cut.
-> Last major revision: Phase 4 (movement, logistics, AI Director, SIGINT, border clashes), 2026-09-24.
+> Last major revision: Phase 5 (war production, resupply pipeline, tactical combat, routs, battle reports), 2026-09-24.
 
 ---
 
@@ -102,12 +102,25 @@ Status legend: `[P1]`/`[P2]` built in that phase · `[STUB]` placeholder · `[PL
 - **Military morale** 0–100: loyalty of the armed forces. At 10 or below there is a coup.
 - `[PLANNED]` Construction queues, edicts, stability, corruption, war support, factions.
 
-### 4.3 Economy `[P2 placeholder]`
-- Weekly ledger (`economy_engine.compute_ledger`):
+### 4.3 Economy & the Military Industrial Complex `[P2 ledger · P5 war production]`
+- **Weekly ledger** (`economy_engine.compute_ledger`):
   `tax = population × tax_rate × tax_revenue_per_capita_weekly × productivity(morale)`,
-  minus civil administration, armed forces pay, and debt interest. All values are in config `economy`.
-- `[PLANNED]` Resources, production chains, stockpile consumption, markets, and trade routes
-  (the data already exists in `resources.json`).
+  minus civil administration, armed forces pay, **military production (1,100 CR per assigned factory
+  per week)**, and debt interest. The war economy costs money: the default allocation of 15
+  factories runs about −13,000 CR/week.
+- **Domestic resource output** (`nations.json → resource_output`, placeholder): steel, munitions,
+  fuel, coal, and so on, added to resource stockpiles every week. Factories consume these as inputs.
+- **Military factories** (`src/engine/production.py`): each nation owns `military_factories`
+  (Kestria 24, Vosk 32). On the **Economy screen** the player assigns them to **production lines**,
+  one per item in `equipment.json`:
+  - An item is **LOCKED** until its `requires_tech` is known (the tech tree's `known_at_start` for now).
+  - Weekly output per factory is `batch × 7 / factory_days × line efficiency`. A new line starts at
+    **50%** efficiency and gains **+10% per week** up to 100%. Closing a line resets it, so constant
+    retooling is costly.
+  - Output is capped by raw inputs (`cost` per unit). A shortage shows on the Economy screen and in
+    the weekly report.
+  - Output goes into the nation's **national stockpile** of finished equipment.
+- **The AI** rebalances its factories every week toward its formations' worst shortages.
 
 ### 4.4 Movement & Orders `[P4]`
 Module: `src/engine/movement.py`.
@@ -196,12 +209,71 @@ Module: `src/engine/sigint.py`, config `ai.json → sigint`, text `generated.jso
   Segments marked `[[...]]` in the templates are **[REDACTED]** at random (40%). Confidence is stated,
   and the text warns that intercepts may be deception.
 
-### 4.9 Large-Scale Combat `[PLANNED — Phase 5]`
-- Operations resolved over ticks, using strength, equipment, supply, terrain, fortification,
-  morale, fatigue, commander traits, and **tactical stance** (Trench Warfare, Blitzkrieg,
-  Defense in Depth, and more). The output is a Battle Report email.
+### 4.9 Resupply Pipeline `[P5]`
+Module: `logistics_engine.py`, config `logistics.resupply`.
+- **Physical inventory.** Each formation carries `equipment_inventory`. Its **establishment** is the
+  template `loadout` scaled by current strength (a half-strength division needs half the rifles).
+- **Fuel** (`fuel_drums`) burns every week by status (`units.json → fuel_use`: armor holding 30,
+  moving 180, engaged 60). A formation that needs fuel and has none moves at 25% speed, and its tanks
+  cannot fire.
+- **Resupply.** Every SUPPLIED formation (not routing) draws from the national stockpile toward
+  establishment. Engaged formations are served first, then the emptiest. Per-week caps:
+  ammunition and consumables `60% → 25%` of establishment, falling with supply-line length;
+  weapons and vehicles 12%. **An empty depot delivers nothing.** Isolated and overextended formations
+  get nothing at all.
+- **Replacements and rest.** Supplied formations out of combat regain 4% of establishment per week in
+  men from the manpower pool, and +2 morale per week (up to 85).
+- The generic **supply %** still stands for food, spares and general stores (Phase 4 rules).
 
-### 4.10 Classified Inbox & Event System `[P2]`
+### 4.10 Tactical Combat — the Meatgrinder `[P5]`
+Module: `src/engine/combat_engine.py`, config `config.json → combat`.
+- **Battles.** Every connected group of formations in contact (the engagement graph) is a named
+  multi-week **Battle** ("Battle of the Frontier", "Second Battle of Greywater" ...). Formations join
+  as they make contact. Each battle keeps a true ledger of casualties, equipment lost and ammunition
+  spent per side.
+- **Weekly round.** Firing is simultaneous.
+  - **Firepower is physical.** Each weapon fires only while its ammunition lasts
+    (`ammo_per_week × stance.ammo`, drawn from the unit's own inventory). Tanks also need
+    `fuel_per_week`. Each firing weapon adds `soft_attack` (vs men) and `hard_attack` (vs armor). A
+    dry formation fights with bayonets: near zero.
+  - `damage = Σ firepower × stance.attack × (0.5 + morale/200) × supply factor × noise(0.8–1.2)`.
+  - `applied = soft × (1 − H) + hard × H`, where H is the armored share of the target side's strength.
+  - Casualties to each enemy formation: `applied × 1.6 × (its share of strength) / defense`.
+  - `defense = terrain defense × fortification × stance.defense × Kevlar`. **Fortification** ×1.6
+    applies within 2 columns of the formation's **own** trench line (a captured trench faces the wrong
+    way), and ×1.3 in urban terrain. **Never in ASSAULT stance**: attackers have gone over the top.
+  - Casualties **destroy equipment** (`loss_rate` × casualty fraction: rifles 1.0, trucks 0.3,
+    howitzers 0.4, tanks 0.6) and cost morale (2 per 1% of strength lost, +1.5 combat stress,
+    +5 if ammunition-starved).
+- **Stances** (`units.json → stances`; set per formation with **`t`** in the War Room):
+
+| Stance | Attack | Defense | Ammo use | Notes |
+|--------|--------|---------|----------|-------|
+| DEFEND | ×0.9 | ×1.5 | ×0.7 | Default. Fortification applies. |
+| ASSAULT | ×1.4 | ×0.7 | ×1.5 | No fortification. The formation takes the ground if the enemy breaks. |
+| WITHDRAW | ×0.3 | ×1.1 | ×0.5 | Falls back 1 cell a week toward HQ, breaking contact. |
+
+  The AI picks stances each round by **local superiority**: ASSAULT at ≥1.5:1, WITHDRAW below 0.6:1,
+  when morale is under 30, or when ammunition is under 15%; otherwise DEFEND. Units the AI orders
+  forward (probes, assault groups) go in on ASSAULT.
+- **Routing.** A formation **breaks** when morale < 15 or strength < 10% of establishment. It takes
+  10% bonus casualties, becomes **ROUTING** (it ignores orders for 2 weeks, then rallies), and falls
+  back 2 cells toward its HQ. **The victorious enemy takes its cell.** At 0 men it is **destroyed**
+  and leaves the order of battle.
+- **Balance** (30 AI campaigns × 30 weeks): about 5 battles per campaign, lasting 3–11 weeks (mean 3.6).
+  Attackers lose about **1.6 men per defender**, and defended trench lines hold in about 85% of
+  battles.
+
+### 4.11 Battle Reporting `[P5]`
+- **SITREP: ONGOING COMBAT** (weekly, per battle): our casualties (exact), enemy casualties
+  (**estimate range**), the strength, morale, ammunition fill, stance and status of each of our
+  formations, ammunition shortages, and breaks and withdrawals.
+- **AFTER ACTION REPORT** (when nobody in the battle is still in contact): VICTORY, DEFEAT or
+  INCONCLUSIVE (the side still holding the field, i.e. not routed, withdrawing or destroyed, wins),
+  total casualties (ours confirmed, theirs estimated), our equipment lost and ammunition expended,
+  and the fate of each of our formations. Victory gives +3 national military morale; defeat −4.
+
+### 4.12 Classified Inbox & Event System `[P2]`
 The inbox is the heart of the game. Module: `src/engine/event_manager.py`.
 
 **Email template schema** (`data/events/emails.json`):
@@ -213,7 +285,7 @@ The inbox is the heart of the game. Module: `src/engine/event_manager.py`.
 | `on_arrival` | Effects applied the moment the email is delivered (e.g. a failed op's fallout). |
 | `options[]` | Replies: `{id, label, effects, follow_ups}`. |
 | `deadline_weeks` + `on_expire` | If unanswered by then, `on_expire` (same shape as an option) is applied automatically. **Silence is a decision.** |
-| `intel` | Fog-of-war estimates rendered into the body (see 4.11). |
+| `intel` | Fog-of-war estimates rendered into the body (see 4.13). |
 | `pinned` | Always on top and never archived (used by SYSTEM PURGE). |
 
 **Effects** (`src/engine/effects.py`, all deltas): `treasury`, `manpower`, `population`,
@@ -234,7 +306,7 @@ and cannot be sent twice. Replies with a deadline show "REPLY BY WK n", or "DUE 
   income, expenses, net, treasury, civil/military morale, pending replies, and warnings.
 - *CRITICAL ALERT: SYSTEM PURGE* (`fail_states.py`) on a fall.
 
-### 4.11 Fog of War `[P2 estimates · P3 units · P4 active]`
+### 4.13 Fog of War `[P2 estimates · P3 units · P4 active]`
 - `src/engine/intel.py`. A spec is `{"value": n}` or `{"nation": "vosk", "stat": "manpower", "fraction": f}`,
   plus `accuracy` (0–1).
 - Rendered as `LOW – HIGH (CERTAINTY xx%)`. The range width scales with (1 − accuracy), and honest
@@ -244,7 +316,7 @@ and cannot be sent twice. Replies with a deadline show "REPLY BY WK n", or "DUE 
   **while still claiming the same certainty**. The truth is stored hidden in `email.intel_truth`,
   for later "the report was wrong" reveals.
 
-### 4.12 War Room — Tactical Situation Map `[P3 · P4 orders]`
+### 4.14 War Room — Tactical Situation Map `[P3 · P4 orders · P5 stances]`
 A digitized staff situation map in the style of WWII Eastern Front and Desert Storm operational
 maps: terrain, national territory washes, trench lines, rail, and NATO-style unit symbols.
 
@@ -354,18 +426,19 @@ command-terminal/
 ├── GAME_DESIGN.md
 ├── data/
 │   ├── config.json          # dates, economy coefficients, fail-state thresholds, intel, seed
-│   ├── nations.json         # starting stats (incl. military_morale)
+│   ├── nations.json         # starting stats, factories, production lines, national stockpile, resource output
 │   ├── orbat.json           # starting formations with exact map locations
 │   ├── ai.json              # AI Director postures, thresholds, flanks, SIGINT
 │   ├── resources.json, units.json   # units: symbol, move_speed, detection_radius, loadout
-│   ├── equipment.json, tech_tree.json   # PLACEHOLDERS for future R&D / production / loadouts
+│   ├── equipment.json       # every producible/carried item: production cost & rate, combat stats
+│   ├── tech_tree.json       # R&D tree (placeholder); known_at_start gates production
 │   ├── events/emails.json   # email templates + event chains
 │   ├── events/system_alerts.json  # SYSTEM PURGE texts per loss cause
 │   ├── events/generated.json      # SIGINT, BORDER CLASH, ISOLATED dispatch templates
 │   ├── map/world.json       # War Room grid: base art, regions, terrain, features, transport layer
 │   └── ui/boot_sequence.json
 ├── src/
-│   ├── models/              # nation.py, inbox.py, game_state.py, military.py (Unit, MoveOrder, Contact),
+│   ├── models/              # nation.py, inbox.py, game_state.py, military.py (Unit, MoveOrder, Contact), battle.py,
 │   │                        # world_map.py (WorldMap), ai.py (AIState)
 │   ├── engine/
 │   │   ├── data_loader.py   # new_game(), content validation
@@ -373,7 +446,9 @@ command-terminal/
 │   │   ├── intel.py         # fog-of-war estimates (emails + weekly enemy-unit reports)
 │   │   ├── map_overlay.py   # visible markers, stacking, ghosts, per-cell lookups
 │   │   ├── movement.py      # A* routes, orders, simultaneous movement, skirmish detection
-│   │   ├── logistics_engine.py  # supply tracing, ZOC, consumption, attrition
+│   │   ├── logistics_engine.py  # supply tracing, ZOC, attrition, fuel burn, resupply, replacements
+│   │   ├── production.py    # military factories, production lines, national stockpile, AI allocation
+│   │   ├── combat_engine.py # battles, firepower from inventory, stances, routs, SITREP / AAR
 │   │   ├── recon.py         # detection radius, contacts, ghosts (active fog of war)
 │   │   ├── ai_director.py   # Vosk DEFEND / PROBE / ASSAULT state machine
 │   │   ├── sigint.py        # intercepts of major AI orders
@@ -382,26 +457,28 @@ command-terminal/
 │   │   ├── reports.py       # weekly status report
 │   │   ├── fail_states.py   # revolution / coup / collapse
 │   │   ├── tick_engine.py, systems.py, text.py
-│   │   └── combat_engine.py # STUB (Phase 5)
+│   │   └── (combat_engine.py is listed above)
 │   └── ui/
 │       ├── app.py           # owns GameState + TickEngine, `revision` reactive
 │       ├── screens/         # boot.py, terminal.py, confirm.py (reply modal), coordinates.py (grid prompt)
 │       ├── widgets/         # status_bar.py (reactive), sidebar.py (nav + ADVANCE WEEK), map_canvas.py (War Room)
 │       └── views/           # inbox.py, economy.py, military.py, map.py (War Room + intel panel)
 ├── tools/generate_world_map.py  # optional: regenerate world.json (overwrites it)
-└── tests/                   # test_engine.py, test_ui.py, test_war_room.py, test_phase4.py (fuzzed + headless)
+└── tests/                   # test_engine, test_ui, test_war_room, test_phase4, test_phase5 (fuzzed + headless)
 ```
 
 ### 5.3 Tick order
 1. Clock advance
-2. **AI Director**: posture, tension, orders (+ SIGINT intercepts), *before* the week resolves
+2. **AI Director**: posture, tension, orders and attack stances (+ SIGINT intercepts), *before* the week resolves
 3. **Movement**: both sides march simultaneously; border clashes detected → ENGAGED + dispatch
-4. **Recon**: detection, contacts acquired/lost, ghosts
-5. **Logistics**: trace supply nets, consume/deliver, attrition, ISOLATED dispatches
-6. **Economy**: ledger, treasury, tax discontent, insolvency counter, pay arrears
-7. **Events**: expire overdue dispatches (apply `on_expire`), deliver due emails (apply `on_arrival`)
-8. **Status report**: this week's Weekly Status & Financial Report (incl. front and supply situation)
-9. **Fail states**: revolution / coup / collapse → SYSTEM PURGE + lock
+4. **Combat**: routed units tick toward rallying; every engaged group fights a round; routs, withdrawals, destruction; SITREP / AAR
+5. **Recon**: detection, contacts acquired/lost, ghosts
+6. **Production**: domestic resource output; factories produce into the national stockpile (AI rebalances first)
+7. **Logistics**: trace supply nets, fuel burn, consume/deliver supply, attrition, resupply from the stockpile, replacements
+8. **Economy**: ledger (incl. factory upkeep), treasury, tax discontent, insolvency, pay arrears
+9. **Events**: expire overdue dispatches (apply `on_expire`), deliver due emails (apply `on_arrival`)
+10. **Status report**: this week's Weekly Status & Financial Report (front, supply, battles, war industry)
+11. **Fail states**: revolution / coup / collapse → SYSTEM PURGE + lock
 
 ### 5.4 Controls
 | Key | Action |
@@ -417,14 +494,20 @@ command-terminal/
 | Map: `g` | Type an exact grid reference for the order |
 | Map: `x` | Cancel the selected formation's standing order |
 | Map: `s` | Toggle the supply overlay |
+| Map: `t` | Cycle the selected formation's stance: DEFEND → ASSAULT → WITHDRAW |
+| Economy: `+` / `-` / `0` | Assign / remove a factory on the highlighted production line / close the line |
 | `n` or **▶ ADVANCE WEEK** | Advance one week |
 | `q` | Log out |
 
 ### 5.5 Testing
-`python -m pytest` (about 99 tests, 80 s) runs engine tests, fuzzed campaigns (random replies and random
+`python -m pytest` (about 128 tests, 3–4 min) runs engine tests, fuzzed campaigns (random replies and random
 move orders, with invariants checked every week) and headless Textual tests that drive the real UI:
 replies, advance week, the War Room overlay at several terminal sizes, issuing and cancelling orders,
-and a live seeded campaign until SIGINT and a border clash arrive. Set `CT_SCREENSHOTS=<dir>` to save
+a live seeded campaign until SIGINT and a border clash arrive, factory assignment on the Economy
+screen, the stance key, combat draining ammunition, empty armor unable to fight, routs, destruction,
+withdrawals, weekly SITREPs and AARs, plus a fuzzed full war (random orders and stances) whose
+invariants (no negative stocks, no dangling engagements, routing units out of contact) are checked
+every week. Set `CT_SCREENSHOTS=<dir>` to save
 SVG screenshots from the UI tests.
 
 ---
@@ -437,9 +520,9 @@ SVG screenshots from the UI tests.
 | **2** | Inbox loop: replies with effects, confirmation, event chains, deadlines, weekly report, placeholder ledger, fail states, fog-of-war estimates, reactive TUI. ✅ |
 | **3** | **War Room**: X/Y grid map, NATO-style symbology, overlay and stacking, pannable Line-API map, sector/intel readout, fog of war on units, and misidentification. ✅ |
 | **4** | **Living front**: move orders and A* over a road/rail/trench layer, simultaneous movement, skirmish detection, supply-line logistics (ZOC, isolation, attrition), the Vosk AI Director (DEFEND/PROBE/ASSAULT), active fog of war, SIGINT intercepts. ✅ |
-| 5 | Combat engine: casualties, stances, terrain and fortification, commanders, battle-report dispatches, retreats, unit destruction. |
-| 6 | Military-Industrial Complex (§7.2): factories, production lines, physical stockpiles; replaces generic supply with specific ammunition. |
-| 7 | Unit Equipment Loadouts (§7.3): combat stats derived from inventory; recruitment and training queues. |
+| **5** | **Meatgrinder**: military factories and production lines, national stockpile, physical resupply pipeline, combat driven by inventory (ammo and fuel), stances, trench fortification, routs and destruction, SITREP / After Action Reports. ✅ |
+| 6 | Recruitment and training queues (new formations from manpower + stockpile); commanders with traits; weather. |
+| 7 | Deeper loadouts (§7.3): Kevlar and night vision in play, equipment upgrades, mixed-caliber logistics; bombing of factories. |
 | 8 | R&D (§7.1): research slots, tech tree, obsolescence. |
 | 9 | Domestic Politics & the Draft (§7.4): war weariness, rationing, conscription laws, factions. |
 | 10 | Diplomacy, save/load, balance pass. |
@@ -465,7 +548,7 @@ a formation, and the home front pays for all of it.
   chain until the old rifles are retired.
 - Intelligence can steal or estimate Vosk research (another fog-of-war surface).
 
-### 7.2 Military-Industrial Complex
+### 7.2 Military-Industrial Complex `[core built in P5]`
 - **Factories** (civilian and military) sit in provinces on the map and can be bombed, captured
   or cut off by the logistics network.
 - Each military factory is **assigned a production line** for a specific item from
@@ -476,7 +559,7 @@ a formation, and the home front pays for all of it.
   to depots and formations. Generic "supply %" is replaced by the actual items a unit needs.
 - Shortages propagate: no coal → no steel → no shells → artillery falls silent.
 
-### 7.3 Unit Equipment Loadouts
+### 7.3 Unit Equipment Loadouts `[core built in P5]`
 - `Unit.equipment_inventory` (implemented as a placeholder in Phase 4) holds the physical
   inventory: rifles, rounds, tanks, shells, trucks, rations, and so on. Each template's `loadout`
   (`units.json`) is its establishment. Current inventories are seeded from it, scaled by strength.
@@ -506,7 +589,7 @@ a formation, and the home front pays for all of it.
 - Should a SYSTEM PURGE offer "start new campaign" in-app, or only by relaunching?
 - Balance: the scripted event deck runs out after about 8 weeks. The AI and SIGINT now generate steady pressure,
   but the economy is still a placeholder. Recurring and triggered events should add more.
-- Engaged units currently stay in contact indefinitely (no casualties until Phase 5). The AI does not yet break
-  contact on its own.
+- Casualty and consumption rates are first-pass numbers (see the balance note in §4.10). Tune after real play.
+- Overproduction piles up in depots (rifle and ammunition stockpiles grow fast). Should stockpiles cost upkeep, or spoil?
 - Should the player see a supply-flow projection (who will be OVEREXTENDED if a move order completes) before
   confirming an order?

@@ -135,6 +135,18 @@ def new_game(data_dir: Path = DATA_DIR, seed: int | None = None) -> GameState:
     world = WorldMap.from_dict(load_json("map/world.json", data_dir))
     catalog["equipment"] = load_json("equipment.json", data_dir)["equipment"]
     catalog["tech_tree"] = load_json("tech_tree.json", data_dir)
+    equipment_ids = {e["id"] for e in catalog["equipment"]}
+    for nation in nations.values():
+        if not nation.known_techs:
+            nation.known_techs = set(catalog["tech_tree"].get("known_at_start", []))
+        for field_name in ("production", "national_stockpile"):
+            unknown = set(getattr(nation, field_name)) - equipment_ids
+            if unknown:
+                raise ValueError(f"nations.json [{nation.id}] {field_name}: unknown equipment {sorted(unknown)}")
+        if nation.assigned_factories > nation.military_factories:
+            raise ValueError(f"nations.json [{nation.id}]: more factories assigned than it owns")
+        for item_id in nation.production:
+            nation.line_efficiency[item_id] = 1.0  # established lines at game start
     load_orbat(nations, world, catalog["units"], data_dir, {e["id"] for e in catalog["equipment"]})
 
     library = load_email_library(data_dir)

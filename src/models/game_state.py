@@ -7,6 +7,7 @@ from typing import Any
 
 from src.models.inbox import Email, Inbox
 from src.models.ai import AIState
+from src.models.battle import Battle
 from src.models.military import Contact, Unit
 from src.models.nation import Nation
 from src.models.world_map import WorldMap
@@ -93,6 +94,8 @@ class GameState:
     engagements: set[frozenset[str]] = field(default_factory=set)  # unit-id pairs currently in contact
     supply_networks: dict[str, dict[str, Any]] = field(default_factory=dict)  # nation id -> last traced supply net
     cost_cache: dict[Any, Any] = field(default_factory=dict, repr=False)  # derived static data (e.g. supply costs)
+    battles: dict[str, Battle] = field(default_factory=dict)  # battle id -> Battle (active and finished)
+    last_production: dict[str, dict[str, Any]] = field(default_factory=dict)  # nation -> last week's factory report
 
     def all_units(self) -> list[Unit]:
         return [unit for nation in self.nations.values() for unit in nation.units]
@@ -102,6 +105,19 @@ class GameState:
 
     def is_friendly(self, nation_id: str) -> bool:
         return nation_id == self.player.id
+
+    def remove_unit(self, unit: Unit) -> None:
+        """A formation destroyed in battle leaves the order of battle for good."""
+        nation = self.nations[unit.nation_id]
+        if unit in nation.units:
+            nation.units.remove(unit)
+        self.contacts.pop(unit.id, None)
+        self.unit_intel.pop(unit.id, None)
+        for pair in [p for p in self.engagements if unit.id in p]:
+            self.engagements.discard(pair)
+        for other in self.all_units():
+            if unit.id in other.engaged_with:
+                other.engaged_with.remove(unit.id)
 
     def hostile_units(self) -> list[Unit]:
         return [u for u in self.all_units() if not self.is_friendly(u.nation_id)]

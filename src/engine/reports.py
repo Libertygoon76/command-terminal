@@ -56,6 +56,16 @@ def build_status_body(state: GameState) -> str:
     lines.append(_stat("Hostile contacts", f"{visible} observed · {lost} lost"))
     in_supply = sum(1 for u in units if u.supply_state == "supplied")
     lines.append(_stat("In supply", f"{in_supply} of {len(units)} formations"))
+    active = [b for b in state.battles.values() if b.active]
+    lines.append(_stat("Battles in progress", ", ".join(b.name for b in active) if active else "none"))
+    lines.append("")
+
+    lines.append("WAR INDUSTRY")
+    lines.append(_stat("Military factories", f"{nation.assigned_factories} assigned · {nation.free_factories} idle"))
+    items = {e["id"]: e for e in state.catalog["equipment"]}
+    produced = state.last_production.get(nation.id, {}).get("produced", {})
+    for item_id, made in sorted(produced.items()):
+        lines.append(_stat(items[item_id]["name"][:22], f"+{made:,} → stockpile {nation.national_stockpile.get(item_id, 0):,}"))
     lines.append("")
 
     warnings = list(ledger.notes) if ledger else []
@@ -74,6 +84,15 @@ def build_status_body(state: GameState) -> str:
         warnings.append(f"Beyond supply range (OVEREXTENDED): {', '.join(overextended)}.")
     if starving:
         warnings.append(f"Out of supply, suffering attrition: {', '.join(starving)}.")
+    shortages = state.last_production.get(nation.id, {}).get("shortages", {})
+    if shortages:
+        names = ", ".join(items[i]["name"] for i in shortages)
+        warnings.append(f"Factories short of raw materials: {names}.")
+    if nation.free_factories:
+        warnings.append(f"{nation.free_factories} military factories idle.")
+    routing = [u.designation for u in nation.units if u.routing]
+    if routing:
+        warnings.append(f"Routing, not answering orders: {', '.join(routing)}.")
     engaged = [u.designation for u in nation.units if u.engaged]
     if engaged:
         warnings.append(f"In contact with the enemy: {', '.join(engaged)}.")

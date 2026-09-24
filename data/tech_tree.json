@@ -1,33 +1,150 @@
 {
   "_comment": [
-    "PLACEHOLDER (future phase: Hearts of Iron-style R&D). Not read by any system yet.",
+    "R&D tree (research itself is a future phase). `known_at_start` techs gate what factories can produce today.",
     "Each tech: branch, research cost in weeks at one research slot, treasury cost per week, prerequisites,",
     "equipment it unlocks (ids in equipment.json), and other effects. `known_at_start` techs are already researched."
   ],
-  "branches": ["small_arms", "armor", "artillery", "protection", "electronics", "industry", "doctrine"],
-  "known_at_start": ["standard_rifle_762", "towed_artillery_152", "light_tank_chassis"],
+  "branches": [
+    "small_arms",
+    "armor",
+    "artillery",
+    "protection",
+    "electronics",
+    "industry",
+    "doctrine"
+  ],
+  "known_at_start": [
+    "standard_rifle_762",
+    "towed_artillery_152",
+    "light_tank_chassis"
+  ],
   "techs": [
-    { "id": "standard_rifle_762", "name": "7.62mm Battle Rifle", "branch": "small_arms", "weeks": 0, "weekly_cost": 0,
-      "requires": [], "unlocks": ["rifle_762", "ammo_762"] },
-    { "id": "intermediate_cartridge", "name": "5.56mm Intermediate Cartridge", "branch": "small_arms", "weeks": 20, "weekly_cost": 6000,
-      "requires": ["standard_rifle_762"], "unlocks": ["rifle_556", "ammo_556"],
-      "notes": "Lighter rounds: +30% ammunition carried per soldier, slightly lower lethality at range." },
-    { "id": "light_tank_chassis", "name": "Light Tank Chassis", "branch": "armor", "weeks": 0, "weekly_cost": 0,
-      "requires": [], "unlocks": [] },
-    { "id": "medium_tank_chassis", "name": "Medium Tank Chassis", "branch": "armor", "weeks": 30, "weekly_cost": 12000,
-      "requires": ["light_tank_chassis"], "unlocks": ["mbt_medium", "shell_120_he"] },
-    { "id": "apfsds_penetrator", "name": "APFSDS Penetrators", "branch": "armor", "weeks": 26, "weekly_cost": 10000,
-      "requires": ["medium_tank_chassis"], "unlocks": ["shell_120_apfsds"],
-      "notes": "Fin-stabilized discarding-sabot rounds; defeats modern armor at combat ranges." },
-    { "id": "towed_artillery_152", "name": "152mm Towed Artillery", "branch": "artillery", "weeks": 0, "weekly_cost": 0,
-      "requires": [], "unlocks": ["howitzer_152", "shell_152_he"] },
-    { "id": "kevlar_armor", "name": "Aramid-Fibre Body Armor", "branch": "protection", "weeks": 18, "weekly_cost": 7000,
-      "requires": [], "unlocks": ["kevlar_vest"] },
-    { "id": "image_intensifier", "name": "Image Intensifier Tubes", "branch": "electronics", "weeks": 24, "weekly_cost": 9000,
-      "requires": [], "unlocks": ["night_vision"] },
-    { "id": "assembly_line_tooling", "name": "Assembly-Line Retooling", "branch": "industry", "weeks": 16, "weekly_cost": 8000,
-      "requires": [], "unlocks": [], "effects": { "factory_efficiency": 0.1 } },
-    { "id": "defense_in_depth_doctrine", "name": "Defense-in-Depth Doctrine", "branch": "doctrine", "weeks": 12, "weekly_cost": 3000,
-      "requires": [], "unlocks": [], "effects": { "stance_bonus": { "defense_in_depth": 0.1 } } }
+    {
+      "id": "standard_rifle_762",
+      "name": "7.62mm Battle Rifle",
+      "branch": "small_arms",
+      "weeks": 0,
+      "weekly_cost": 0,
+      "requires": [],
+      "unlocks": [
+        "rifle_762",
+        "ammo_762"
+      ]
+    },
+    {
+      "id": "intermediate_cartridge",
+      "name": "5.56mm Intermediate Cartridge",
+      "branch": "small_arms",
+      "weeks": 20,
+      "weekly_cost": 6000,
+      "requires": [
+        "standard_rifle_762"
+      ],
+      "unlocks": [
+        "rifle_556",
+        "ammo_556"
+      ],
+      "notes": "Lighter rounds: +30% ammunition carried per soldier, slightly lower lethality at range."
+    },
+    {
+      "id": "light_tank_chassis",
+      "name": "Light Tank Chassis",
+      "branch": "armor",
+      "weeks": 0,
+      "weekly_cost": 0,
+      "requires": [],
+      "unlocks": [
+        "lt_tank",
+        "shell_76"
+      ]
+    },
+    {
+      "id": "medium_tank_chassis",
+      "name": "Medium Tank Chassis",
+      "branch": "armor",
+      "weeks": 30,
+      "weekly_cost": 12000,
+      "requires": [
+        "light_tank_chassis"
+      ],
+      "unlocks": [
+        "mbt_medium",
+        "shell_120_he"
+      ]
+    },
+    {
+      "id": "apfsds_penetrator",
+      "name": "APFSDS Penetrators",
+      "branch": "armor",
+      "weeks": 26,
+      "weekly_cost": 10000,
+      "requires": [
+        "medium_tank_chassis"
+      ],
+      "unlocks": [
+        "shell_120_apfsds"
+      ],
+      "notes": "Fin-stabilized discarding-sabot rounds; defeats modern armor at combat ranges."
+    },
+    {
+      "id": "towed_artillery_152",
+      "name": "152mm Towed Artillery",
+      "branch": "artillery",
+      "weeks": 0,
+      "weekly_cost": 0,
+      "requires": [],
+      "unlocks": [
+        "howitzer_152",
+        "shell_152_he"
+      ]
+    },
+    {
+      "id": "kevlar_armor",
+      "name": "Aramid-Fibre Body Armor",
+      "branch": "protection",
+      "weeks": 18,
+      "weekly_cost": 7000,
+      "requires": [],
+      "unlocks": [
+        "kevlar_vest"
+      ]
+    },
+    {
+      "id": "image_intensifier",
+      "name": "Image Intensifier Tubes",
+      "branch": "electronics",
+      "weeks": 24,
+      "weekly_cost": 9000,
+      "requires": [],
+      "unlocks": [
+        "night_vision"
+      ]
+    },
+    {
+      "id": "assembly_line_tooling",
+      "name": "Assembly-Line Retooling",
+      "branch": "industry",
+      "weeks": 16,
+      "weekly_cost": 8000,
+      "requires": [],
+      "unlocks": [],
+      "effects": {
+        "factory_efficiency": 0.1
+      }
+    },
+    {
+      "id": "defense_in_depth_doctrine",
+      "name": "Defense-in-Depth Doctrine",
+      "branch": "doctrine",
+      "weeks": 12,
+      "weekly_cost": 3000,
+      "requires": [],
+      "unlocks": [],
+      "effects": {
+        "stance_bonus": {
+          "defend": 0.1
+        }
+      }
+    }
   ]
 }

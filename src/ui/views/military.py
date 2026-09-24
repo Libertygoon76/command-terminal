@@ -5,6 +5,7 @@ from textual.app import ComposeResult
 from textual.containers import VerticalScroll
 from textual.widgets import DataTable, Static
 
+from src.engine.logistics_engine import fill_ratio
 from src.ui import palette
 from src.ui.palette import label_value
 
@@ -18,7 +19,8 @@ class MilitaryView(VerticalScroll):
         yield DataTable(id="mil-formations", cursor_type="row")
         yield Static(Text("UNIT TEMPLATES", style=f"bold {palette.AMBER}"), classes="section-title")
         yield DataTable(id="mil-units", cursor_type="row")
-        yield Static(Text("DOCTRINE — TACTICAL STANCES", style=f"bold {palette.AMBER}"), classes="section-title")
+        yield Static(Text("COMBAT STANCES (set per formation in the War Room: T)", style=f"bold {palette.AMBER}"),
+                     classes="section-title")
         yield Static(id="mil-stances")
         yield Static(
             Text("RECRUITMENT · TRAINING · PRODUCTION — MODULE OFFLINE (FUTURE PHASES)", style=palette.PHOSPHOR_DIM),
@@ -27,7 +29,7 @@ class MilitaryView(VerticalScroll):
 
     def on_mount(self) -> None:
         self.query_one("#mil-formations", DataTable).add_columns(
-            "ID", "FORMATION", "TYPE", "STRENGTH", "MORALE", "SUPPLY", "LINE", "STATUS", "ORDER", "GRID"
+            "ID", "FORMATION", "TYPE", "STRENGTH", "MORALE", "SUPPLY", "AMMO", "LINE", "STATUS", "STANCE", "ORDER", "GRID"
         )
         table = self.query_one("#mil-units", DataTable)
         table.add_columns("FORMATION", "MEN", "COST", "TRAIN", "RATIONS/WK", "FUEL/WK", "AMMO/WK", "ATK", "DEF", "BRK")
@@ -98,9 +100,12 @@ class MilitaryView(VerticalScroll):
                 f"{unit.strength:,}",
                 f"{unit.morale:.0f}%",
                 Text(f"{unit.supply:.0f}%", style=palette.PHOSPHOR_BRIGHT if unit.supply >= 75 else palette.AMBER),
+                Text(f"{fill_ratio(game, unit):.0%}",
+                     style=palette.PHOSPHOR_BRIGHT if fill_ratio(game, unit) >= 0.5 else f"bold {palette.RED}"),
                 Text(unit.supply_state.upper(),
                      style=palette.PHOSPHOR if unit.supply_state == "supplied" else f"bold {palette.RED}"),
                 Text(unit.status.upper(), style=f"bold {palette.RED}" if unit.engaged else palette.PHOSPHOR),
+                unit.stance.upper(),
                 (f"MOVE → {unit.active_order.x:03d}-{unit.active_order.y:03d}" if unit.active_order else "HOLD"),
                 f"{unit.x:03d}-{unit.y:03d}",
             )

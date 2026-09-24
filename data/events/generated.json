@@ -4,7 +4,8 @@
     "SIGINT: segments wrapped in [[double brackets]] may be redacted (shown as [REDACTED]). Placeholders:",
     "  {net} {freq} {unit_desc} {role_desc} {sector} {x} {y} {eta} {station} {confidence}",
     "CLASH: {friendly} {friendly_designation} {hostile_desc} {x} {y} {sector} {date}",
-    "ISOLATED: {unit} {designation} {x} {y} {sector} {supply}"
+    "ISOLATED: {unit} {designation} {x} {y} {sector} {supply}",
+    "SITREP / AAR bodies are composed by the combat engine; only sender/subject are templated here."
   ],
   "sigint": {
     "sender": "Signals Intelligence Directorate — Station {station}",
@@ -52,5 +53,15 @@
     "classification": "SECRET",
     "subject": "URGENT: {designation} Isolated — Supply Line Cut",
     "body": "IMMEDIATE.\n\nThe {unit} ({designation}) at grid X:{x}, Y:{y} ({sector}) can no longer be reached by any supply route. Enemy formations sit across every road and track back to our depots.\n\nThe formation holds {supply}% of its weekly needs in hand. When that is gone it will begin to starve: men will fall sick, desert and die, and it will not be able to advance.\n\nRecommend immediate withdrawal toward our lines, or clearing the enemy from the supply route.\n\nNo reply required."
+  },
+  "sitrep": {
+    "sender": "Frontier Army Operations Staff",
+    "classification": "SECRET",
+    "subject": "SITREP: ONGOING COMBAT — {battle} (Week {week})"
+  },
+  "aar": {
+    "sender": "General Staff, Operations Directorate",
+    "classification": "TOP SECRET",
+    "subject": "AFTER ACTION REPORT: {battle} — {outcome}"
   }
 }

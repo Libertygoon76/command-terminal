@@ -1,5 +1,5 @@
 {
-  "_comment": "Unit templates. `symbol` is the terminal NATO-style map glyph, drawn as [symbol]: X infantry, O armor, • artillery, H HQ/logistics, m militia. Stacks draw as [*]. move_speed = map rows per week on plains (a column is half a row: 5 km vs 10 km). detection_radius = rows; enemies outside every friendly radius are hidden on the map. loadout: equipment carried at full establishment (ids in equipment.json); seeds each formation's equipment_inventory, scaled by its current strength. PLACEHOLDER until the Unit Loadouts phase.",
+  "_comment": "Unit templates. `symbol` is the terminal NATO-style map glyph, drawn as [symbol]: X infantry, O armor, • artillery, H HQ/logistics, m militia. Stacks draw as [*]. move_speed = map rows per week on plains (a column is half a row: 5 km vs 10 km). detection_radius = rows; enemies outside every friendly radius are hidden on the map. loadout: equipment carried at full establishment (ids in equipment.json); the establishment: what a formation at full strength carries. Resupply tops units up to it from the national stockpile. fuel_use: fuel_drums consumed per week by status. stances: combat multipliers on firepower (attack), casualties taken are divided by defense, and ammunition use is multiplied by ammo.",
   "units": [
     {
       "id": "infantry_division",
@@ -33,7 +33,12 @@
         "howitzer_152": 18,
         "shell_152_he": 1800,
         "truck_4t": 600,
-        "field_ration": 300
+        "fuel_drums": 300
+      },
+      "fuel_use": {
+        "holding": 10,
+        "moving": 40,
+        "engaged": 30
       }
     },
     {
@@ -63,12 +68,17 @@
         "speed": 3
       },
       "loadout": {
-        "mbt_medium": 0,
+        "lt_tank": 90,
+        "shell_76": 3000,
         "rifle_762": 1800,
         "ammo_762": 500,
-        "shell_120_he": 0,
         "truck_4t": 350,
-        "field_ration": 110
+        "fuel_drums": 900
+      },
+      "fuel_use": {
+        "holding": 30,
+        "moving": 180,
+        "engaged": 60
       }
     },
     {
@@ -103,7 +113,12 @@
         "rifle_762": 1500,
         "ammo_762": 300,
         "truck_4t": 280,
-        "field_ration": 80
+        "fuel_drums": 250
+      },
+      "fuel_use": {
+        "holding": 10,
+        "moving": 40,
+        "engaged": 40
       }
     },
     {
@@ -134,8 +149,12 @@
       },
       "loadout": {
         "rifle_762": 1100,
-        "ammo_762": 200,
-        "field_ration": 35
+        "ammo_762": 200
+      },
+      "fuel_use": {
+        "holding": 0,
+        "moving": 0,
+        "engaged": 0
       }
     },
     {
@@ -168,25 +187,39 @@
         "rifle_762": 1200,
         "ammo_762": 150,
         "truck_4t": 900,
-        "field_ration": 500
+        "fuel_drums": 600
+      },
+      "fuel_use": {
+        "holding": 20,
+        "moving": 100,
+        "engaged": 40
       }
     }
   ],
   "stances": [
     {
-      "id": "trench_warfare",
-      "name": "Trench Warfare",
-      "description": "Dig in. Defense up sharply; heavy attrition on both sides."
+      "id": "defend",
+      "name": "Defend",
+      "description": "Dig in and hold. Defense up sharply (and trench/urban fortification applies); slightly less firepower, lower ammunition use.",
+      "attack": 0.9,
+      "defense": 1.5,
+      "ammo": 0.7
     },
     {
-      "id": "blitzkrieg",
-      "name": "Blitzkrieg",
-      "description": "Concentrated armored thrust. Breakthrough up; fuel use and overextension risk up."
+      "id": "assault",
+      "name": "Assault",
+      "description": "Go over the top. Firepower up, but attackers are out of their trenches (no fortification), bleed heavily and burn ammunition fast. Take the ground if the enemy breaks.",
+      "attack": 1.4,
+      "defense": 0.7,
+      "ammo": 1.5
     },
     {
-      "id": "defense_in_depth",
-      "name": "Defense in Depth",
-      "description": "Trade space for time. Reduces enemy breakthrough at the cost of ground."
+      "id": "withdraw",
+      "name": "Withdraw",
+      "description": "Fighting retreat: fall back 1-2 cells a week toward HQ, breaking contact. Little firepower.",
+      "attack": 0.3,
+      "defense": 1.1,
+      "ammo": 0.5
     }
   ]
 }

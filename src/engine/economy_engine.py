@@ -26,6 +26,10 @@ def compute_ledger(state: GameState) -> Ledger:
 
     ledger.expenses["Civil administration"] = int(cfg.get("civil_upkeep_weekly", 38000))
     ledger.expenses["Armed forces pay"] = int(cfg.get("military_upkeep_weekly", 16000))
+    factories = nation.assigned_factories
+    if factories:
+        upkeep = int(state.config.get("production", {}).get("upkeep_per_factory", 1100))
+        ledger.expenses[f"Military production ({factories} factories)"] = factories * upkeep
     if nation.treasury < 0:
         ledger.expenses["Debt interest"] = round(-nation.treasury * float(cfg.get("debt_interest_rate_weekly", 0.01)))
     return ledger

@@ -140,6 +140,8 @@ def issue_move_order(state: GameState, unit_id: str, target: tuple[int, int], *,
     issuer = nation_id or state.player.id
     if unit.nation_id != issuer:
         raise OrderError(f"{unit.designation} is not under your command.")
+    if unit.routing:
+        raise OrderError(f"{unit.designation} is routing and will not answer orders for {unit.routing_weeks} week(s).")
     target = (int(target[0]), int(target[1]))
     if not state.world_map.in_bounds(*target):
         raise OrderError(f"Grid {target[0]:03d}-{target[1]:03d} is off the map.")
@@ -207,7 +209,7 @@ def resolve_movement(state: GameState) -> list[tuple[Unit, Unit]]:
     routes: dict[str, list[tuple[int, int]]] = {}
 
     for unit in units:
-        if unit.active_order is None:
+        if unit.active_order is None or unit.routing:
             continue
         route = plan_route(state, unit, unit.active_order.target)
         if route is None or not route.path:
@@ -254,11 +256,11 @@ def resolve_movement(state: GameState) -> list[tuple[Unit, Unit]]:
             unit.active_order = None  # arrived
             unit.move_points = 0.0
             unit.status = HOLDING
-    _refresh_engagements(state)
+    refresh_engagements(state)
     return new_pairs
 
 
-def _refresh_engagements(state: GameState) -> None:
+def refresh_engagements(state: GameState) -> None:
     """Contact persists while hostile units stay in contact range of each other."""
     units = {u.id: u for u in state.all_units()}
     for pair in list(state.engagements):
@@ -269,6 +271,8 @@ def _refresh_engagements(state: GameState) -> None:
                 if other.id in unit.engaged_with:
                     unit.engaged_with.remove(other.id)
     for unit in units.values():
+        if unit.routing:
+            continue
         if unit.status == ENGAGED and not unit.engaged_with:
             unit.status = MOVING if unit.active_order else HOLDING
         elif unit.engaged_with:

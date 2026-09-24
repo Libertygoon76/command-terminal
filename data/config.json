@@ -85,6 +85,49 @@
     "attrition_rate": 0.04,
     "attrition_morale": 5,
     "min_strength_fraction": 0.1,
-    "hostile_territory_factor": 1.5
+    "hostile_territory_factor": 1.5,
+    "resupply": {
+      "_comment": "Supplied units draw from the national stockpile each week toward their establishment (template loadout x strength share). Per-week cap = establishment x (consumable_max - (consumable_max - consumable_min) x reach) for ammunition/consumables, x heavy_rate for weapons and vehicles. Engaged units are served first. Replacements: supplied units out of combat regain replacement_rate of establishment per week from the manpower pool.",
+      "consumable_max": 0.6,
+      "consumable_min": 0.25,
+      "heavy_rate": 0.12,
+      "replacement_rate": 0.04,
+      "morale_recovery": 2,
+      "morale_ceiling": 85
+    }
+  },
+  "production": {
+    "_comment": "Factories assigned to a line produce batch*(7/factory_days)*efficiency units per week each, limited by raw resource inputs. A new line starts at start_efficiency and gains efficiency_gain per week up to 1.0. Each assigned factory costs upkeep_per_factory per week (ledger).",
+    "start_efficiency": 0.5,
+    "efficiency_gain": 0.1,
+    "upkeep_per_factory": 1100
+  },
+  "combat": {
+    "_comment": "Weekly combat in every battle. Damage = firepower x stance.attack x morale factor x supply factor x noise; casualties = damage x casualty_factor / (terrain defense x fortification x stance.defense). fortification applies within fort_range columns of a trench line or in urban terrain.",
+    "casualty_factor": 1.6,
+    "noise": [
+      0.8,
+      1.2
+    ],
+    "fortification": 1.6,
+    "fort_range": 2,
+    "urban_fortification": 1.3,
+    "low_supply_factor": 0.6,
+    "morale_per_casualty_pct": 2.0,
+    "combat_stress": 1.5,
+    "ammo_starved_morale": 5,
+    "rout_morale": 15,
+    "rout_strength_fraction": 0.1,
+    "rout_bonus_casualties": 0.1,
+    "rout_weeks": 2,
+    "rout_retreat_cells": 2,
+    "withdraw_cells": 1,
+    "victory_military_morale": 3,
+    "defeat_military_morale": -4,
+    "enemy_estimate_accuracy": 0.6,
+    "aar_estimate_accuracy": 0.75,
+    "ai_assault_ratio": 1.5,
+    "ai_withdraw_ratio": 0.6,
+    "ai_withdraw_morale": 30
   }
 }

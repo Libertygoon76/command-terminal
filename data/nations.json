@@ -1,4 +1,5 @@
 {
+  "_comment": "Starting state of every nation. military_factories: total military factories. production: factories assigned per equipment id. national_stockpile: finished equipment in depots. resource_output: raw/manufactured resources produced per week (placeholder domestic economy). known_techs: null = tech_tree.known_at_start.",
   "nations": [
     {
       "id": "kestria",
@@ -20,7 +21,36 @@
         "fuel": 3100,
         "munitions": 1800,
         "rations": 5200
-      }
+      },
+      "military_factories": 24,
+      "production": {
+        "ammo_762": 4,
+        "shell_152_he": 4,
+        "rifle_762": 2,
+        "fuel_drums": 2,
+        "shell_76": 1
+      },
+      "national_stockpile": {
+        "rifle_762": 4000,
+        "ammo_762": 6000,
+        "howitzer_152": 20,
+        "shell_152_he": 5000,
+        "lt_tank": 10,
+        "shell_76": 3000,
+        "truck_4t": 200,
+        "fuel_drums": 3000
+      },
+      "resource_output": {
+        "grain": 3000,
+        "coal": 1500,
+        "iron_ore": 900,
+        "crude_oil": 600,
+        "steel": 300,
+        "fuel": 500,
+        "munitions": 600,
+        "rations": 400
+      },
+      "known_techs": null
     },
     {
       "id": "vosk",
@@ -42,7 +72,37 @@
         "fuel": 7400,
         "munitions": 5200,
         "rations": 4100
-      }
+      },
+      "military_factories": 32,
+      "production": {
+        "ammo_762": 6,
+        "shell_152_he": 7,
+        "rifle_762": 3,
+        "fuel_drums": 3,
+        "shell_76": 3,
+        "lt_tank": 2
+      },
+      "national_stockpile": {
+        "rifle_762": 7000,
+        "ammo_762": 9000,
+        "howitzer_152": 40,
+        "shell_152_he": 9000,
+        "lt_tank": 30,
+        "shell_76": 6000,
+        "truck_4t": 400,
+        "fuel_drums": 6000
+      },
+      "resource_output": {
+        "grain": 2500,
+        "coal": 3000,
+        "iron_ore": 1800,
+        "crude_oil": 1200,
+        "steel": 550,
+        "fuel": 800,
+        "munitions": 900,
+        "rations": 350
+      },
+      "known_techs": null
     }
   ]
 }
