@@ -98,7 +98,9 @@ class DiplomacyView(VerticalScroll):
         if not self.nation_id:
             return
         name = nations(self.app.game)[self.nation_id]["name"]
-        cost = self.app.game.catalog["diplomacy"].get("gift_cost", 25000)
+        from src.engine.court import regency_price
+
+        cost = regency_price(self.app.game, self.app.game.player, self.app.game.catalog["diplomacy"].get("gift_cost", 25000))
         self._run(lambda: send_envoy(self.app.game, self.nation_id), "ENVOY",
                   f"Envoy received in {name} ({cost:,} {self.app.game.currency} in gifts): alignment +{{result:.1f}} toward Kestria.")
 
@@ -190,14 +192,16 @@ class DiplomacyView(VerticalScroll):
         for pack in packages(game, self.nation_id):
             contents = ", ".join(f"{q:,} {items.get(i, {}).get('name', i)}" for i, q in pack["items"].items())
             ok = rel >= pack["min_alignment"]
-            from src.engine.court import lend_lease_price
+            from src.engine.court import lend_lease_price, regency_price
 
-            price = lend_lease_price(game, self.nation_id, pack["cost"])
+            match = lend_lease_price(game, self.nation_id, pack["cost"])
+            price = regency_price(game, game.player, match)
             affordable = game.player.treasury >= price
             status = Text("AVAILABLE" if ok and affordable else ("TOO EXPENSIVE" if ok else "RELATIONS TOO LOW"),
                           style=palette.PHOSPHOR_BRIGHT if ok and affordable else palette.RED)
             catalog.add_row(Text(pack["name"].upper(), style=palette.PHOSPHOR_BRIGHT), Text(contents[:60]),
-                            f"{price:,} {game.currency}" + (" (ROYAL MATCH)" if price != pack["cost"] else ""),
+                            f"{price:,} {game.currency}" + (" (ROYAL MATCH)" if match != pack["cost"] else "")
+                            + (" (REGENCY)" if price != match else ""),
                             f"{pack['min_alignment']:+.0f}", f"{pack['weeks']} WK",
                             status, key=pack["id"])
         if catalog.row_count:

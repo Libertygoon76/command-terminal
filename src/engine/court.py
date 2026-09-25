@@ -24,6 +24,13 @@ in action costs the House 20 stability.
 SUCCESSION. Everyone ages; the old die, the plague in the capital reaches the palace, assassins strike. When the
 ruler dies the Heir takes the oath and play goes on under the new ruler's traits. With nobody of the blood left,
 or after a successful coup: PROTOCOL ZERO: DYNASTIC COLLAPSE (a fail state).
+
+REGENCY (Game Director ruling). A ruler under 18 reigns through a Regent: the cabinet member with the highest
+Administration. Every Treasury cost is 10% higher while it lasts, and a disloyal Regent may seize the palace. It ends
+when the ruler comes of age.
+
+ROYAL BIRTHS (Game Director ruling). Children born during the war are narrative only: a dispatch, a one-time rise in
+civil morale and dynastic stability. They never become courtiers.
 """
 
 from __future__ import annotations
@@ -224,6 +231,8 @@ def loyalty_target(state: GameState, char: Character, ruler_bonus: float | None 
     target += trait_sum(state, char, "loyalty")
     if char.office:
         target += float(data.get("office_favour", 10))
+    if house is not None and house.regent_id == char.id:
+        target += float(cfg(state).get("regency", {}).get("regent_loyalty", 0))
     stability = house.stability if house else 60.0
     target += (stability - 50) * float(data.get("stability_factor", 0.2))
     target += ruler_trait(state, "court_loyalty") if ruler_bonus is None else ruler_bonus
@@ -365,6 +374,8 @@ def appoint_commander(state: GameState, char_id: str, unit_id: str) -> str:
         raise CourtError(f"{char.name} is not a prince of the blood.")
     if not char.alive or char.imprisoned or char.married_to or char.unit_id:
         raise CourtError(f"{char.name} is not available for a field command.")
+    if dynasty(state).regent_id == char.id:
+        raise CourtError(f"{char.name} governs as Regent and cannot leave Aldmark.")
     current = royal_of(state, unit)
     if current is not None:
         recall_commander(state, unit.id)
@@ -419,7 +430,7 @@ def marriage_candidates(state: GameState) -> list[Character]:
     if house is None:
         return []
     return [c for c in house.living() if c.dynasty and c.relation != RULER and not c.married_to and not c.imprisoned
-            and int(spec.get("min_age", 16)) <= c.age <= int(spec.get("max_age", 45))]
+            and c.id != house.regent_id and int(spec.get("min_age", 16)) <= c.age <= int(spec.get("max_age", 45))]
 
 
 def marriage_partners(state: GameState) -> list[str]:
@@ -441,7 +452,7 @@ def marry(state: GameState, char_id: str, power: str) -> list[str]:
         raise CourtError(f"{char.name} cannot be married abroad.")
     if power not in marriage_partners(state):
         raise CourtError("That power will not take a Kestrian match now.")
-    dowry = int(spec.get("dowry", 50000))
+    dowry = regency_price(state, state.player, int(spec.get("dowry", 50000)))
     if state.player.treasury < dowry:
         raise CourtError(f"The dowry is {dowry:,} {state.currency}.")
     state.player.adjust_treasury(-dowry)
@@ -520,6 +531,8 @@ def die(state: GameState, char: Character, cause: str, report: TickReport | None
         lines.append("A prince of the blood has fallen at the front. The House is shaken; the nation mourns.")
     _history(state, f"{display_name(char)} died: {cause}.")
     was_heir = char.relation == HEIR
+    if char.id == house.regent_id and char.relation != RULER:
+        changes += replace_regent(state, report)
     if char.relation == RULER:
         changes += succeed(state, report)
     elif was_heir:
@@ -579,6 +592,8 @@ def succeed(state: GameState, report: TickReport | None = None) -> list[str]:
     for c in house.living():
         if c.relation == SPOUSE:
             c.relation, c.role = DOWAGER, "Dowager " + c.role
+    if house.regent_id == new.id:  # the Regent of the blood now reigns in their own right
+        house.regent_id = ""
     heir = _choose_heir(state)
     house.stability = max(0.0, house.stability + float(stab.get("succession", -20)))
     state.player.adjust_morale(float(stab.get("succession_morale", -3)))
@@ -587,10 +602,15 @@ def succeed(state: GameState, report: TickReport | None = None) -> list[str]:
              f"The new Lord Protector's disposition: {trait_names(state, new)}.",
              f"Heir: {heir.name if heir else 'NONE — the House hangs by a thread'}.",
              f"Dynastic stability {stab.get('succession', -20):+g}; civil morale {stab.get('succession_morale', -3):+g}."]
+    changes = [f"SUCCESSION: {new.name.upper()} IS LORD PROTECTOR"]
+    if under_age(state, new):
+        changes += begin_regency(state, lines)
+    elif regency_active(state):
+        changes += end_regency(state, report, f"{new.name} is of age and needs no Regent.")
     _court_email(state, f"THE LORD PROTECTOR IS DEAD. LONG LIVE THE LORD PROTECTOR {new.name.upper()}.", lines, report)
     if report is not None:
         report.log.append(f"SUCCESSION: {new.name} is Lord Protector.")
-    return [f"SUCCESSION: {new.name.upper()} IS LORD PROTECTOR"]
+    return changes
 
 
 def check_extinction(state: GameState) -> bool:
@@ -643,6 +663,9 @@ def apply_court_effect(state: GameState, value: dict) -> list[str]:
                 changes.append(str(error).upper())
     if value.get("marry"):
         changes += marry(state, value["marry"]["character"], value["marry"]["power"])
+    if value.get("birth"):
+        parent = value["birth"] if isinstance(value["birth"], str) else None
+        changes += royal_birth(state, parent)
     return changes
 
 
@@ -669,6 +692,10 @@ def preview_court_effect(state: GameState, value: dict) -> list[str]:
         name = nations(state)[value["marry"]["power"]]["name"].upper()
         lines += [f"DOWRY {spec.get('dowry', 50000):,} {state.currency}",
                   f"{name}: ALIGNMENT +{spec.get('alignment', 20)}, LEND-LEASE −{spec.get('lend_lease_discount', 0.25):.0%}"]
+    if value.get("birth"):
+        spec = cfg(state).get("births", {})
+        lines.append(f"A CHILD IS BORN TO THE HOUSE: CIVIL MORALE +{spec.get('civil_morale', 3):g}, "
+                     f"DYNASTIC STABILITY +{spec.get('stability', 5):g}")
     return lines
 
 
@@ -695,7 +722,10 @@ def imprison(state: GameState, char: Character) -> list[str]:
         char.relation = SIBLING if char.dynasty else char.relation
         _choose_heir(state)
     _history(state, f"{char.name} imprisoned in the Aldmark citadel.")
-    return [f"{char.name.upper()} IMPRISONED IN THE CITADEL"]
+    changes = [f"{char.name.upper()} IMPRISONED IN THE CITADEL"]
+    if dynasty(state).regent_id == char.id:
+        changes += replace_regent(state)
+    return changes
 
 
 def pardon(state: GameState, char: Character) -> list[str]:
@@ -832,6 +862,177 @@ def marriage_card(state: GameState, char_id: str) -> dict:
     return card
 
 
+# --- the regency (Game Director ruling) ----------------------------------------------------------------
+
+
+def under_age(state: GameState, char: Character) -> bool:
+    return char.age < int(cfg(state).get("regency", {}).get("age_of_majority", 18))
+
+
+def regency_active(state: GameState, nation: Nation | None = None) -> bool:
+    house = (nation or state.player).dynasty
+    return house is not None and house.regency_since >= 0
+
+
+def regency_surcharge(state: GameState, nation: Nation | None = None) -> float:
+    """The share added to every Treasury cost while a Regent governs (embezzlement and inefficiency)."""
+    if not regency_active(state, nation):
+        return 0.0
+    return float(cfg(state).get("regency", {}).get("cost_surcharge", 0.10))
+
+
+def regency_price(state: GameState, nation: Nation | str | None, cost: int) -> int:
+    """What a purchase really costs the nation: the list price, plus the regency's waste."""
+    if isinstance(nation, str):
+        nation = state.nations.get(nation)
+    return round(cost * (1 + regency_surcharge(state, nation))) if nation is not None else cost
+
+
+def _choose_regent(state: GameState) -> Character | None:
+    """The cabinet member with the highest Administration; with no cabinet, the ablest courtier at court."""
+    house = dynasty(state)
+    pool = [c for c in house.living() if c.relation != RULER and not c.imprisoned]
+    cabinet = [c for c in pool if c.office]
+    candidates = cabinet or [c for c in pool if c.at_court]
+    if not candidates:
+        return None
+    return min(candidates, key=lambda c: (-c.administration, -c.loyalty, c.id))
+
+
+def _regent_lines(state: GameState, regent: Character | None) -> list[str]:
+    surcharge = float(cfg(state).get("regency", {}).get("cost_surcharge", 0.10))
+    if regent is None:
+        return ["There is nobody fit to serve as Regent. The palace clerks govern as best they can.",
+                f"Every Treasury cost is {surcharge:.0%} higher while the regency lasts."]
+    post = office_name(state, regent.office) if regent.office else regent.role
+    return [f"{regent.name}, {post} (ADM {regent.administration}), governs as Regent in the ruler's name.",
+            f"Every Treasury cost is {surcharge:.0%} higher while the regency lasts: waste, delay and open hands.",
+            f"The Regent's loyalty stands at {regent.loyalty:.0f}. A Regent who turns against the House holds the "
+            "palace keys already."]
+
+
+def begin_regency(state: GameState, lines: list[str] | None = None) -> list[str]:
+    """The ruler is under age: the ablest minister governs. Appends the proclamation to `lines` (a dispatch)."""
+    house = dynasty(state)
+    ruler = house.ruler
+    if house.regency_since < 0:
+        house.regency_since = state.clock.turn
+    current = house.regent
+    regent = current if current is not None and not current.imprisoned and current.relation != RULER \
+        else _choose_regent(state)
+    house.regent_id = regent.id if regent else ""
+    majority = int(cfg(state).get("regency", {}).get("age_of_majority", 18))
+    text = [f"The Lord Protector {ruler.name} is {ruler.age}: a REGENCY is proclaimed until the age of {majority}."]
+    text += _regent_lines(state, regent)
+    if lines is not None:
+        lines += [""] + text
+    _history(state, f"Regency proclaimed: {regent.name if regent else 'no Regent'} governs for {ruler.name}.")
+    return [f"REGENCY: {regent.name.upper() if regent else 'NO REGENT'} GOVERNS",
+            f"ALL TREASURY COSTS +{float(cfg(state).get('regency', {}).get('cost_surcharge', 0.10)):.0%}"]
+
+
+def replace_regent(state: GameState, report: TickReport | None = None) -> list[str]:
+    """The Regent is gone (dead, imprisoned): the next ablest minister takes the seal."""
+    house = dynasty(state)
+    if not regency_active(state) or not house.ruler.alive:
+        house.regent_id = ""
+        return []
+    old = house.characters.get(house.regent_id)
+    regent = _choose_regent(state)
+    house.regent_id = regent.id if regent else ""
+    _history(state, f"{regent.name if regent else 'Nobody'} takes up the regency"
+                    + (f" in place of {old.name}." if old else "."))
+    _court_email(state, "THE REGENCY PASSES TO " + (regent.name.upper() if regent else "THE PALACE CLERKS"),
+                 [f"{old.name if old else 'The Regent'} can no longer govern."] + _regent_lines(state, regent), report)
+    return [f"NEW REGENT: {regent.name.upper() if regent else 'NONE'}"]
+
+
+def end_regency(state: GameState, report: TickReport | None, reason: str) -> list[str]:
+    house = dynasty(state)
+    regent = house.regent
+    weeks = state.clock.turn - house.regency_since
+    house.regent_id, house.regency_since = "", -1
+    _history(state, f"The regency ends after {weeks} weeks. {reason}")
+    _court_email(state, f"THE REGENCY ENDS: LORD PROTECTOR {house.ruler.name.upper()} RULES IN THEIR OWN RIGHT", [
+        reason,
+        f"{regent.name} lays down the Regent's seal after {weeks} weeks." if regent else
+        f"The regency lasted {weeks} weeks.",
+        "The Treasury's regency surcharge is lifted."], report)
+    if report is not None:
+        report.log.append(f"COURT: the regency ends; {house.ruler.name} rules.")
+    return ["THE REGENCY ENDS"]
+
+
+def _weekly_regency(state: GameState, report: TickReport) -> None:
+    house = dynasty(state)
+    if not regency_active(state) or not house.ruler.alive:
+        return
+    if not under_age(state, house.ruler):
+        end_regency(state, report, f"Lord Protector {house.ruler.name} has come of age ({house.ruler.age}).")
+        return
+    regent = house.regent
+    if (regent is None or regent.imprisoned or regent.relation == RULER) and _choose_regent(state) is not None:
+        replace_regent(state, report)  # (with nobody fit, the clerks govern on without a weekly dispatch)
+
+
+# --- royal births (Game Director ruling) ----------------------------------------------------------------
+
+
+def birth_parents(state: GameState) -> list[Character]:
+    lo, hi = cfg(state).get("births", {}).get("parent_age", [18, 45])
+    house = dynasty(state)
+    return [c for c in house.blood() if not c.imprisoned and int(lo) <= c.age <= int(hi)] if house else []
+
+
+def _birth_rng(state: GameState) -> random.Random:
+    """Births roll on their own seeded stream, so they never shift the campaign RNG (battles, AI, the deck)."""
+    return random.Random(f"{state.intel_seed}:birth:{state.clock.turn}:{dynasty(state).births}")
+
+
+def royal_birth(state: GameState, parent_id: str | None = None, report: TickReport | None = None) -> list[str]:
+    """A child is born to the House: narrative and morale only (never a courtier)."""
+    house = dynasty(state)
+    if house is None:
+        return []
+    spec = cfg(state).get("births", {})
+    rng = _birth_rng(state)
+    parent = house.characters.get(parent_id) if parent_id else None
+    if parent is None or not parent.alive:
+        parents = birth_parents(state)
+        parent = rng.choice(parents) if parents else None
+    given, style = rng.choice(cfg(state).get("names", {}).get("given", [["Aurel", "m"]]))
+    child = f"{'a son' if style == 'm' else 'a daughter'}, {given}"
+    civil, stab = float(spec.get("civil_morale", 3)), float(spec.get("stability", 5))
+    state.player.adjust_morale(civil)
+    house.stability = max(0.0, min(100.0, house.stability + stab))
+    house.births += 1
+    house.last_birth_turn = state.clock.turn
+    who = display_name(parent) if parent else "the House"
+    abroad = f", in {parent.married_to.title()}" if parent and parent.married_to else ""
+    _history(state, f"A child is born to {who}{abroad}: {child}.")
+    _court_email(state, f"A CHILD IS BORN TO THE {house.name.upper()}", [
+        f"The Lord Chamberlain announces the birth of {child}, to {who}{abroad}.",
+        "The bells of Aldmark Cathedral ring for the first time since the war began; the newspapers print the "
+        "portrait on the front page, above the casualty lists.",
+        f"Civil morale +{civil:g}; dynastic stability +{stab:g}. The child is far too young to matter at court."],
+        report, "UNCLASSIFIED")
+    if report is not None:
+        report.log.append(f"COURT: a child is born to {who}.")
+    return [f"A CHILD IS BORN TO {who.upper()}", f"CIVIL MORALE +{civil:g}", f"DYNASTIC STABILITY +{stab:g}"]
+
+
+def _weekly_births(state: GameState, report: TickReport) -> None:
+    house = dynasty(state)
+    spec = cfg(state).get("births", {})
+    if not spec or state.clock.turn < int(spec.get("first_turn", 8)):
+        return
+    if state.clock.turn - house.last_birth_turn < int(spec.get("min_weeks_between", 26)):
+        return
+    if not birth_parents(state) or _birth_rng(state).random() >= float(spec.get("chance_per_week", 0.012)):
+        return
+    royal_birth(state, report=report)
+
+
 # --- treason ----------------------------------------------------------------------------------------
 
 
@@ -847,8 +1048,9 @@ def _plot_type(state: GameState, char: Character) -> str | None:
         if kind == "assassinate" and not (trait_sum(state, char, "plots_coup") or
                                           char.loyalty < float(p.get("loyalty_below", 10))):
             continue
-        if kind == "coup" and not (char.dynasty and trait_sum(state, char, "plots_coup")
-                                   and char.influence >= float(p.get("min_influence", 60))):
+        usurper = dynasty(state).regent_id == char.id and cfg(state).get("regency", {}).get("regent_may_coup", True)
+        if kind == "coup" and not usurper and not (char.dynasty and trait_sum(state, char, "plots_coup")
+                                                   and char.influence >= float(p.get("min_influence", 60))):
             continue
         options[kind] = weight
     if not options:
@@ -1056,6 +1258,8 @@ class CourtSystem(SimulationSystem):
         _weekly_health(state, report)
         if state.flags.get("dynastic_collapse"):
             return
+        _weekly_regency(state, report)
+        _weekly_births(state, report)
         _weekly_loyalty(state, report)
         _weekly_treason(state, report)
         if state.flags.get("dynastic_collapse"):

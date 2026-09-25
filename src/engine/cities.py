@@ -85,7 +85,9 @@ def order_building(state: GameState, city_name: str, building: str, *, free: boo
     if city.count(building) >= int(spec.get("max", 1)):
         raise CityError(f"{city.name} already has (or is building) the maximum of {spec['name']}.")
     nation = state.nations[city.nation_id]
-    cost = 0 if free else int(spec["cost"])
+    from src.engine.court import regency_price
+
+    cost = 0 if free else regency_price(state, nation, int(spec["cost"]))
     if nation.treasury < cost:
         raise CityError(f"A {spec['name']} costs {cost:,} {state.currency}; the treasury cannot pay.")
     nation.adjust_treasury(-cost)

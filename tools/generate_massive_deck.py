@@ -25,7 +25,8 @@ engine schema and merged last, so writer cards replace placeholders with the sam
              it; with no place named, the engine picks one). Everything else uses the engine keys
              (src/engine/effects.py). Unknown keys stop the build.
     Royal Court (data/dynasty.json ids): execute_character / imprison_character / assign_command "<id>",
-             kill_character "<id>" or {id, cause}, character_loyalty {id: delta}, dynasty_stability delta;
+             kill_character "<id>" or {id, cause}, character_loyalty {id: delta}, dynasty_stability delta,
+             royal_birth "<parent id>" or true (a child is born: narrative and morale only);
              condition requires_character_alive "<id>" or [ids].
 WIRING adds such hooks to writer cards whose text implies them (see below).
 RETIRED lists placeholder cards that a writer card has superseded; they are removed from the deck.
@@ -672,6 +673,8 @@ def translate_card(raw: dict, ctx: dict, parent_text: str = "") -> dict:
                 court["loyalty"] = {who(c): d for c, d in value.items()}
             elif key == "dynasty_stability":
                 court["stability"] = value
+            elif key == "royal_birth":
+                court["birth"] = who(value) if isinstance(value, str) else True
             elif key == "civil_morale":
                 effects["morale"] = effects.get("morale", 0) + value
             elif key == "change_tax_policy":

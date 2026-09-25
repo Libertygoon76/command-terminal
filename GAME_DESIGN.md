@@ -1,7 +1,8 @@
 # COMMAND TERMINAL — Game Design Document
 
 > Living document. Update it whenever a system is designed, changed, or cut.
-> Last major revision: Expansion 1.2 (the Royal Court & Extended Family: dynasty, cabinet, audiences, treason, royal marriages, family generals, succession), 2026-09-24. Before that, Expansion 1.1 (the living world: foreign powers & lend-lease, city management, local news, the Vosk Hotline), 2026-09-24. Before that, Phase 8 (the home front: epidemics and natural disasters with CRITICAL EMERGENCY choices; chain of command & insubordination, electronic warfare, scorched earth & combat engineers, victory by capitulation, save/load), 2026-09-24.
+> Last major revision: the Game Director's dynasty rulings (the Regency for an under-age ruler, royal births as
+> narrative events; trait mechanics confirmed; no Vosk court), 2026-09-25. Before that, Expansion 1.2 (the Royal Court & Extended Family: dynasty, cabinet, audiences, treason, royal marriages, family generals, succession), 2026-09-24. Before that, Expansion 1.1 (the living world: foreign powers & lend-lease, city management, local news, the Vosk Hotline), 2026-09-24. Before that, Phase 8 (the home front: epidemics and natural disasters with CRITICAL EMERGENCY choices; chain of command & insubordination, electronic warfare, scorched earth & combat engineers, victory by capitulation, save/load), 2026-09-24.
 
 ---
 
@@ -961,8 +962,41 @@ Dowager and the next in line becomes Heir. With **nobody of the blood left**, or
 game ends: **PROTOCOL ZERO: DYNASTIC COLLAPSE** (a fourth fail state).
 
 ### C8. Save / load
-The Dynasty and every Character (loyalty, offices, commands, marriages, prison, illness, the chronicle) are part of
-the saved Nation; the round-trip test compares the reloaded House field by field.
+The Dynasty and every Character (loyalty, offices, commands, marriages, prison, illness, the chronicle, and since the
+rulings the Regent, the regency's start week and the births) are part of the saved Nation; the round-trip tests compare
+the reloaded House field by field.
+
+### C9. The Regency `[Director ruling]`
+When the ruler dies and the next in line is **under 18** (`court.json → regency.age_of_majority`), the child takes the
+oath and a **Regency** is proclaimed (in the succession dispatch):
+- **The Regent** is the **cabinet member with the highest Administration** (ties: the more loyal). With the cabinet
+  empty, the ablest courtier at court serves. If the Regent dies or is imprisoned, the next ablest minister takes the
+  seal (*THE REGENCY PASSES TO …*). The Regent keeps their office and cannot leave Aldmark (no field command, no
+  marriage abroad).
+- **Every Treasury cost is 10% higher** (`cost_surcharge`): a ledger line *Regency: waste and embezzlement (+10%)*
+  adds 10% of the week's expenses, and every purchase (recruitment, construction, envoys, lend-lease, dowries) costs
+  10% more. The TUI shows the real prices ("(REGENCY)" on lend-lease).
+- **The Regent's loyalty** needs managing: their loyalty target is 10 lower (`regent_loyalty`: power goes to the
+  head), and a Regent who falls below the treason threshold may attempt a **coup** whatever their blood, traits or
+  influence (`regent_may_coup`). A successful one is PROTOCOL ZERO as before.
+- It ends when the ruler turns 18 (*THE REGENCY ENDS* dispatch; the surcharge is lifted), when an adult succeeds the
+  child, or with the game. The Royal Court screen shows `REGENT <NAME> (LOYALTY n) · COSTS +10%` and marks the Regent
+  in the table.
+- **Reachability:** no one in the current cast is under 18 (Julian is 22, and generated relatives are 24+), so a
+  Regency needs a younger heir from the Head Writer (a cast change or an event card). The engine is ready for it.
+
+### C10. Royal births `[Director ruling]`
+Children born during the war are **narrative only**: they never become courtiers (the war is too short for them to
+come of age). From week 8, each week has a **1.2%** chance (at most one birth every 26 weeks) that a child is born to
+a member of the blood aged 18–45 (`court.json → births`): a *A CHILD IS BORN TO THE HOUSE OF VALERIUS* dispatch,
+**civil morale +3** and **dynastic stability +5**, and a line in the chronicle. The roll uses its own seeded stream, so it
+never shifts the campaign RNG. Event cards can announce one too: effect `court: {birth: "<parent id>" | true}`, writer
+packs `royal_birth`.
+
+### C11. Other rulings
+- **Traits confirmed:** the trait mechanics in `data/court.json` stand as written.
+- **No Vosk court:** the Hegemony stays a faceless bureaucracy on the backend; its internal politics are told through
+  event cards only.
 
 ---
 
@@ -1076,7 +1110,7 @@ command-terminal/
 13. **Economy**: ledger for every nation (taxes, trade, overseas trade minus blockaded ports, factories, research), timed modifiers expire
 14. **Events**: expire overdue dispatches (apply `on_expire`), deliver due emails (apply `on_arrival`)
 14a. **Electronic warfare**: jamming zones tick down (SIGNAL RESTORED), natural interference, last reports logged
-14b. **Court**: aging, illness, royals at the front, succession; loyalty and stability drift; the cabinet's weekly effects; treason; audiences
+14b. **Court**: aging, illness, royals at the front, succession (and regency); the regency comes of age or finds a new Regent; royal births; loyalty and stability drift; the cabinet's weekly effects; treason; audiences
 15. **Status report**: Weekly Status & Financial Report (now with weather and blockaded ports)
 16. **Fail states & victory**: revolution / coup / collapse / dynastic collapse → SYSTEM PURGE + Protocol Zero lock; enemy capitulation → VICTORY modal
 17. **Dilemmas**: maybe draw a CLASSIFIED DILEMMA card (pauses the game until answered)
@@ -1148,6 +1182,7 @@ SVG screenshots from the UI tests.
 | **X1.1** | **The living world**: three off-map powers (Oakhaven, Tor, Vael) with one alignment axis, envoys, trade agreements, lend-lease convoys through open ports and past wolfpacks, the Vosk foreign ministry; 26 living cities with population, local morale, hospitals, bunkers and new industry; the local news wire; the Vosk Hotline (ceasefire, surrender terms, ultimatum, armistice); six new event cards; medical supplies. ✅ |
 | **Deck** | **Expanded event deck**: 96 cards in five categories, 27 event-chain links, writer packs (`follow_ups`, `chain_only`), tax/tech/outbreak/disaster effects, generated by `tools/generate_massive_deck.py`. ✅ |
 | **X1.2** | **The Royal Court & Extended Family**: the House of Valerius (the Head Writer's cast) plus generated relatives and nobles; the cabinet (Finance / War / Intelligence) with stat-driven buffs; loyalty, dynastic stability and audiences; treason (embezzlement, leaks, assassination, coups) and the spymaster; political marriages; royal generals who never disobey; aging, illness, succession and PROTOCOL ZERO: DYNASTIC COLLAPSE; writer packs for the event deck. ✅ |
+| **Rulings** | **Director rulings on the dynasty**: the Regency for an under-age ruler (the ablest minister governs, every Treasury cost +10%, a disloyal Regent may seize the palace); royal births as narrative and morale events; trait mechanics confirmed; no Vosk court. ✅ |
 | 9 | Strategic bombing of factories (air wings over industrial centres), amphibious landings, multiple research slots. |
 | 10 | Domestic Politics & the Draft (§7.4): war weariness, rationing, conscription laws, factions. |
 | 11 | Diplomacy, balance pass. |
@@ -1231,10 +1266,14 @@ a formation, and the home front pays for all of it.
   the home front suffers them.
 - Should the player be able to make peace with Tor or Oakhaven formally (alliances that bring in volunteers or fleets)?
 - Cities under enemy occupation: should Vosk-held Kestrian cities keep their data (and rise up behind the lines)?
-- Court: should the Vosk Hegemony get a court of its own (a Chancellor's Politburo to intrigue against)?
-- Court: should children be born during the war (the House grows back), and heirs under 16 need a regent?
-- Court: Gemini's trait mechanics (Beloved, Pacifist, Paranoid, Pragmatic, War-Weary…) are the programmer's first
-  reading of the cast sheet — the Game Director should confirm or retune them in `data/court.json`.
+- Court: should the Vosk Hegemony get a court of its own? **Decided (Director): no** — event cards only (§C11).
+- Court: children born during the war, and regents for young heirs? **Decided (Director):** births are narrative and
+  morale only (§C10); a ruler under 18 reigns through a Regent (§C9).
+- Court: the trait mechanics in `data/court.json`? **Decided (Director): confirmed as written.**
+- Regency (programmer's reading, for the Director to confirm): the Regent's loyalty target −10 and the right of a
+  disloyal Regent to attempt a coup; the fallback Regent when the cabinet is empty; event-card and audience Treasury
+  effects are *not* surcharged (they are fixed story amounts), nor is embezzlement; the birth chance (1.2%/week, one per
+  26 weeks) and its size (+3 civil, +5 stability). Nobody in the cast is under 18, so no Regency can happen yet.
 - Crises are harsh when ignored: two in ten random-choice campaigns ended in revolution. Is that the right pressure?
 - Should the player see a supply-flow projection (who will be OVEREXTENDED if a move order completes) before
   confirming an order?

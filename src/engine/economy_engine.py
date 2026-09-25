@@ -119,6 +119,12 @@ def compute_ledger(state: GameState, nation: Nation | None = None) -> Ledger:
             ledger.expenses[f"Research: {tech['name']}"] = int(tech["weekly_cost"])
     if nation.treasury < 0:
         ledger.expenses["Debt interest"] = round(-nation.treasury * float(cfg.get("debt_interest_rate_weekly", 0.01)))
+    from src.engine.court import regency_surcharge
+
+    surcharge = regency_surcharge(state, nation)
+    if surcharge:  # a Regent governs: waste and open hands on every line
+        ledger.expenses[f"Regency: waste and embezzlement (+{surcharge:.0%})"] = round(
+            sum(ledger.expenses.values()) * surcharge)
     return ledger
 
 

@@ -12,6 +12,7 @@ from textual.binding import Binding
 from textual.containers import VerticalScroll
 from textual.widgets import DataTable, Static
 
+from src.engine.court import regency_price
 from src.engine.logistics_engine import fill_ratio
 from src.engine.recruitment import RecruitmentError, cancel_training, muster_point, raise_formation
 from src.ui import palette
@@ -183,11 +184,12 @@ class MilitaryView(VerticalScroll):
         cursor = recruit.cursor_row
         recruit.clear()
         for template in game.catalog["units"]["units"]:
-            affordable = nation.treasury >= template["recruit_cost"] and nation.manpower >= template["manpower"]
+            cost = regency_price(game, nation, int(template["recruit_cost"]))
+            affordable = nation.treasury >= cost and nation.manpower >= template["manpower"]
             recruit.add_row(
                 Text(f"[{template['symbol']}] {template['name'].upper()}", style=palette.PHOSPHOR_BRIGHT),
                 f"{template['manpower']:,}",
-                f"{template['recruit_cost']:,} {cur}",
+                f"{cost:,} {cur}",
                 f"{template['training_weeks']} WK",
                 f"{template.get('fuel_use', {}).get('moving', 0):,} drums",
                 f"{template.get('speed_mpd', 0):g}{'+' + format(template['truck_mpd'], 'g') if template.get('truck_mpd') else ''} mi/day",

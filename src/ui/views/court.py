@@ -127,6 +127,12 @@ class CourtView(VerticalScroll):
         summary.append(f"LORD PROTECTOR {ruler.name.upper()} ({ruler.age})   ", style=palette.PHOSPHOR)
         summary.append(f"HEIR {heir.name.upper() if heir else 'NONE'}   ",
                        style=palette.PHOSPHOR if heir else f"bold {palette.RED}")
+        if court.regency_active(game):
+            regent = house.regent
+            summary.append(f"REGENT {regent.name.upper() if regent else 'NONE'}"
+                           + (f" (LOYALTY {regent.loyalty:.0f})" if regent else "")
+                           + f" · COSTS +{court.regency_surcharge(game):.0%}   ",
+                           style=f"bold {palette.AMBER}" if regent and regent.loyalty >= 20 else f"bold {palette.RED}")
         stab_style = f"bold {palette.RED}" if house.stability < 25 else palette.PHOSPHOR
         summary.append(f"STABILITY {house.stability:.0f} {palette.meter(house.stability, width=10)}   ", style=stab_style)
         plotting = sum(1 for c in house.living() if c.relation != RULER and not c.imprisoned
@@ -217,6 +223,8 @@ class CourtView(VerticalScroll):
             return Text("PLOTTING?", style=f"bold {palette.RED}")
         if char.unit_id:
             return Text("AT THE FRONT", style=palette.AMBER)
+        if char.id == game.player.dynasty.regent_id:
+            return Text("REGENT", style=f"bold {palette.AMBER}")
         return Text("at court", style=palette.PHOSPHOR_DIM)
 
     def _render_detail(self) -> None:

@@ -68,6 +68,10 @@ class Dynasty:
     next_audience_turn: int = 0  # when the next petitioner demands an audience
     last_court_turn: int = -99  # when the Lord Protector last held court on his own initiative
     history: list[dict[str, Any]] = field(default_factory=list)  # {turn, text}: births, deaths, successions, plots
+    regent_id: str = ""  # while the ruler is under age: the cabinet member who governs in their name
+    regency_since: int = -1  # the week the regency began (-1: no regency)
+    births: int = 0  # children born to the House during the war (narrative only: they never hold court)
+    last_birth_turn: int = -99
 
     @property
     def ruler(self) -> Character:
@@ -82,3 +86,8 @@ class Dynasty:
 
     def minister(self, office: str) -> Character | None:
         return next((c for c in self.living() if c.office == office), None)
+
+    @property
+    def regent(self) -> Character | None:
+        char = self.characters.get(self.regent_id) if self.regent_id else None
+        return char if char is not None and char.alive else None

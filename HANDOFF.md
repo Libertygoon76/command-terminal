@@ -83,7 +83,7 @@ ask them to commit and push those changes from the PC first.
 
 ```bash
 pip install -r requirements-dev.txt -r requirements-graphics.txt
-python -m pytest -q            # 279 tests, about 4-6 minutes
+python -m pytest -q            # ~295 tests, about 4-6 minutes
 ```
 
 - `tests/conftest.py` autouse `calm_world` keeps tests calm: clear weather, no deck draws, no random crises, and
@@ -108,9 +108,10 @@ python -m pytest -q            # 279 tests, about 4-6 minutes
 
 The roadmap (`GAME_DESIGN.md` §6) lists: **Phase 9** (strategic bombing of factories, amphibious landings, multiple
 research slots), **Phase 10** (domestic politics and the draft: war weariness, rationing, conscription laws,
-factions) and **Phase 11** (diplomacy and a balance pass). §8 holds the open design questions. The newest ones
-are whether the Vosk get a court of their own, whether children are born and under-16 heirs need regents, and
-Gemini confirming the trait mechanics in `data/court.json`.
+factions) and **Phase 11** (diplomacy and a balance pass). §8 holds the open design questions. The Game Director
+has ruled on the court questions (GAME_DESIGN.md §C9–C11): trait mechanics confirmed, no Vosk court, royal births are
+narrative and morale only, and a ruler under 18 reigns through a Regent (every Treasury cost +10%). The programmer's
+own choices in implementing those rulings are listed in §8 for Gemini to confirm.
 
 More writer packs from Gemini should go into `tools/writer_packs/`. Then re-run the generator and the tests. If a
 pack uses a key or name the translator doesn't know, the build stops with a clear message. Extend the translator

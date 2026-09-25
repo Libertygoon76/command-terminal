@@ -27,7 +27,8 @@ Supported keys (all deltas):
     outbreak                              {disease, city}  an epidemic breaks out (raises its emergency)
     disaster                              {kind, region}  a natural disaster strikes (raises its emergency)
     court                                 {loyalty {id: d}, all_loyalty, stability, execute, imprison, pardon,
-                                           kill {character, cause}, command <id>, marry {character, power}}
+                                           kill {character, cause}, command <id>, marry {character, power},
+                                           birth <parent id> | true}
                                           (Expansion 1.2, src/engine/court.py)
 """
 

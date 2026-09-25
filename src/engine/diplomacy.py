@@ -142,8 +142,10 @@ def send_envoy(state: GameState, nation_id: str, belligerent: str | None = None)
     if state.game_over:
         raise DiplomacyError("The government has fallen. The terminal is locked.")
     cfg = _cfg(state)
-    cost = int(cfg.get("gift_cost", 25000))
     payer = state.nations[belligerent]
+    from src.engine.court import regency_price
+
+    cost = regency_price(state, payer, int(cfg.get("gift_cost", 25000)))
     if payer.treasury < cost:
         raise DiplomacyError(f"The envoy needs {cost:,} {state.currency} in gifts; the treasury cannot spare it.")
     payer.adjust_treasury(-cost)
@@ -206,9 +208,10 @@ def buy_lend_lease(state: GameState, nation_id: str, package_id: str, belligeren
         raise DiplomacyError(f"{name} will not sell the {offer['name']} until it leans {offer['min_alignment']:+.0f} "
                              f"{'toward us' if state.is_friendly(belligerent) else 'toward them'}.")
     buyer = state.nations[belligerent]
-    from src.engine.court import lend_lease_price
+    from src.engine.court import lend_lease_price, regency_price
 
-    cost = lend_lease_price(state, nation_id, offer["cost"], belligerent)  # royal in-laws sell cheaper
+    # royal in-laws sell cheaper; a regency's waste costs more
+    cost = regency_price(state, buyer, lend_lease_price(state, nation_id, offer["cost"], belligerent))
     if buyer.treasury < cost:
         raise DiplomacyError(f"The {offer['name']} costs {cost:,} {state.currency}.")
     buyer.adjust_treasury(-cost)

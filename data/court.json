@@ -19,7 +19,16 @@
     "  traits (who asks; 'any' = anyone), grant {label, hint, effects, loyalty}, deny_loyalty, ignore_loyalty}.",
     "  Text placeholders: {name} {role} {city} {region}.",
     "succession: Heir, Siblings (eldest first), Cousins (most influential first), Uncles/Aunts. With nobody left, or",
-    "  after a successful coup: PROTOCOL ZERO: DYNASTIC COLLAPSE."
+    "  after a successful coup: PROTOCOL ZERO: DYNASTIC COLLAPSE.",
+    "regency (Game Director ruling): a ruler under age_of_majority reigns through a REGENT, the cabinet member with the",
+    "  highest Administration (with no cabinet: the ablest courtier at court). While the regency lasts every Treasury",
+    "  cost is cost_surcharge higher (the weekly ledger and every purchase). The Regent's loyalty target moves by",
+    "  regent_loyalty (power goes to the head), and a disloyal Regent may attempt a COUP whatever their blood or",
+    "  traits. It ends when the ruler comes of age (or the game ends).",
+    "births (Game Director ruling): children born during the war are narrative only, never courtiers. Each week",
+    "  after first_turn, with chance_per_week (at most one every min_weeks_between weeks), a child is born to a",
+    "  member of the blood aged parent_age: a dispatch, civil morale +civil_morale, stability +stability. Event cards",
+    "  may announce one too (effect court {birth: <parent id> | true})."
   ],
   "dynasty_name": "House of Valerius",
   "cast": {
@@ -100,6 +109,9 @@
                 "execution_fear_loyalty": -3, "failed_coup": -10},
   "health": {"age_pivot": 60, "age_base": 0.0015, "age_doubling_years": 6, "plague_city": "Aldmark",
              "plague_chance": 0.04, "ill_weeks": 4, "ill_death_chance": 0.08, "front_death_chance": 0.03},
+  "regency": {"age_of_majority": 18, "cost_surcharge": 0.10, "regent_loyalty": -10, "regent_may_coup": true},
+  "births": {"first_turn": 8, "chance_per_week": 0.012, "min_weeks_between": 26, "parent_age": [18, 45],
+             "civil_morale": 3, "stability": 5},
   "audiences": {"first_turn": 3, "min_weeks": 3, "max_weeks": 5, "hold_court_cooldown": 2},
   "treason": {
     "threshold": 20,

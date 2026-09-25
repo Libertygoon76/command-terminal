@@ -85,7 +85,9 @@ def raise_formation(state: GameState, nation_id: str, template_id: str) -> Train
     if template_id not in table:
         raise RecruitmentError(f"Unknown formation type: {template_id}")
     template = table[template_id]
-    cost, men = int(template["recruit_cost"]), int(template["manpower"])
+    from src.engine.court import regency_price
+
+    cost, men = regency_price(state, nation, int(template["recruit_cost"])), int(template["manpower"])
     if nation.treasury < cost:
         raise RecruitmentError(f"The treasury cannot fund a {template['name']} ({cost:,} {state.currency} needed).")
     if nation.manpower < men:

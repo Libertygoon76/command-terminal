@@ -13,6 +13,7 @@ from textual.containers import Horizontal, VerticalScroll
 from textual.widgets import DataTable, Static
 
 from src.engine.cities import CityError, buildings, cancel_building, city_region, order_building, situation
+from src.engine.court import regency_price
 from src.ui import palette
 
 TAG_TEXT = {"infected": ("[INFECTED]", f"bold {palette.RED}"), "quarantined": ("[QUARANTINE]", palette.AMBER),
@@ -157,7 +158,8 @@ class CitiesView(VerticalScroll):
         for key, bid in (("H", "hospital"), ("B", "bunker"), ("I", "local_industry")):
             spec = specs[bid]
             maxed = city.count(bid) >= int(spec.get("max", 1))
-            detail.append(f"  [{key}] {spec['name']:<16} {spec['cost']:>7,} {game.currency} · {spec['weeks']} WK",
+            cost = regency_price(game, game.player, int(spec["cost"]))
+            detail.append(f"  [{key}] {spec['name']:<16} {cost:>7,} {game.currency} · {spec['weeks']} WK",
                           style=palette.PHOSPHOR_DIM if maxed else palette.PHOSPHOR_BRIGHT)
             detail.append("  (built)\n" if maxed else "\n", style=palette.PHOSPHOR_DIM)
             detail.append(f"      {spec['description']}\n", style=palette.PHOSPHOR_DIM)
