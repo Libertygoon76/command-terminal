@@ -17,6 +17,23 @@ echo.
 set "PY=python"
 if exist ".venv\Scripts\python.exe" set "PY=.venv\Scripts\python.exe"
 
+if not exist "main.py" (
+  echo This file is in the wrong folder:
+  echo   %CD%
+  echo Move it into your game folder - the one with main.py and "Play Graphical.cmd" in it -
+  echo then double-click it there.
+  pause
+  exit /b 1
+)
+git rev-parse --git-dir >nul 2>nul
+if errorlevel 1 (
+  echo This game folder was not downloaded with git, so it cannot update itself:
+  echo   %CD%
+  echo Send Claude a screenshot of this window.
+  pause
+  exit /b 1
+)
+
 echo [1/4] Updating the game from GitHub...
 rem A copy of this file downloaded by hand would block the update: git brings its own.
 git ls-files --error-unmatch "Setup Neural Court.cmd" >nul 2>nul
