@@ -2,18 +2,20 @@
 
 Highlight a courtier: their dossier appears below. A holds court (a courtier is granted an audience); F / W / I
 appoint the highlighted courtier Minister of Finance / Minister of War / Head of Intelligence; D dismisses them from
-office; M proposes a political marriage abroad. Royal generals are appointed from the Military screen (K).
+office; M proposes a political marriage abroad; T opens a private conversation (the Neural Court, Expansion 2.0).
+Royal generals are appointed from the Military screen (K).
 """
 
 from __future__ import annotations
 
 from rich.text import Text
+from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, VerticalScroll
 from textual.widgets import DataTable, Static
 
-from src.engine import court
+from src.engine import court, neural_engine
 from src.models.character import OFFICES, RULER
 from src.ui import palette
 
@@ -37,6 +39,7 @@ class CourtView(VerticalScroll):
         Binding("i", "appoint('intelligence')", "Intelligence"),
         Binding("d", "dismiss", "Dismiss"),
         Binding("m", "marriage", "Marriage"),
+        Binding("t", "talk", "Talk"),
     ]
 
     def __init__(self, **kwargs) -> None:
@@ -46,8 +49,9 @@ class CourtView(VerticalScroll):
     def compose(self) -> ComposeResult:
         yield Static(id="court-summary", classes="summary")
         yield Static(id="court-cabinet")
-        yield Static(Text("THE COURT — A hold court · F/W/I appoint to Finance/War/Intelligence · D dismiss · "
-                          "M marriage abroad · royal generals: Military screen, K", style=f"bold {palette.AMBER}"),
+        yield Static(Text("THE COURT — A hold court · T talk · F/W/I appoint to Finance/War/Intelligence · "
+                          "D dismiss · M marriage abroad · royal generals: Military screen, K",
+                          style=f"bold {palette.AMBER}"),
                      classes="section-title")
         yield DataTable(id="court-table", cursor_type="row", classes="primary-focus")
         with Horizontal(id="court-panels"):
@@ -84,8 +88,37 @@ class CourtView(VerticalScroll):
 
     def action_hold_court(self) -> None:
         card = self._act(lambda: court.hold_court(self.app.game), "ROYAL COURT")
-        if card:
+        if not card:
+            return
+        exchange = neural_engine.prepare_audience(self.app.game, card)
+        if exchange is None or neural_engine.cached_status(self.app.game)["online"] is False:
+            self.screen.show_dilemma()  # scripted petition, at once
+            return
+        self.notify("The petitioner is shown into the Audience Chamber…", title="ROYAL COURT")
+        self._narrate(exchange)
+
+    @work(thread=True, exclusive=True, group="audience")
+    def _narrate(self, exchange) -> None:
+        result, _reason = neural_engine.try_fetch(exchange)  # the local model speaks the petition (slow part)
+        self.app.call_from_thread(self._narrated, exchange, result)
+
+    def _narrated(self, exchange, result) -> None:
+        neural_engine.complete_audience(self.app.game, exchange, result)
+        self.app.state_changed()
+        if self.app.game.pending_dilemma == exchange.card_id:
             self.screen.show_dilemma()
+
+    def action_talk(self) -> None:
+        if not self.char_id:
+            return
+        from src.ui.screens.converse import ConverseScreen
+
+        try:
+            neural_engine.speaker(self.app.game, self.char_id)
+        except neural_engine.ConverseError as error:
+            self.notify(str(error), title="PRIVATE AUDIENCE", severity="warning")
+            return
+        self.app.push_screen(ConverseScreen(self.char_id))
 
     def action_appoint(self, office: str) -> None:
         if not self.char_id:
@@ -143,6 +176,9 @@ class CourtView(VerticalScroll):
         summary.append("AUDIENCE CHAMBER OPEN [A]" if ready else
                        f"NEXT AUDIENCE DAY WK {house.last_court_turn + cooldown:03d}",
                        style=palette.AMBER if ready else palette.PHOSPHOR_DIM)
+        neural = neural_engine.cached_status(game)["online"]
+        summary.append("   NEURAL COURT " + ("ONLINE" if neural else "OFFLINE" if neural is False else "—"),
+                       style=palette.PHOSPHOR if neural else palette.PHOSPHOR_DIM)
         self.query_one("#court-summary", Static).update(summary)
 
         cabinet = Text()

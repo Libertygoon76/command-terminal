@@ -21,7 +21,7 @@ Implement Gemini's specs faithfully. Text we write ourselves is a placeholder th
 
 ## 2. Where things stand
 
-The tests pass (**279**). Git history on `master`:
+The tests pass (**324**). Git history (`master`, then the cloud branch `claude/nice-galileo-guq7zh`):
 
 | Commit | What |
 |--------|------|
@@ -33,8 +33,10 @@ The tests pass (**279**). Git history on `master`:
 | `1243ab9` Deck | `tools/generate_massive_deck.py`: 50+ card event deck, event chains, writer-pack translator |
 | `b5242d2` Expansion 1.2 | Royal Court: the House of Valerius, cabinet, audiences, treason, marriages, royal generals, succession |
 | `f7ab3be` | `CLAUDE.md` |
+| `eae2a10` Rulings | The Game Director's dynasty rulings: the Regency (+10% costs), royal births, traits confirmed, no Vosk court |
+| Expansion 2.0 | The Neural Court: courtiers converse through a local LLM (Ollama), with a scripted fallback |
 
-Nothing is half-built on `master`. **There is no pending task: wait for the user's next brief.**
+Nothing is half-built. **There is no pending task: wait for the user's next brief.**
 
 ## 3. Not in the repo (stays on the user's PC)
 
@@ -76,6 +78,10 @@ ask them to commit and push those changes from the PC first.
 - **Event deck:** `tools/generate_massive_deck.py` holds the placeholder cards, reads Gemini's packs from
   `tools/writer_packs/*.json` (Gemini's own schema, translated), and rewrites `data/events_deck.json` after
   validating it. Re-run it after any deck change.
+- **Neural Court (X2.0):** `src/engine/neural_engine.py` talks to a local Ollama server (loopback only, 0.5 s
+  ping, cached). If Ollama is off, everything falls back to scripted text. Settings are in `data/neural.json`.
+  UIs must not call the model on the UI thread: use `prepare_*` → `try_fetch()` in a worker → `complete_*`
+  (see `src/ui/screens/converse.py`). The Pygame client can call `converse_with_character()` or the split API.
 - **Royal Court:** the cast is `data/dynasty.json` (Gemini's canon, don't edit its text). The mechanics are
   `data/court.json`, and the engine is `src/engine/court.py`.
 
@@ -83,13 +89,16 @@ ask them to commit and push those changes from the PC first.
 
 ```bash
 pip install -r requirements-dev.txt -r requirements-graphics.txt
-python -m pytest -q            # ~295 tests, about 4-6 minutes
+python -m pytest -q            # ~324 tests, about 4-6 minutes
 ```
 
 - `tests/conftest.py` autouse `calm_world` keeps tests calm: clear weather, no deck draws, no random crises, and
   `CourtSystem.on_tick` stubbed. To exercise those systems, mark the test `@pytest.mark.live`, or call the real
   function. `tests/test_expansion_1_2.py` captures `REAL_COURT_TICK` at import for this reason.
 - `settle_dilemma(state, rng)` answers pending modals in long live campaigns.
+- conftest's `no_local_llm` sets `CT_NEURAL=off` for every test, so nothing contacts Ollama. `tests/test_neural_court.py`
+  mocks `requests.get` / `requests.post` with a fake server (the `ollama` fixture). Do the same in any new test that
+  needs the Neural Court on.
 - UI tests: `app.run_test(size=...)` plus `pilot.press(...)`. Screenshots: `app.save_screenshot()` (SVG).
 - Debug flags: `python main.py --skip-boot --seed N --reveal --event CARD_ID --list-events --crisis outbreak|disaster --load [FILE]`.
 

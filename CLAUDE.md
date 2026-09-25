@@ -8,11 +8,13 @@ A hardcore 1984 grand-strategy nation simulator: Python 3.12 + Textual TUI, all 
 
 ```bash
 pip install -r requirements-dev.txt -r requirements-graphics.txt
-python -m pytest -q          # ~280 tests, about 4-6 minutes
+python -m pytest -q          # ~325 tests, about 4-6 minutes
 python main.py --skip-boot   # play (terminal UI)
 ```
 
 The Pygame client test skips itself if `pygame-ce` is missing; it runs headless with `SDL_VIDEODRIVER=dummy`.
+The Neural Court (Expansion 2.0) needs a local Ollama server to talk (`ollama pull llama3.2`); without one the game
+falls back to scripted text. Tests never contact it (conftest sets `CT_NEURAL=off`; the neural tests mock `requests`).
 
 ## Team
 

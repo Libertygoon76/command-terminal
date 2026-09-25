@@ -1,0 +1,45 @@
+{
+  "_comment": [
+    "Expansion 2.0: The Neural Court (src/engine/neural_engine.py). Courtiers speak through a LOCAL language model",
+    "served by Ollama (https://ollama.com) on the player's own machine: no cloud, no API key, no cost.",
+    "host must be a loopback address (localhost / 127.0.0.1 / ::1): the game never sends the campaign anywhere else.",
+    "  Override for one run with the environment variable CT_OLLAMA_HOST; CT_NEURAL=off disables the feature.",
+    "model: any chat model pulled with `ollama pull <model>`. The ping checks it is installed.",
+    "ping_timeout: seconds to wait for Ollama to answer the availability check (the game never hangs on it).",
+    "  The answer is cached for ping_cache_seconds.",
+    "chat_timeout: seconds to wait for a reply before giving up and using the scripted fallback.",
+    "loyalty_change: the model's verdict on each exchange is clamped to [min, max]; weekly_loyalty_cap caps the total",
+    "  any one courtier can gain or lose from conversation in a single week (no farming loyalty by chatting).",
+    "memory_exchanges: how many past exchanges with a courtier are replayed to the model (and kept in the save).",
+    "max_player_chars: the longest line the Lord Protector may speak.",
+    "fallback: scripted replies (by the courtier's loyalty band) used when Ollama is not running. PLACEHOLDERS for the",
+    "  Head Writer. {name} {role} {ruler} placeholders."
+  ],
+  "enabled": true,
+  "host": "http://localhost:11434",
+  "model": "llama3.2",
+  "temperature": 0.8,
+  "ping_timeout": 0.5,
+  "ping_cache_seconds": 30,
+  "chat_timeout": 45,
+  "loyalty_change": {"min": -5, "max": 5},
+  "weekly_loyalty_cap": 5,
+  "memory_exchanges": 6,
+  "max_player_chars": 400,
+  "max_dialogue_chars": 600,
+  "tone": "Speak in a gritty, clipped 1980s Cold-War bureaucratic tone.",
+  "fallback": {
+    "loyal": [
+      "{name} bows. 'As you command, Lord Protector. My office stands ready.'",
+      "'The House endures, {ruler}. Tell me what you need and it will be done.'"
+    ],
+    "wary": [
+      "{name} studies you for a long moment. 'I hear you, Lord Protector. We shall see.'",
+      "'Your words are noted, {ruler}. The Chamberlain will minute them.'"
+    ],
+    "hostile": [
+      "{name} does not quite meet your eye. 'Of course, Lord Protector. Whatever you say.'",
+      "A thin smile. 'The {role} has many duties, {ruler}. I shall attend to them.'"
+    ]
+  }
+}

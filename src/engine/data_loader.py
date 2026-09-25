@@ -155,6 +155,7 @@ def new_game(data_dir: Path = DATA_DIR, seed: int | None = None) -> GameState:
     catalog["hotline"] = load_json("hotline.json", data_dir)
     catalog["court"] = load_json("court.json", data_dir)
     catalog["dynasty"] = load_json("dynasty.json", data_dir)
+    catalog["neural"] = load_json("neural.json", data_dir)
     equipment_ids = {e["id"] for e in catalog["equipment"]}
     for nation in nations.values():
         if not nation.known_techs:

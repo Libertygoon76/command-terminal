@@ -9,7 +9,7 @@ campaigns and the Phase 7 tests) run with the world exactly as the player gets i
 
 import pytest
 
-from src.engine import court, crisis_engine, dilemmas, weather_engine
+from src.engine import court, crisis_engine, dilemmas, neural_engine, weather_engine
 
 
 def pytest_configure(config):
@@ -19,6 +19,13 @@ def pytest_configure(config):
 def _clear_weather(state):
     return {"condition": "clear", "season": weather_engine.season_of(state), "storm": False,
             "turn": state.clock.turn, "previous_season": state.weather.get("season")}
+
+
+@pytest.fixture(autouse=True)
+def no_local_llm(monkeypatch):
+    """No test ever talks to a real Ollama server (Expansion 2.0): the Neural Court is off unless a test mocks it."""
+    monkeypatch.setenv("CT_NEURAL", "off")
+    neural_engine.reset_cache()
 
 
 @pytest.fixture(autouse=True)

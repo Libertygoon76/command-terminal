@@ -18,6 +18,18 @@ Run the tests with `python -m pytest`.
 
 Use Windows Terminal (not the legacy console) for correct colors and box-drawing characters.
 
+### Optional: the Neural Court (talking courtiers)
+
+Courtiers can hold free conversations through a language model running **on your own PC**. It is free and offline,
+and needs no account or API key. Without it the game uses its written dialogue, so you can skip this.
+
+1. Install Ollama from <https://ollama.com> and start it (it runs in the background at `localhost:11434`).
+2. Download the model once: `ollama pull llama3.2` (about 2 GB; any chat model works if you change `model` in
+   `data/neural.json`).
+3. Start the game. The Royal Court screen shows **NEURAL COURT ONLINE**.
+
+`CT_NEURAL=off` switches it off for one run.
+
 ## Controls
 
 `1`–`8` and `0` switch views · arrows / Enter navigate · `Tab` moves focus · `a`–`d` reply to the open dispatch · `h` hides archived mail · `n` advances the week · `q` logs out.
@@ -50,7 +62,8 @@ industry · `x` cancel the last project.
 
 Royal Court (`0`): the House of Valerius, the cabinet and the chronicle → `a` hold court (grant an audience) ·
 highlight a courtier → `f` / `w` / `i` appoint Minister of Finance / War / Head of Intelligence · `d` dismiss · `m`
-marry them abroad. Military (`3`) → `k` gives the highlighted division to a royal general (royals never disobey,
+marry them abroad · `t` talk to them in private (type freely; with the Neural Court online they answer in character and
+the conversation moves their loyalty by up to ±5 a week). Military (`3`) → `k` gives the highlighted division to a royal general (royals never disobey,
 but a royal killed in action shakes the House). Watch loyalty: below 20, courtiers plot.
 
 **Save / load:** `ctrl+s` (or `F5`) saves the campaign to `savegame.json`; `python main.py --load` resumes it.

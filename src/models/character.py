@@ -72,6 +72,8 @@ class Dynasty:
     regency_since: int = -1  # the week the regency began (-1: no regency)
     births: int = 0  # children born to the House during the war (narrative only: they never hold court)
     last_birth_turn: int = -99
+    # Expansion 2.0 (the Neural Court): courtier id -> recent exchanges {turn, player, reply, loyalty, applied, source}
+    conversations: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
 
     @property
     def ruler(self) -> Character:

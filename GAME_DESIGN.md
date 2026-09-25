@@ -1,7 +1,8 @@
 # COMMAND TERMINAL — Game Design Document
 
 > Living document. Update it whenever a system is designed, changed, or cut.
-> Last major revision: the Game Director's dynasty rulings (the Regency for an under-age ruler, royal births as
+> Last major revision: Expansion 2.0 (the Neural Court: courtiers converse through a local language model via Ollama,
+> with a scripted fallback), 2026-09-25. Before that, the Game Director's dynasty rulings (the Regency for an under-age ruler, royal births as
 > narrative events; trait mechanics confirmed; no Vosk court), 2026-09-25. Before that, Expansion 1.2 (the Royal Court & Extended Family: dynasty, cabinet, audiences, treason, royal marriages, family generals, succession), 2026-09-24. Before that, Expansion 1.1 (the living world: foreign powers & lend-lease, city management, local news, the Vosk Hotline), 2026-09-24. Before that, Phase 8 (the home front: epidemics and natural disasters with CRITICAL EMERGENCY choices; chain of command & insubordination, electronic warfare, scorched earth & combat engineers, victory by capitulation, save/load), 2026-09-24.
 
 ---
@@ -1000,6 +1001,72 @@ packs `royal_birth`.
 
 ---
 
+## Expansion 2.0 — The Neural Court `[X2.0]`
+
+**Goal:** courtiers who talk like living people about the actual state of the war, not only through pre-written JSON.
+A **local** language model does the talking: it runs on the player's own PC through **Ollama**, offline, with no cloud
+API and no cost. Module `src/engine/neural_engine.py`, settings `data/neural.json`, screen `src/ui/screens/converse.py`.
+
+### N1. The local LLM manager
+- Talks to Ollama's REST API with `requests`: `GET /api/tags` to check it is up, `POST /api/chat` (`stream: false`,
+  `format: "json"`) for each line. Default model `llama3.2`, host `http://localhost:11434`.
+- **Never crashes, never hangs.** The availability ping has a **0.5 s** timeout and is cached for 30 s. A chat call
+  gives up after `chat_timeout` (45 s), and a dead or slow server is then marked offline, so the next line doesn't wait
+  again. Any failure (Ollama not running, model not pulled, `requests` missing, `CT_NEURAL=off`, a garbled answer) falls
+  back to the scripted game: audience cards keep their `court.json` petition text, the event deck (`dilemmas.py`) is
+  untouched, and conversations get a scripted reply by loyalty band (`neural.json → fallback`, placeholders for the
+  Head Writer).
+- **Local only.** The host must be a loopback address (`localhost`, `127.0.0.1`, `::1`). The campaign is never sent
+  anywhere else. `CT_OLLAMA_HOST` overrides the host for one run (still loopback only).
+- In the TUI the model call runs in a **worker thread**; the answer is applied to the game state back on the UI thread.
+  The API is split for any client: `prepare_*` (reads the state) → `try_fetch()` (network only, never raises) →
+  `complete_*` (applies the result). `converse_with_character()` and `hold_court(narrate=True)` do all three in one
+  blocking call.
+
+### N2. The context builder (the memory)
+`build_system_prompt(state, character)` compiles a strict system prompt:
+- **the courtier:** name, office or role, relation to the House, age, each trait with its description, stats, influence,
+  loyalty and what it means (under 20: *secretly plotting, never admit it*), where they are (court, the front, the
+  citadel, sick), whether they are Regent, and the ruler's name and traits;
+- **the nation:** week and date, treasury and weekly net (BANKRUPT at or below 0), tax policy, civil and military
+  morale, dynastic stability, a regency, the weather, epidemics and where, battles raging and those of the last 4 weeks
+  (outcome and Kestrian losses), blockaded ports, a ceasefire. Hidden facts (the Vosk AI's posture) are never included;
+- **the rules:** stay in character in a fictional 1984, gritty 1980s bureaucratic tone, under 3 sentences, invent
+  nothing, and the output format.
+
+The last 6 exchanges with that courtier are replayed as chat history and saved with the game
+(`Dynasty.conversations`).
+
+### N3. Structured output: the game math
+The model must answer with one JSON object: `{"dialogue": "...", "loyalty_change": <integer -5..+5>}`. The parser
+tolerates code fences and chatter around the object, rounds numbers, **clamps** the change to ±5, and rejects an answer
+with no dialogue (it falls back). **Weekly cap:** conversation can move any one courtier's loyalty by at most ±5 in a
+week in total (`weekly_loyalty_cap`), so loyalty cannot be farmed by chatting. The applied change shows in the
+transcript (`[LOYALTY +3]`).
+
+### N4. The hooks
+- **Private audience (Royal Court: `T`):** a conversation window with the highlighted courtier. The player types
+  freely; the courtier answers (neural or scripted), and the transcript scrolls. Esc leaves. Not the ruler, the dead or
+  those married abroad; prisoners and generals at the front (by field telephone) can be spoken to.
+- **Hold Court (`A`):** with the model online, the petitioner first speaks the petition in their own words (`<NAME>
+  SPEAKS: "…"` at the top of the audience card). The petition and its grant / deny / ignore mechanics are unchanged,
+  and the opening speech never changes loyalty. Audiences that arrive on their own during the week stay scripted, so
+  advancing the week never waits for the model.
+- `converse_with_character(state, character_id, text)` is the engine entry point for any client (the Pygame client
+  can call it or the split API).
+
+### N5. Save / load
+`Dynasty.conversations` (per courtier: turn, what was said, the reply, the model's verdict, the change applied, the
+source) is part of the saved House.
+
+### N6. Tests
+The tests never contact Ollama. `conftest.py` sets `CT_NEURAL=off` for every test, and `tests/test_neural_court.py`
+mocks `requests.get` (the ping) and `requests.post` (the chat) with a fake server: offline fallback, caching, a missing
+model, the loopback rule, parsing, clamping and the weekly cap, timeouts, memory, the Hold Court hook, save/load, and
+both UI paths (the conversation window and the narrated audience).
+
+---
+
 ## 5. Architecture
 
 ### 5.1 Principles
@@ -1042,6 +1109,7 @@ command-terminal/
 │   ├── hotline.json         # Chancellor V. Krov's cables (X1.1)
 │   ├── dynasty.json         # the ruling family — the Head Writer's cast (X1.2)
 │   ├── court.json           # court mechanics: traits, cabinet, audiences, treason, marriage, succession (X1.2)
+│   ├── neural.json          # the Neural Court: Ollama host and model, timeouts, loyalty bounds, fallback lines (X2.0)
 │   └── ui/boot_sequence.json
 ├── src/
 │   ├── models/              # nation.py, inbox.py, game_state.py, military.py (Unit, MoveOrder, Contact), battle.py,
@@ -1070,6 +1138,7 @@ command-terminal/
 │   │   ├── cities.py        # city management: local morale, construction, bunkers, the local news wire
 │   │   ├── hotline.py       # the Vosk Hotline: ceasefire, surrender terms, ultimatum, armistice
 │   │   ├── court.py         # the Royal Court: dynasty, cabinet, audiences, treason, marriages, succession
+│   │   ├── neural_engine.py # the Neural Court: local LLM (Ollama) dialogue, context builder, JSON verdicts, fallback
 │   │   ├── recon.py         # detection radius, contacts, ghosts (active fog of war)
 │   │   ├── ai_director.py   # Vosk DEFEND / PROBE / ASSAULT state machine
 │   │   ├── sigint.py        # intercepts of major AI orders
@@ -1081,7 +1150,8 @@ command-terminal/
 │   │   └── (combat_engine.py is listed above)
 │   └── ui/
 │       ├── app.py           # owns GameState + TickEngine, `revision` reactive
-│       ├── screens/         # boot, terminal, confirm (reply), coordinates, game_over (purge lock), dilemma (event card)
+│       ├── screens/         # boot, terminal, confirm (reply), coordinates, game_over (purge lock), dilemma (event card),
+│       │                    # converse (private audience with a courtier, X2.0)
 │       ├── widgets/         # status_bar.py (reactive), sidebar.py (nav + ADVANCE WEEK), map_canvas.py (War Room)
 │       └── views/           # inbox, economy, military, map (War Room), research, air, diplomacy, cities, court
 ├── tools/generate_world_map.py  # optional: regenerate world.json (overwrites it)
@@ -1143,6 +1213,7 @@ command-terminal/
 | `0` Royal Court: `a` | Hold court: a courtier is granted an audience (once every 2 weeks) |
 | Royal Court: `f` / `w` / `i` / `d` | Appoint the highlighted courtier Minister of Finance / of War / Head of Intelligence; dismiss |
 | Royal Court: `m` | Propose a political marriage abroad for the highlighted member of the House |
+| Royal Court: `t` | Talk to the highlighted courtier in private (free text; Enter speaks, Esc leaves) |
 | Military: `k` | Give the highlighted division to a royal general (or recall the royal) |
 | Emergency: `1`–`3` or click | Answer a CRITICAL EMERGENCY (outbreak or disaster); the game waits for you |
 | Game over: `r` / `q` | Restart the campaign / exit |
@@ -1183,6 +1254,7 @@ SVG screenshots from the UI tests.
 | **Deck** | **Expanded event deck**: 96 cards in five categories, 27 event-chain links, writer packs (`follow_ups`, `chain_only`), tax/tech/outbreak/disaster effects, generated by `tools/generate_massive_deck.py`. ✅ |
 | **X1.2** | **The Royal Court & Extended Family**: the House of Valerius (the Head Writer's cast) plus generated relatives and nobles; the cabinet (Finance / War / Intelligence) with stat-driven buffs; loyalty, dynastic stability and audiences; treason (embezzlement, leaks, assassination, coups) and the spymaster; political marriages; royal generals who never disobey; aging, illness, succession and PROTOCOL ZERO: DYNASTIC COLLAPSE; writer packs for the event deck. ✅ |
 | **Rulings** | **Director rulings on the dynasty**: the Regency for an under-age ruler (the ablest minister governs, every Treasury cost +10%, a disloyal Regent may seize the palace); royal births as narrative and morale events; trait mechanics confirmed; no Vosk court. ✅ |
+| **X2.0** | **The Neural Court**: courtiers converse through a local LLM (Ollama, offline, loopback only) with a fast availability check and a scripted fallback; a context builder from the courtier and the state of the nation; JSON dialogue + loyalty verdicts (clamped ±5, capped ±5 a week); private audiences (`T`) and petitioners who speak at Hold Court; conversations saved. ✅ |
 | 9 | Strategic bombing of factories (air wings over industrial centres), amphibious landings, multiple research slots. |
 | 10 | Domestic Politics & the Draft (§7.4): war weariness, rationing, conscription laws, factions. |
 | 11 | Diplomacy, balance pass. |
@@ -1275,5 +1347,10 @@ a formation, and the home front pays for all of it.
   effects are *not* surcharged (they are fixed story amounts), nor is embezzlement; the birth chance (1.2%/week, one per
   26 weeks) and its size (+3 civil, +5 stability). Nobody in the cast is under 18, so no Regency can happen yet.
 - Crises are harsh when ignored: two in ten random-choice campaigns ended in revolution. Is that the right pressure?
+- Neural Court (programmer's choices, for the Director to confirm): the weekly ±5 cap on conversation loyalty; the
+  default model `llama3.2`; only Hold Court (not the audiences that arrive during the week) is narrated, so a week never
+  waits on the model; the opening speech at an audience never changes loyalty; prisoners and generals at the front
+  can be spoken to; the fallback lines are placeholders. Diplomacy is not wired yet (the brief named it, the spec did
+  not): foreign envoys and the Vosk Chancellor on the Hotline are the natural next hooks.
 - Should the player see a supply-flow projection (who will be OVEREXTENDED if a move order completes) before
   confirming an order?

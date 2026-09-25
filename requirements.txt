@@ -1,2 +1,3 @@
 textual>=1.0.0
 rich>=13.7.0
+requests>=2.31  # Expansion 2.0: the Neural Court talks to a local Ollama server (optional at runtime)

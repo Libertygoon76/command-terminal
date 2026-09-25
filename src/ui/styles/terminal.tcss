@@ -308,6 +308,38 @@ DataTable > .datatable--cursor {
     color: $ct-amber;
 }
 
+/* ---------- private audience (Neural Court, Expansion 2.0) ---------- */
+
+ConverseScreen {
+    align: center middle;
+    background: #000000 70%;
+}
+
+#converse-dialog {
+    width: 96;
+    height: 32;
+    padding: 1 2;
+    background: $ct-surface;
+    border: heavy $ct-amber;
+    border-title-color: $ct-amber;
+    border-title-style: bold;
+}
+
+#converse-status {
+    height: auto;
+}
+
+#converse-log {
+    height: 1fr;
+    margin: 1 0;
+}
+
+#converse-input {
+    background: $ct-panel;
+    color: $ct-phosphor-bright;
+    border: tall $ct-phosphor-dim;
+}
+
 /* ---------- confirm dialog ---------- */
 
 ConfirmReplyScreen {

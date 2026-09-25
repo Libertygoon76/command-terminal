@@ -813,8 +813,12 @@ def summon_audience(state: GameState, char: Character | None = None, report: Tic
     return card
 
 
-def hold_court(state: GameState) -> dict:
-    """The Lord Protector opens the doors of the Audience Chamber (Royal Court screen, A)."""
+def hold_court(state: GameState, narrate: bool = False) -> dict:
+    """The Lord Protector opens the doors of the Audience Chamber (Royal Court screen, A).
+
+    With `narrate`, the petitioner also speaks the petition in their own words through the Neural Court (a local
+    model; blocks while it thinks, and silently keeps the scripted text if Ollama is not running). The TUI narrates
+    in a worker thread instead (neural_engine.prepare_audience / fetch / complete_audience)."""
     house = _require(state)
     cooldown = int(cfg(state).get("audiences", {}).get("hold_court_cooldown", 2))
     if state.clock.turn - house.last_court_turn < cooldown:
@@ -826,6 +830,10 @@ def hold_court(state: GameState) -> dict:
     if card is None:
         raise CourtError("Nobody at court seeks an audience.")
     house.last_court_turn = state.clock.turn
+    if narrate:
+        from src.engine.neural_engine import narrate_audience
+
+        narrate_audience(state, card)
     return card
 
 
