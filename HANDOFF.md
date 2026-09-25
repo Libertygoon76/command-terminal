@@ -82,6 +82,9 @@ ask them to commit and push those changes from the PC first.
   ping, cached). If Ollama is off, everything falls back to scripted text. Settings are in `data/neural.json`.
   UIs must not call the model on the UI thread: use `prepare_*` → `try_fetch()` in a worker → `complete_*`
   (see `src/ui/screens/converse.py`). The Pygame client can call `converse_with_character()` or the split API.
+  `Setup Neural Court.cmd` (repo root) is the user's one-click setup: it checks out and pulls
+  `claude/nice-galileo-guq7zh`, installs requirements, pulls `llama3.2` and starts the game. **If the work moves to
+  another branch (e.g. merged to `master`), change the branch name in that script.**
 - **Royal Court:** the cast is `data/dynasty.json` (Gemini's canon, don't edit its text). The mechanics are
   `data/court.json`, and the engine is `src/engine/court.py`.
 

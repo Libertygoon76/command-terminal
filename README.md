@@ -23,6 +23,11 @@ Use Windows Terminal (not the legacy console) for correct colors and box-drawing
 Courtiers can hold free conversations through a language model running **on your own PC**. It is free and offline,
 and needs no account or API key. Without it the game uses its written dialogue, so you can skip this.
 
+**Windows, the easy way:** install Ollama from <https://ollama.com>, then double-click **`Setup Neural Court.cmd`** in
+the game folder. It updates the game, installs the Python packages, downloads the model the first time (about 2 GB)
+and starts the game. Run it again whenever you want the latest version.
+
+By hand:
 1. Install Ollama from <https://ollama.com> and start it (it runs in the background at `localhost:11434`).
 2. Download the model once: `ollama pull llama3.2` (about 2 GB; any chat model works if you change `model` in
    `data/neural.json`).
